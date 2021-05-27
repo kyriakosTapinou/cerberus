@@ -267,6 +267,23 @@ public:
                                         const Real* dx) const;
 #endif
 
+    void BraginskiiViscousTensorHeatFlux(int passed_idx,
+                                         int ion_idx,
+                                         int electron_idx,
+                                         int em_idx,
+                                         int i, int j, int k,
+                                         const Box& box,
+                                         Array<Real, AMREX_SPACEDIM> &dxinv,
+                                         Real xB, Real yB, Real zB, Vector<Real> u_rel,
+                                         Real dTdx, Real dTdy, Real dTdz,
+                                         Real dudx, Real dudy, Real dudz,
+                                         Real dvdx, Real dvdy, Real dvdz,
+                                         Real dwdx, Real dwdy, Real dwdz,
+                                         Vector<Real> faceCoefficients, 
+                                         //Array4<const Real> const& d4,
+                                         Vector<Real>& ViscTens,
+                                         Vector<Real>& q_flux) const;
+
     virtual void write_info(nlohmann::json &js) const override;
 
     virtual std::string str() const override;

@@ -63,7 +63,6 @@ void MFP::calc_face_source (const Box& box,
                 AMREX_PRAGMA_SIMD
                         for (int i = lo.x; i <= hi.x; ++i) {
                     x = prob_lo[0] + (i + 0.5)*dx[0];
-
 #ifdef AMREX_USE_EB
                     // check all of the contributing states to make sure that they hold valid data
                     bool skip_cell = false;

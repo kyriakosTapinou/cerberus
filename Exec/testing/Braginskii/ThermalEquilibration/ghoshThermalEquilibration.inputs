@@ -1,0 +1,170 @@
+#======== AMREX ==========
+#amr.restart = ./VelocityDecay_II.chk1000000
+amrex.fpe_trap_invalid=1
+amrex.fpe_trap_zero=1
+fpe_trap_overflow=1
+amr.v = 0
+
+# ======== TIME ==========
+max_step  = 1000000
+stop_time = 0.5 # 0.00155
+
+# ======== DOMAIN ==========
+geometry.is_periodic = 1 1 1
+geometry.coord_sys   = 0  # 0 => cart, 1 => RZ  2=>spherical
+
+# lo. res.
+geometry.prob_lo     =    0.0 0.0 0.0 
+geometry.prob_hi     =    1.0 1.0 1.0 
+amr.n_cell           =    8 8 8 
+
+#128  4   8 
+
+# ======== LOAD BALANCE ==========
+amr.loadbalance_with_workestimates = 1
+amr.loadbalance_level0_int = 10 #1000 in comparison
+
+# ======== GRID ==========
+amr.max_level       = 0   # maximum level number allowed
+amr.ref_ratio       = 4 4 2 2 2 2 2 # refinement ratio
+amr.regrid_int      = 2 2 2 2 2 2 2 # how often to regrid
+amr.blocking_factor = 4
+amr.max_grid_size   = 32
+amr.n_error_buf     = 4 4 4 4 4 4 0 # number of buffer cells in error est
+amr.grid_eff        = 0.75     # what constitutes an efficient grid
+amr.subcycling_mode = Auto # time sub-cycling (Auto, None, Manual, Optimal)
+
+# ======== GEOMETRY ==========
+eb2.geom_type = all_regular
+
+# ======== PARTICLES ==========
+particles.do_particles = 0
+particles.v = 0
+#particles.particle_init_file = particle_file
+#particles.timestamp_dir = TRMI.timestamp
+
+
+# ======== OUTPUT ==========
+
+# CHECKPOINT FILES
+amr.checkpoint_files_output = 1
+amr.check_file              = KyriThermalEquilibration.chk    # root name of checkpoint file
+amr.check_int               = -1    # number of timesteps between checkpoints
+amr.check_per               = 5e-4
+
+# PLOTFILES
+amr.plot_files_output = 1
+amr.plot_file         = KyriThermalEquilibration.plt     # root name of plotfile
+amr.plot_int          = -1      # number of timesteps between plotfiles
+amr.plot_per          = 5e-4
+
+
+# ======== PROBLEM DESCRIPTION ==========
+# Note that the problem description is defined as a lua script
+# Everything within the double quotes "..." must conform to lua standards
+# Note that any strings should therefore be defined by single quotes '...'
+
+mfp.lua = "
+-- === SETTINGS ===
+effective_zero = 1e-14
+verbosity = 1
+cfl = 0.005 -- 0.0005
+
+zero_dimensional = 1
+
+do_face_sources = 1
+do_CTU = 1
+
+force_dt = 0
+
+ref_length = 1e-3 -- m
+ref_density= 1.67e-13 -- kg/m^-3
+ref_mass   = 1.67e-27 --1. -- kg
+
+lightspeed = 968.634759289--25.0
+skin_depth = 10.
+beta = 1.0
+
+-- ======== PROBLEM ==========
+mass_ion1 = 1.0
+mass_ion2 = 1.0
+mass_ele = 0.01
+
+gam = 5/3
+
+-- define the problem with independent variables
+n_ion1 = 0.1
+T_ion1 = 1.0
+
+p_ion1 = n_ion1*T_ion1
+rho_ion1 = n_ion1*mass_ion1
+
+n_ele1 = 1.0
+T_ele1 = 0.25 
+p_ele1 = n_ele1*T_ele1
+rho_ele1=n_ele1*mass_ele
+
+-- === DEFINE STATES ===
+cfl_viscous = 1000 --100 -- 10000000
+
+--[[
+ion_nu_nod = 10e-3
+ion_nu_dim = ion_nu_nod*(L_box*ref_length)*(c_1*299792458.0/lightspeed)
+print('\n================================Desired non dimensional ion_nu = ')
+print(ion_nu_nod)
+print('\n================================Desired dimensional ion_nu = ')
+print(ion_nu_dim)
+--]]
+
+states = {
+
+    ion = {
+        type='hydro',
+        mass=mass_ion1,
+        charge= 1.0,
+        gamma=5/3,
+        reconstruction='constant',
+        flux='HLLE',
+        refine_grad_threshold = {rho=0.1},
+        value = {
+            rho = rho_ion1,
+            p   = p_ion1,
+        },
+        --viscosity = {mu0=1.7894e-5, T0=273.11, BT=1, cfl=cfl_viscous , type='BraginskiiIon'}
+    },
+
+    electron = {
+        type='hydro',
+        mass=mass_ele,
+        charge=-1.0,
+        gamma=5/3,
+        reconstruction='constant',
+        flux='HLLE',
+        refine_grad_threshold = {rho=0.1},
+        value = {
+            rho = rho_ele1,
+            p =   p_ele1,
+        },
+        --viscosity = {mu0=1.7894e-5, T0=273.11, BT=1, cfl=cfl_viscous, type='BraginskiiEle'}
+    },
+
+
+    field = {
+        type='field',
+        reconstruction='constant',
+        flux='HLLE',
+        project_divergence = 1,
+    }
+
+}
+
+sources = {
+    plasma={
+        solver = 'explicit', 
+        sources = {
+            braginskii={'ion', 'electron', 'field', type='braginskii', reconstruction='centre',},
+        },
+    },
+}
+"
+

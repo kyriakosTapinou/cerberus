@@ -28,19 +28,19 @@ Real MFP::advance(Real time, Real dt, int iteration, int ncycle) {
 
     // ==========================================================================
     // A. source update
-
+    //Print() << "\nDebug ln 31 - source 1/2\n";
     apply_cell_sources(time, dt/2.0);
 
     // ==========================================================================
     // B. flux update
-
+    //Print() << "\nDebug ln 36 - flux \n";
     if (!gd.zero_dimensional) {
         apply_cell_transport(time, dt);
     }
 
     // ==========================================================================
     // C. update from cell source terms
-
+    //Print() << "\nDebug ln 44 - source 2/2\n";
     apply_cell_sources(time, dt/2.0);
 
 

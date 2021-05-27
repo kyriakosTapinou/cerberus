@@ -1,0 +1,474 @@
+#======== AMREX ==========
+amrex.fpe_trap_invalid=1
+amrex.fpe_trap_zero=1
+fpe_trap_overflow=1
+amr.v = 0
+
+# ======== TIME ==========
+max_step  = 10000000
+stop_time = 1. #0.030973980073944
+
+# ======== DOMAIN ==========
+geometry.is_periodic = 0 1 1  
+geometry.coord_sys   = 0  # 0 => cart, 1 => RZ  2=>spherical
+
+# lo. res.
+geometry.prob_lo     =    -100.0 0.0 0.0 
+geometry.prob_hi     =     100.0 1.0 1.0
+amr.n_cell           =     1600 8 8 
+
+# ======== LOAD BALANCE ==========
+amr.loadbalance_with_workestimates = 1
+amr.loadbalance_level0_int = 10
+
+# ======== GRID ==========
+amr.max_level       = 3        # maximum level number allowed
+amr.ref_ratio       = 2 2 2 2 2 2 2 2 2 # refinement ratio
+amr.regrid_int      = 2 2 2 2 2 2 2 2 2 # how often to regrid
+amr.blocking_factor = 8
+amr.max_grid_size   = 32
+amr.n_error_buf     = 4 4 4 4 4 4 4 4 4 # number of buffer cells in error est
+amr.grid_eff        = 0.75     # what constitutes an efficient grid
+amr.subcycling_mode = Auto # time sub-cycling (Auto, None, Manual, Optimal)
+
+# ======== GEOMETRY ==========
+eb2.geom_type = all_regular
+
+# ======== PARTICLES ==========
+particles.do_particles = 1
+particles.v = 0
+
+# ======== OUTPUT ==========
+
+# CHECKPOINT FILES
+amr.checkpoint_files_output = -1
+amr.check_file              = SRMI-Li3-Braginskii.chk    # root name of checkpoint file
+amr.check_int               = -1    # number of timesteps between checkpoints
+amr.check_per               = 0.01
+
+# PLOTFILES
+amr.plot_files_output = 1
+amr.plot_file         = SRMI-Li3-Braginskii.plt     # root name of plotfile
+amr.plot_int          = -1      # number of timesteps between plotfiles
+amr.plot_per          = -1e-3
+
+# ======== PROBLEM DESCRIPTION ==========
+# Note that the problem description is defined as a lua script
+# Everything within the double quotes "..." must conform to lua standards
+# Note that any strings should therefore be defined by single quotes '...'
+
+mfp.lua = "
+-- ========== SOLVER SETTINGS ========
+verbosity = 3
+cfl = 0.01
+cfl_viscous = 100000
+do_CTU = 1 -- turn of corner transport upwind 
+do_face_sources = 1
+
+-- === DEFINE PROBLEM ===
+hydro_mass  = {0.01, {1.0, 3.0}}
+hydro_charge = {-1., {1., 3.}}
+hydro_gamma = {5/3.0, {5/3.0, 5/3.0}}
+
+-- REFERENCE VALUES 
+lightspeed = 50 
+beta = 1
+skin_depth = 10
+
+ref_length = 1.
+ref_mass = 1.
+ref_density = 1.
+
+--[[ 
+dim_switch
+  0 one dimensional 
+  1 two dimensional 
+scenario_type 
+  0 Equal partial pressures and total pressure of 1.0 in sections one and two
+  1 Equal species temperatures in sections one and two 
+shock_switch 
+  0 Turn off shock 
+  1 Turn on shock
+shock_species_properties -- only applies if shock is turned on 
+  0 The electron fluid properties in the driving shock section are all set to the 
+    ion's values except for density which is proportional to the number density of
+     the ions to maintain charge neutrality.  
+  1 The ion and electron species in the driver shock have the properties as 
+    determined from shock relations for each species in section one. 
+--]]
+dim_switch    = 0
+scenario_type = 0
+shock_switch  = 1
+shock_species_properties = 0
+ 
+shock_x               = -0.2
+interface_x           = 0.0
+interface_amplitude   = 0.1
+interface_transition  = 0.01
+interface_inclination = 0.0 -- not yet functional, check interfce B for this, need to movr around     vars x and x_r etc. 
+interface_type        = 0   -- see RMI_interface_B function for explanation of options. 
+
+if dim_switch == 0 then --overwrite the previous
+  interface_amplitude  = 0.0
+  interface_inclination= 0.0
+  interface_type       = 2 
+end 
+
+shock_mach= 2.0
+density_L = 1.0 --ion density S1 
+density_R = 3.0 --ion density S2
+gam       = hydro_gamma[1]
+pressure  = 0.5 -- pressure of ions in section 1, inbetween shock and interface
+axis_beta = {0,0,0}
+
+-- computations
+rhoi1 = density_L -- mass density in section one ion species
+rhoi2 = density_R
+
+
+if (shock_switch == 0 )    then 
+  rhoi0 = rhoi1
+elseif (shock_switch == 1) then 
+  rhoi0 = rhoi1/(1 - (2/(gam+1))*(1 - 1/shock_mach^2))
+end
+
+ni0 = rhoi0/hydro_mass[2][1]
+ni1 = rhoi1/hydro_mass[2][1]
+ni2 = rhoi2/hydro_mass[2][2]
+--Assuming an initially charge neutral plasma distribution
+ne1 = ni1*hydro_charge[2][1]
+ne2 = ni2*hydro_charge[2][2]
+rhoe1 = ni1*hydro_charge[2][1]*hydro_mass[1]
+rhoe2 = ni2*hydro_charge[2][2]*hydro_mass[1]
+
+if (shock_switch == 0)  then 
+  rhoe0 = rhoe1
+elseif (shock_switch == 1)    then 
+  if (shock_species_properties == 0) then 
+    rhoe0 = hydro_charge[2][1]*hydro_mass[1]/hydro_mass[2][1]*rhoi0
+  elseif (shock_species_properties == 1) then 
+    rhoe0 = rhoe1/(1 - (2/(gam+1))*(1 - 1/shock_mach^2))
+  end 
+end 
+ne0 = rhoe0/hydro_mass[1]
+
+if (scenario_type == 0) then 
+  --Equal partial pressures and total pressure of 1.0 in sections one and two
+  --Note that currently the total pressure is consequentially equal across 
+  --  the interfaces, instead of just the individual species pressures being 
+  --  equal across the interfaces, but this can be changed by altering the species 
+  --  partial pressures, pe1, pe2, pi1, pi2 etc. 
+  pi1 = pressure --partial pressure in ion species 
+  pi2 = pi1 
+  pe1 = pressure --partial pressure in electrons
+  pe2 = pe1
+  kTi1 = pi1/ni1
+  kTi2 = pi2/ni2
+  kTe1 = pe1/ne1
+  kTe2 = pe2/ne2
+  if (shock_switch == 0) then 
+    pi0 = pi1
+    kTi0= pi0/ni0
+    pe0 = pe1
+    kTe0= pe0/ne0
+    kTe0= pe0/ne0                                                                                
+  elseif (shock_switch == 1) then 
+    pi0 = pi1*(1 + ((2*gam)/(gam+1))*(shock_mach^2 - 1)) --section zero ion pressure
+    kTi0=pi0/ni0
+    if (shock_species_properties == 0) then
+      pe0 = pi0
+      kTe0= kTi0
+    elseif (shock_species_properties == 1) then
+      pe0 = pe1*(1 + ((2*gam)/(gam+1))*(shock_mach^2 - 1)) --section zero electron p
+      kTe0= pe0/ne0
+    end
+  end
+
+elseif (scenario_type == 1) then
+   -- Equal species temperatures in sections one and two.
+  pi1  = pressure
+  kT   = pi1/ni1 -- kT value for all species in sections one and two
+  pe1  = ne1*kT
+  pi2  = ni2*kT
+  pe2  = ne2*kT
+  kTi1, kTi2, kTe1, kTe2 = kT, kT, kT, kT
+  if (shock_switch == 0) then
+    pi0 = pi1
+    kTi0= pi0/ni0
+    pe0 = pe1
+    kTe0= pe0/ne0
+  elseif (shock_switch == 1) then
+    pi0  = pi1*(1 + ((2*gam)/(gam+1))*(shock_mach^2 - 1))
+    if (shock_species_properties == 0) then
+      pe0 = pi0
+      kTe0=kTi0
+    elseif (shock_species_properties == 1) then
+      pe0 = pe1*(1 + ((2*gam)/(gam+1))*(shock_mach^2 - 1))
+      kTe0=pe0/ne0
+    end
+  end
+end
+
+ai0 = math.sqrt(gam*pi0/rhoi0) --sound speed in section zero ion species
+ai1 = math.sqrt(gam*pi1/rhoi1)
+ai2 = math.sqrt(gam*pi2/rhoi2)
+ae0 = math.sqrt(gam*pe0/rhoe0) --sound speed in section zero electron species
+ae1 = math.sqrt(gam*pe1/rhoe1)
+ae2 = math.sqrt(gam*pe2/rhoe2)
+ui1 = 0.0 --ion fluid speed in lab reference frame
+ui2 = 0.0
+if (shock_switch == 1) then -- note because of how the rhoe0 var is set we have 
+                            -- to use the loop aagain  
+  ui0 = shock_mach*ai1 -ai0*math.sqrt(((gam-1)*shock_mach^2 + 2)/(2*gam*shock_mach^2 - (gam-1)))
+  if (shock_species_properties == 0) then 
+    ue0 = ui0
+  elseif (shock_species_properties == 1) then 
+    ue0 = shock_mach*ae1 -ae0*math.sqrt(((gam-1)*shock_mach^2 +2)/(2*gam*shock_mach^2 -(gam-1)))
+  end
+elseif  (shock_switch == 0) then
+   ui0 = 0.
+   ue0 = 0.
+end
+
+--  magnetic field strength
+B = {0,0,0}
+p = pi1+pe1 --2*pressure -- use total pressure -- note this should be changed to be general 
+for i, b in ipairs(axis_beta) do
+    if b > 0 then
+        B[i] = math.sqrt(p*beta/b)
+    end
+end
+
+print( 'S0 kT', kTi0, kTe0)
+print( 'S0 p', pi0, pe0 )
+print( 'S0 n', ni0, ne0 )
+print( 'S0 rho', rhoi0, rhoe0 )
+print( 'S0 u', ui0, ue0 )
+print( 'S1 kT',  kTi1, kTe1)
+print( 'S1 p', pi1, pe1 )
+print( 'S1 n', ni1, ne1 )
+print( 'S1 rho', rhoi1, rhoe1 )
+print( 'S1 u', ui1, ue1 )
+print( 'S2 kT', kTi2, kTe2)
+print( 'S2 p', pi2, pe2 )
+print( 'S2 n', ni2, ne2 )
+print( 'S2 rho', rhoi2, rhoe2 )
+print( 'S2 u', ui2, ue2 )
+-- ======== FUNCTIONS ==========                                                                 
+local function islarge (x) return x > 2 ^ 28 end
+local function issmall (x) return x < 2 ^ (-28) end
+
+local function log1p (x) -- not very precise, but works well
+  local u = 1 + x
+  if u == 1 then return x end -- x < eps?
+  return math.log(u) * x / (u - 1)
+end
+
+function atanh (x)
+  y = math.abs(x)
+  if y < .5 then
+    if issmall(y) then return x end
+    a = 2 * y
+    a = .5 * log1p(a + a * y / (1 - y))
+  else
+    if y < 1 then
+      a = .5 * log1p(2 * y / (1 - y))
+    elseif y > 1 then
+      return (x - x) / (x - x) -- nan
+    else -- y == 1
+      return x / 0 -- inf with sign
+    end
+  end
+  return x < 0 and -a or a -- transfer sign
+end
+
+function RMI_interface_A(x, L, R)
+    if x <= shock_x then
+      return L
+    else
+      return R
+    end
+end
+function RMI_interface_B(x, y, L, R, L_ref, R_ref) --still incomplete, beware trying to use the complex functions
+    if ( L_ref == R_ref ) and ( L ~= R ) then
+      L_ref = L
+      R_ref = R
+    end
+
+    if math.abs(L - R)  < 1e-14 then
+        return L
+    end
+    -- rotate the local coordinate system
+    x_r = x*math.cos(interface_inclination*math.pi/180.0) - y*math.sin(interface_inclination*math.pi/180.0)
+    y_r = y*math.cos(interface_inclination*math.pi/180.0) + x*math.sin(interface_inclination*math.pi/180.0)
+
+    x = x_r -- assigning original variable name to still use Daryl's code after correction
+    y = y_r
+    rr = x
+    centre = 0.0
+
+    if (interface_type == 0) then
+        -- sinusoidal
+        centre = interface_x + interface_amplitude*math.cos(2*math.pi*y)
+    elseif (interface_type == 1) then
+        -- triangle wave
+         centre = interface_x - interface_amplitude*(2*math.abs(2*(y-math.floor(y + 0.5))) -1.0)
+    elseif (interface_type == 2) then
+        -- just a line
+         centre = interface_x
+    end
+
+    if (L_ref < R_ref) then
+        at = (10.0*L_ref - 9.0*R_ref)/(10.0*(R_ref-L_ref))
+    else
+        at = (10.0*R_ref - 9.0*L_ref)/(10.0*(L_ref-R_ref))
+    end
+    slope = (2.0/interface_transition)*atanh(at)
+    out = -((math.tanh(-slope*(rr - centre))-1.0)/2.0)*(L-R)+R
+
+    return out
+end
+
+-- ======== FLUID FUNCTIONS ==========
+function ion_number_density(dat)
+  x = dat['x']
+  y = dat['y']
+  if (x <= shock_x) then
+      return RMI_interface_A(x, ni0, ni1)
+  else
+      return RMI_interface_B(x, y, ni1, ni2, ni1, ni2)
+  end
+end
+
+function ele_number_density(dat)
+  x = dat['x']
+  y = dat['y']
+  if (x <= shock_x) then
+      return RMI_interface_A(x, ne0, ne1)
+  else
+      return RMI_interface_B(x, y, ne1, ne2, ni1, ni2)
+  end
+end
+
+function ion_density(dat)
+  x = dat['x']
+  y = dat['y']
+  mass_var = RMI_interface_B(x, y, hydro_mass[2][1], hydro_mass[2][2], ni1, ni2)
+  return mass_var*ion_number_density(dat)
+end 
+
+function ele_density(dat)
+  x = dat['x']
+  y = dat['y']
+  return hydro_mass[1]*ele_number_density(dat)
+end 
+
+-- Tracer function is tailored to maintain netural charge density in transition
+function tracer(dat)
+  x = dat['x']
+  y = dat['y']
+  if ( x > shock_x ) then
+    --ne_tracer = RMI_interface_B(x, y, ne1, ne2, ne1, ne2)
+    ne_tracer = RMI_interface_B(x, y, ne1, ne2, ni1, ni2)
+    ni_tracer = RMI_interface_B(x, y, ni1, ni2, ni1, ni2)
+    rhoce = hydro_charge[1]*ne_tracer
+    tracer_val= (hydro_mass[2][2]*hydro_charge[2][1]*ni_tracer + hydro_mass[2][2]*rhoce)/(hydro_mass[2][2]*hydro_charge[2][1]*ni_tracer - hydro_mass[2][1]*hydro_charge[2][2]*ni_tracer - hydro_mass[2][1]*rhoce + hydro_mass[2][2]*rhoce)
+  else
+    tracer_val= 0.
+  end
+  return tracer_val
+end
+
+function ion_pressure(dat)
+    x = dat['x']
+    y = dat['y']
+    if (x<= shock_x) then
+        p_func = RMI_interface_A(x, pi0, pi1)
+    else
+        --p_func = RMI_interface_B(x, y, pi1, pi2, pi1, pi2)
+        p_func = RMI_interface_B(x, y, pi1, pi2, ni1, ni2)
+    end
+    if (p_func  == nill) then
+        print('---------------------------------nill valued pressure')
+    end
+    return p_func
+end
+
+function ele_pressure(dat)
+    x = dat['x']
+    y = dat['y']
+    if (x<= shock_x) then
+        p_func = RMI_interface_A(x, pe0, pe1)
+    else
+        --p_func = RMI_interface_B(x, y, pe1, pe2, pe1, pe2)
+        p_func = RMI_interface_B(x, y, pe1, pe2, ni1, ni2)
+    end
+    if (p_func  == nill) then
+        print('---------------------------------nill valued pressure')
+    end
+    return p_func
+end
+
+--currently only nonzero velocity in the shock species
+function velocity_x(dat)
+    return RMI_interface_A(x, ui0, ui1)
+end
+
+-- === DEFINE STATES ===
+states = {
+    ions = {
+        type='hydro',
+        mass=hydro_mass[2],  
+        charge= hydro_charge[2], 
+        gamma=hydro_gamma[2], 
+        reconstruction='minmod',
+        flux='HLLE',
+        refine_grad_threshold={rho=0.1},
+        value={
+            rho=ion_density,
+            x_vel=velocity_x,
+            p=ion_pressure,
+            alpha=tracer, 
+        },
+        viscosity={mu0=1.7894e-5, T0=273.11, BT=1, cfl=cfl_viscous , type='BraginskiiIon'},
+    },
+
+    electrons = {
+        type='hydro',
+        mass=hydro_mass[1],  
+        charge= hydro_charge[1], 
+        gamma=hydro_gamma[1], 
+        reconstruction='vanLeer',
+        flux='HLLE',
+        refine_grad_threshold={rho=0.1},
+        value={
+            rho=ele_density,
+            x_vel= elocity_x,
+            p=ele_pressure,
+            alpha=tracer, 
+        },
+        viscosity={mu0=1.7894e-5, T0=273.11, BT=1, cfl=cfl_viscous, type='BraginskiiEle'},
+    },
+
+    field = {
+        type='field',
+        reconstruction='O6',
+        flux='RankineHugoniot',
+        project_divergence=1, 
+    }
+}
+
+sources = {
+    two_fluid={
+        solver='implicit',
+        sources={
+            plasma={
+                'ions', 'electrons', 'field', type='plasma5',
+            },            
+            braginskii={'ions', 'electrons', 'field', type='braginskii',
+                        reconstruction='centre',},
+        },
+    }, 
+}
+
+"

@@ -641,7 +641,7 @@ RealArray HydroState::get_speed_from_prim(const Vector<Real>& Q) const
 
     RealArray s = {AMREX_D_DECL(a + std::abs(Q[+PrimIdx::Xvel]),
                                 a + std::abs(Q[+PrimIdx::Yvel]),
-                                a + std::abs(Q[+PrimIdx::Zvel))};
+                                a + std::abs(Q[+PrimIdx::Zvel]))};
 
 
     return s;
@@ -1666,8 +1666,70 @@ void HydroState::calc_ion_diffusion_terms(const Box& box,const Vector<FArrayBox>
                                           FArrayBox& diff
                                           EB_OPTIONAL(,const EBCellFlagFab& flag)
                                           ) const {
-
     BL_PROFILE("HydroState::calc_ion_diffusion_terms");
+    const Dim3 lo = amrex::lbound(box);
+    const Dim3 hi = amrex::ubound(box);
+
+    Array4<const Real> const& prim4 = prim[global_idx].array();
+    Array4<Real> const& d4 = diff.array();
+    Viscous &V = *viscous;
+
+
+#ifdef AMREX_USE_EB
+    Array4<const EBCellFlag> const& f4 = flag.array();
+#endif
+
+    int np = n_prim();// already includes Density, Xvel, Yvel, Zvel, Prs, Alpha,
+    // where NUM is simply the number of entries
+    
+    Vector<Real> Q_i(np), Q_e(np), B_xyz(3);
+    //prefix of p_ denotes particle characteristic
+    Real alpha, T_i, eta_0, eta_1, eta_2, eta_3, eta_4, kappa_1, kappa_2, kappa_3;
+
+    for (int k = lo.z; k <= hi.z; ++k) {
+        for (int j = lo.y; j <= hi.y; ++j) {
+            AMREX_PRAGMA_SIMD
+                    for (int i = lo.x; i <= hi.x; ++i) {
+#ifdef AMREX_USE_EB
+                if (f4(i,j,k).isCovered())
+                    continue;
+#endif
+                for (int n=0; n<np; ++n) {
+                    Q_i[n] = prim4(i,j,k,n);
+                    Q_e[n] = prim_ELE4(i,j,k,n);
+                }
+
+                B_xyz[0] = prim_EM4(i,j,k,+FieldState::ConsIdx::Bx);
+                B_xyz[1] = prim_EM4(i,j,k,+FieldState::ConsIdx::By);
+                B_xyz[2] = prim_EM4(i,j,k,+FieldState::ConsIdx::Bz);
+
+                /*
+                Print() << "\nB field in ion loop" << B_xyz[0] << "\t" 
+                        << B_xyz[1] << "\t" << B_xyz[2] << "\n" ;
+
+                */
+
+                //V.get_ion_coeffs(Q, T, mu, kappa, p_charge, p_mass, T_e, nd_e);
+                if (false && (j == -1 || j == 6)) {
+                    Print() << "\nmatey i,j,k:\t" << i << " " << j << " " << k << "\n";
+                } else if (false) {
+                    Print() << "\ni,j,k:\t" << i << " " << j << " " << k << "\n";
+                }
+                V.get_ion_coeffs(EMstate,ELEstate,Q_i,Q_e,B_xyz,T_i,eta_0,eta_1,eta_2,eta_3,
+                                 eta_4, kappa_1,kappa_2, kappa_3);
+                //assign values to the diff (d4) matrix for usage in the superior function
+                d4(i,j,k,Viscous::IonTemp) = T_i;
+                d4(i,j,k,Viscous::IonKappa1) = kappa_1;
+                d4(i,j,k,Viscous::IonKappa2) = kappa_2;
+                d4(i,j,k,Viscous::IonKappa3) = kappa_3;
+                d4(i,j,k,Viscous::IonEta0) = eta_0;
+                d4(i,j,k,Viscous::IonEta1) = eta_1;
+                d4(i,j,k,Viscous::IonEta2) = eta_2;
+                d4(i,j,k,Viscous::IonEta3) = eta_3;
+                d4(i,j,k,Viscous::IonEta4) = eta_4; // Note we could store the magnetic field but then we are doubling up on their storafe, perhpas better to just tolerate the access penalty
+            }
+        }
+    }
     return;
 }
 
@@ -1676,8 +1738,50 @@ void HydroState::calc_ion_viscous_fluxes(const Box& box,
                                          const Box& pbox, const Vector<FArrayBox>& prim,
                                          EB_OPTIONAL(const EBCellFlagFab& flag,)
                                          const Real* dx) const {
-
     BL_PROFILE("HydroState::calc_ion_viscous_fluxes");
+    //data strucutre for the diffusion coefficients.
+    FArrayBox diff_ion(pbox, Viscous::NUM_ION_DIFF_COEFFS);
+
+    // from Braginskii 0 = ion, 1 = electron, 2 = em
+    Vector<int> linked = viscous->get_linked_states();
+    int linked_ion = linked[0];
+    int linked_electron = linked[1];
+    int linked_em = linked[2];
+
+    //Electron state information
+    State& ELEstate = GD::get_state(linked_electron);
+    const FArrayBox& prim_ELE = prim[linked_electron];
+    Array4<const Real> const& prim_ELE4 = prim_ELE.array(); // because input is const type
+    //--- em state info
+    State &EMstate = GD::get_state(linked_em);
+    const FArrayBox& prim_EM = prim[linked_em];
+    Array4<const Real> const& prim_EM4 = prim_EM.array(); // because input is const type
+    /*
+    int i=0, j=0, k=0;
+    Print() << "\nB field in calc_ion_viscous_fluxes" 
+            << prim_EM4(i,j,k,+FieldState::ConsIdx::Bx) 
+            << "\t" << prim_EM4(i,j,k,+FieldState::ConsIdx::By) 
+            << "\t" << prim_EM4(i,j,k,+FieldState::ConsIdx::Bz) << "\n" ;
+    */
+
+    //--- diffusion coefficients for each cell to be used
+    calc_ion_diffusion_terms(pbox,prim,EMstate,prim_EM4,ELEstate,prim_ELE4,diff_ion EB_OPTIONAL(,flag));
+    //handle all the generic flux calculations
+
+#ifdef AMREX_USE_EB
+    if (flag.getType() == FabType::singlevalued) {
+        calc_charged_viscous_fluxes(linked_ion, linked_ion, linked_electron, linked_em,
+                                    box, fluxes, pbox, prim, flag, dx, diff_ion);
+        return;
+    }
+#endif
+
+    calc_charged_viscous_fluxes(linked_ion, linked_ion, linked_electron, linked_em,
+                                box, fluxes, pbox, prim,
+                            #ifdef AMREX_USE_EB
+                                flag,
+                            #endif
+                                dx, diff_ion);
     return;
 }
 
@@ -1692,6 +1796,69 @@ void HydroState::calc_electron_diffusion_terms(const Box& box,const Vector<FArra
                                                EB_OPTIONAL(,const EBCellFlagFab& flag)
                                                ) const {
     BL_PROFILE("HydroState::calc_electron_diffusion_terms");
+
+    const Dim3 lo = amrex::lbound(box);
+    const Dim3 hi = amrex::ubound(box);
+
+    Array4<const Real> const& prim4 = prim[global_idx].array();
+    Array4<Real> const& d4 = diff.array();
+    Viscous &V = *viscous;
+
+#ifdef AMREX_USE_EB
+    Array4<const EBCellFlag> const& f4 = flag.array();
+#endif
+
+    int np = n_prim();// already includes Density, Xvel, Yvel, Zvel, Prs, Alpha,
+    // where NUM is simply the number of entries
+    
+    Vector<Real> Q_i(np), Q_e(np), B_xyz(3);
+    //prefix of p_ denotes particle characteristic
+    Real alpha, T_e, eta_0, eta_1, eta_2, eta_3, eta_4, kappa_1, kappa_2, kappa_3, beta1, beta2, beta3;
+
+    for (int k = lo.z; k <= hi.z; ++k) {
+        for (int j = lo.y; j <= hi.y; ++j) {
+            AMREX_PRAGMA_SIMD
+                    for (int i = lo.x; i <= hi.x; ++i) {
+#ifdef AMREX_USE_EB
+                if (f4(i,j,k).isCovered())
+                    continue;
+#endif
+                for (int n=0; n<np; ++n) {
+                    Q_e[n] = prim4(i,j,k,n);
+                    Q_i[n] = prim_ION4(i,j,k,n);
+                }
+                B_xyz[0] = prim_EM4(i,j,k,+FieldState::ConsIdx::Bx);
+                B_xyz[1] = prim_EM4(i,j,k,+FieldState::ConsIdx::By);
+                B_xyz[2] = prim_EM4(i,j,k,+FieldState::ConsIdx::Bz);
+                /*
+                Print() << "\nB field in electron loop" << B_xyz[0] << "\t" 
+                        << B_xyz[1] << "\t" << B_xyz[2] << "\n" ;
+                */
+                if (false && (j == -1 || j == 6)) {
+                    Print() << "\nmatey i,j,k:\t" << i << " " << j << " " << k << "\n";
+                } else if (false) {
+                    Print() << "\ni,j,k:\t" << i << " " << j << " " << k << "\n";
+                }
+
+                V.get_electron_coeffs(EMstate, IONstate,Q_i,Q_e,B_xyz,T_e,eta_0,eta_1,eta_2,eta_3,
+                                      eta_4, kappa_1,kappa_2, kappa_3, beta1, beta2, beta3);
+                //assign values to the diff (d4) matrix for usage in the superior function
+                d4(i,j,k,Viscous::EleTemp) = T_e;
+                d4(i,j,k,Viscous::EleKappa1) = kappa_1;
+                d4(i,j,k,Viscous::EleKappa2) = kappa_2;
+                d4(i,j,k,Viscous::EleKappa3) = kappa_3;
+                d4(i,j,k,Viscous::EleEta0) = eta_0;
+                d4(i,j,k,Viscous::EleEta1) = eta_1;
+                d4(i,j,k,Viscous::EleEta2) = eta_2;
+                d4(i,j,k,Viscous::EleEta3) = eta_3;
+                d4(i,j,k,Viscous::EleEta4) = eta_4;
+                d4(i,j,k,Viscous::EleBeta1) = beta1;
+                d4(i,j,k,Viscous::EleBeta2) = beta2;
+                d4(i,j,k,Viscous::EleBeta3) = beta3;
+            }
+        }
+    }
+
     return;
 }
 
@@ -1701,6 +1868,46 @@ void HydroState::calc_electron_viscous_fluxes(const Box& box,
                                               EB_OPTIONAL(const EBCellFlagFab& flag,)
                                               const Real* dx) const {
     BL_PROFILE("HydroState::calc_electron_viscous_fluxes");
+    FArrayBox diff_ele(pbox, Viscous::NUM_ELE_DIFF_COEFFS);
+
+    // from Braginskii 0 = electron, 1 = ion, 2 = em
+    Vector<int> linked = viscous->get_linked_states();
+    int linked_electron = linked[0];
+    int linked_ion = linked[1];
+    int linked_em = linked[2];
+
+    //Ion state information
+    State& IONstate = GD::get_state(linked_ion);
+    const FArrayBox& prim_ION = prim[linked_ion];
+    Array4<const Real> const& prim_ION4 = prim_ION.array(); // because input is const type
+    //--- em state info
+    State &EMstate = GD::get_state(linked_em);
+    const FArrayBox& prim_EM = prim[linked_em];
+    Array4<const Real> const& prim_EM4 = prim_EM.array(); // because input is const type
+
+    /*
+    int i=0, j=0, k=0;
+    Print() << "\nB field in calc_electron_viscous_fluxes" 
+            << prim_EM4(i,j,k,+FieldState::ConsIdx::Bx) 
+            << "\t" << prim_EM4(i,j,k,+FieldState::ConsIdx::By) 
+            << "\t" << prim_EM4(i,j,k,+FieldState::ConsIdx::Bz) << "\n" ;
+    */
+    //--- diffusion coefficients for each cell to be used
+    calc_electron_diffusion_terms(pbox,prim,EMstate,prim_EM4,IONstate,prim_ION4,diff_ele EB_OPTIONAL(,flag));
+    //handle all the generic flux calculations
+
+#ifdef AMREX_USE_EB
+    if (flag.getType() == FabType::singlevalued) {
+        calc_charged_viscous_fluxes(linked_electron, linked_ion, linked_electron, linked_em,
+                                    box, fluxes, pbox, prim, flag, dx, diff_ele);
+        return;
+    }
+#endif
+
+    calc_charged_viscous_fluxes(linked_electron, linked_ion, linked_electron, linked_em,
+                                box, fluxes, pbox, prim,
+                                EB_OPTIONAL(flag,)
+                                dx, diff_ele);
     return;
 }
 
@@ -1717,7 +1924,885 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                                              EB_OPTIONAL(const EBCellFlagFab& flag,)
                                              const Real* dx, FArrayBox& diff) const {
     BL_PROFILE("HydroState::calc_charged_viscous_fluxes");
+
+    //create a box for the viscous sress tensor where we only store the 6 unique
+    // elements in order of 0:tauxx, 1:tauyy, 2:tauzz, 3:tauxy, 4:tauxz, 5:tauyz
+    Vector<Real> ViscTens(6);
+    Vector<Real> q_flux(3);
+    //--- em state info
+    State &EMstate = GD::get_state(em_idx);
+    const FArrayBox& prim_EM = prim[em_idx];
+    Array4<const Real> const& prim_EM4 = prim_EM.array(); // because input is const type
+
+    //---Sorting out indexing and storage access
+    const Dim3 lo = amrex::lbound(box);
+    const Dim3 hi = amrex::ubound(box);
+
+    Array<Real, AMREX_SPACEDIM> dxinv;
+    for (int d=0; d<AMREX_SPACEDIM; ++d) {
+        dxinv[d] = 1/dx[d];
+    }
+
+    //Array4<const Real> const& p4 = prim[global_idx].array();
+    Array4<const Real> const& p4 = prim[passed_idx].array();
+
+    Array4<const Real> const& d4 = diff.array();
+
+#ifdef AMREX_USE_EB
+    Array4<const EBCellFlag> const& f4 = flag.array();
+#endif
+
+    //Array4<Real> const& d4 = diff.array();
+
+    //Need to stage these properly once the algebraric expressions for the
+    //viscous stresses are in
+    Real dudx=0., dudy=0., dudz=0., dvdx=0., dvdy=0., dvdz=0., dwdx=0., dwdy=0.,
+            dwdz=0., divu=0.;
+    Real dTdx, dTdy, dTdz;
+    const Real two_thirds = 2/3;
+
+    State &ELEstate = GD::get_state(electron_idx); //electron state info
+    const FArrayBox& prim_ELE = prim[electron_idx];
+    Array4<const Real> const& prim_ELE4 = prim_ELE.array();
+    State &IONstate = GD::get_state(ion_idx); //ion state info
+    const FArrayBox& prim_ION = prim[ion_idx];
+    Array4<const Real> const& prim_ION4 = prim_ION.array();
+
+    //--------------Indexes for the trasnport coefficients
+    int iTemp=-1, iEta0=-1, iEta1=-1, iEta2=-1, iEta3=-1, iEta4=-1, iKappa1=-1,
+        iKappa2=-1, iKappa3=-1, iBeta1=-1, iBeta2=-1, iBeta3=-1;
+
+    if (passed_idx == ion_idx) {
+        iTemp = Viscous::IonTemp;
+        iEta0 = Viscous::IonEta0; iEta1 = Viscous::IonEta1; iEta2 = Viscous::IonEta2;
+        iEta3 = Viscous::IonEta3; iEta4 = Viscous::IonEta4;
+        iKappa1=Viscous::IonKappa1;iKappa2=Viscous::IonKappa2;iKappa3 = Viscous::IonKappa3;
+
+        State &ELEstate = GD::get_state(electron_idx); //electron state info
+    } else if (passed_idx == electron_idx) {
+        iTemp = Viscous::EleTemp;
+        iEta0 = Viscous::EleEta0;  iEta1 = Viscous::EleEta1;   iEta2 = Viscous::EleEta2;
+        iEta3 = Viscous::EleEta3;  iEta4 = Viscous::EleEta4;
+        iKappa1=Viscous::EleKappa1;iKappa2=Viscous::EleKappa2;iKappa3= Viscous::EleKappa3;
+        iBeta1 =Viscous::EleBeta1; iBeta2= Viscous::EleBeta2; iBeta3 = Viscous::EleBeta3;
+
+        State &IONstate = GD::get_state(ion_idx); //ion state info
+    } else {
+        amrex::Abort("MFP_hydro.cpp ln 1196 - Shits fucked bruh, rogue state. ");
+    }
+
+    //--------------nondimensinalisation coefficients
+    Real Debye_ref= GD::Debye, Larmor_ref = GD::Larmor;
+    /*
+    Real x_ref=GD::x_ref, n_ref=GD::n_ref, m_ref=GD::m_ref, rho_ref=GD::rho_ref,
+    T_ref=GD::T_ref, u_ref=GD::u_ref;
+
+    Real t_ref = x_ref/u_ref, rho_ref=m_ref/x_ref/x_ref/x_ref, mu_ref=m_ref/x_ref/t_ref;
+
+    nd_divq  = t_ref/m_ref/n_ref/u_ref/u_ref*();
+    nd_dpidx = t_ref/rho_ref/u_ref*(u_ref*mu_ref/x_ref/x_ref);
+    nd_pidvdx= t_ref/m_ref/n_ref/u_ref/u_ref*()
+    */
+    Vector<int> prim_vel_id = get_prim_vector_idx();
+
+    int Xvel = prim_vel_id[0] + 0;
+    int Yvel = prim_vel_id[0] + 1;
+    int Zvel = prim_vel_id[0] + 2;
+
+    Vector<int> cons_vel_id = get_cons_vector_idx();
+
+    int Xmom = cons_vel_id[0] + 0;
+    int Ymom = cons_vel_id[0] + 1;
+    int Zmom = cons_vel_id[0] + 2;
+
+    Vector<int> nrg_id = get_nrg_idx();
+    int Eden = nrg_id[0];
+    //Magnetic field components used for Braginskii terms, `p' represents prime.
+    //Real bx_pp=0.,by_pp=0.,bz_pp=0.,bx_p=0.,by_p=0.,B=0.,B_pp=0.,B_p=0.;
+    Real xB, yB, zB;
+
+    int i_disp, j_disp, k_disp;
+
+    if (passed_idx == ion_idx) {
+        iTemp = Viscous::IonTemp;
+    } else if (passed_idx == electron_idx) {
+        iTemp = Viscous::EleTemp;
+    }
+    Vector<Real> faceCoefficients(Viscous::NUM_ELE_DIFF_COEFFS); // use the beta places and leave them uninitiated if ion
+
+    //Delete after debug 
+    /*
+    for (int k = lo.z; k <= hi.z; ++k) {
+        for (int j = lo.y; j <= hi.y; ++j) {
+            AMREX_PRAGMA_SIMD
+                for (int i = lo.x; i <= hi.x + 1; ++i) {
+                  Print() << "u["<<i<<"]\t"<< p4(i,j,k,Xvel) << "\n";
+                }
+          }
+    }
+    */
+
+    //Print() << "\nfluxX call\n";
+    Vector<Real> u_rel(3);
+    Array4<Real> const& fluxX = fluxes[0].array();
+    for (int k = lo.z; k <= hi.z; ++k) {
+        for (int j = lo.y; j <= hi.y; ++j) {
+            AMREX_PRAGMA_SIMD
+                for (int i = lo.x; i <= hi.x + 1; ++i) {
+#ifdef AMREX_USE_EB
+                if (f4(i,j,k).isCovered())
+                    continue;
+#endif
+                if (passed_idx == electron_idx) {
+                    faceCoefficients[iBeta1] = 0.5*(d4(i,j,k,iBeta1)+d4(i-1,j,k,iBeta1));
+                    faceCoefficients[iBeta2] = 0.5*(d4(i,j,k,iBeta2)+d4(i-1,j,k,iBeta2));
+                    faceCoefficients[iBeta3] = 0.5*(d4(i,j,k,iBeta3)+d4(i-1,j,k,iBeta3));
+                }
+        
+                //Print() << "\nKappa1 coefficient\ti, j, k\t" << i << " " << j << " " << k << " "  << d4(i,j,k,iKappa1) << "\tj\t" << d4(i-1,j,k,iKappa1) << "\n";
+                faceCoefficients[iKappa1] = 0.5*(d4(i,j,k,iKappa1)+d4(i-1,j,k,iKappa1));
+                faceCoefficients[iKappa2] = 0.5*(d4(i,j,k,iKappa2)+d4(i-1,j,k,iKappa2));
+                faceCoefficients[iKappa3] = 0.5*(d4(i,j,k,iKappa3)+d4(i-1,j,k,iKappa3));
+
+                faceCoefficients[iEta0] = 0.5*(d4(i,j,k,iEta0)+d4(i-1,j,k,iEta0));
+                faceCoefficients[iEta1] = 0.5*(d4(i,j,k,iEta1)+d4(i-1,j,k,iEta1));
+                faceCoefficients[iEta2] = 0.5*(d4(i,j,k,iEta2)+d4(i-1,j,k,iEta2));
+                faceCoefficients[iEta3] = 0.5*(d4(i,j,k,iEta3)+d4(i-1,j,k,iEta3));
+                faceCoefficients[iEta4] = 0.5*(d4(i,j,k,iEta4)+d4(i-1,j,k,iEta4));
+
+                if (false && GD::verbose >= 4 ) {
+                  if (passed_idx == ion_idx) {
+                        Print() << "\nIon coefficients - cell:\t" << i << "\t" << j 
+                                << "\t" << k << "\n";;
+                    } else if (passed_idx == electron_idx) {
+                        Print() << "\nElectron coefficients - cell:\t" << i << "\t" << j 
+                                << "\t" << k << "\n";
+                  }
+                  /*
+                  for (int coPrint = 0; coPrint < Viscous::NUM_ELE_DIFF_COEFFS; coPrint ++) {
+                    if (coPrint > 0) {
+                        Print() << "Coefficient " << coPrint << "\t" 
+                                << faceCoefficients[coPrint] << "\n";
+                    }
+                    
+                  }
+                  */
+                }
+
+                xB = 0.5*(prim_EM4(i,j,k,+FieldState::ConsIdx::Bx) + prim_EM4(i-1,j,k,+FieldState::ConsIdx::Bx)); // using i j k  means you are taking the magnetic field in the cell i, not on the interface 
+                yB = 0.5*(prim_EM4(i,j,k,+FieldState::ConsIdx::By) + prim_EM4(i-1,j,k,+FieldState::ConsIdx::By));
+                zB = 0.5*(prim_EM4(i,j,k,+FieldState::ConsIdx::Bz) + prim_EM4(i-1,j,k,+FieldState::ConsIdx::Bz));
+                //if (global_idx == ion_idx)
+                u_rel[0] = 0.5*(prim_ELE4(i,j,k,Xvel) + prim_ELE4(i-1,j,k,Xvel) - prim_ION4(i,j,k,Xvel) - prim_ION4(i-1,j,k,Xvel)); //TODO fix up flux
+                u_rel[1] = 0.5*(prim_ELE4(i,j,k,Yvel) + prim_ELE4(i-1,j,k,Yvel) - prim_ION4(i,j,k,Yvel) - prim_ION4(i-1,j,k,Yvel));
+                u_rel[2] = 0.5*(prim_ELE4(i,j,k,Zvel) + prim_ELE4(i-1,j,k,Zvel) - prim_ION4(i,j,k,Zvel) - prim_ION4(i-1,j,k,Zvel));
+
+                dTdx = (d4(i,j,k,iTemp) - d4(i-1,j,k,iTemp))*dxinv[0];
+
+                dudx = (p4(i,j,k,Xvel) - p4(i-1,j,k,Xvel))*dxinv[0];
+                if (GD::verbose > 4) {
+                  Print() << "u_i\t" << p4(i,j,k,Xvel) << "\nu_i-1\t" << p4(i-1,j,k,Xvel) << "\n";
+                }
+                dvdx = (p4(i,j,k,Yvel) - p4(i-1,j,k,Yvel))*dxinv[0];
+                dwdx = (p4(i,j,k,Zvel) - p4(i-1,j,k,Zvel))*dxinv[0];
+
+#if AMREX_SPACEDIM >= 2
+                dTdy = (d4(i,j+1,k,iTemp)+d4(i-1,j+1,k,iTemp)-d4(i,j-1,k,iTemp)-d4(i-1,j-1,k,iTemp))*(0.25*dxinv[1]);
+                dudy = (p4(i,j+1,k,Xvel)+p4(i-1,j+1,k,Xvel)-p4(i,j-1,k,Xvel)-p4(i-1,j-1,k,Xvel))*(0.25*dxinv[1]);
+                dvdy = (p4(i,j+1,k,Yvel)+p4(i-1,j+1,k,Yvel)-p4(i,j-1,k,Yvel)-p4(i-1,j-1,k,Yvel))*(0.25*dxinv[1]);
+
+                // Put in to facilitate the matrix operations that will one day be
+                // (//TODO) replaced with the explicit algebraic expression of the
+                // viscous stress tensor entries hack without having correct
+                // dimensional staging
+                dwdy = (p4(i,j+1,k,Zvel)+p4(i-1,j+1,k,Zvel)-p4(i,j-1,k,Zvel)-p4(i-1,j-1,k,Zvel))*(0.25*dxinv[1]);
+#endif
+
+#if AMREX_SPACEDIM == 3
+                dTdz = (d4(i,j,k+1,iTemp)+d4(i-1,j,k+1,iTemp)-d4(i,j,k-1,iTemp)-d4(i-1,j,k-1,iTemp))*(0.25*dxinv[1]);
+                //(d4(i,j,k,iTemp)-d4(i,j,k-1,iTemp))*dxinv[2];
+
+                dudz = (p4(i,j,k+1,Xvel)+p4(i-1,j,k+1,Xvel)-p4(i,j,k-1,Xvel)-p4(i-1,j,k-1,Xvel))*(0.25*dxinv[2]);
+
+                dwdz = (p4(i,j,k+1,Zvel)+p4(i-1,j,k+1,Zvel)-p4(i,j,k-1,Zvel)-p4(i-1,j,k-1,Zvel))*(0.25*dxinv[2]);
+                //Put in to hack without having correct dimensional staging
+                dvdz = (p4(i,j,k+1,Yvel)+p4(i,j-1,k+1,Yvel)-p4(i,j,k-1,Yvel)-p4(i,j-1,k-1,Yvel))*(0.25*dxinv[2]);
+#endif
+                divu = dudx + dvdy + dwdz;
+                if (GD::verbose>4) {
+                  Print() << "divu\t" << divu << "\n";
+                }
+                ///TODO hacks because of transform which needs to be turned into algebra...
+
+                //--- retrive the viscous stress tensor and heat flux vector on this face
+
+                //TODO Print() << "Check changes to BRaginskiiViscousTensor... and calculation of xB, .. on interfaces are correct.";
+                BraginskiiViscousTensorHeatFlux(passed_idx, ion_idx, electron_idx, em_idx, i, j, k, box, dxinv,
+                                                xB, yB, zB, u_rel, dTdx, dTdy, dTdz,
+                                                dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, dwdy, dwdz,
+                                                faceCoefficients, ViscTens, q_flux);
+
+                if (true && GD::verbose > 1) Print() << "fluxX\ti, j, k: " << i << " " << j << " " << k << "\n";
+                if (false && GD::verbose >1) {
+                  //Print()<<"Check sign tensor product of viscous stress tensor and velocity";
+                  Print() << "i, j, k: " << i << " " << j << " " << k << "\nfluxX Xmom\t" << ViscTens[0] 
+                          << "\tfluxX Ymom\t" <<  ViscTens[3]
+                          << "\tfluxX Zmom\t" <<  ViscTens[5]
+                          << "\nfluxX Eden visc \t" 
+                          <<  0.5*((p4(i,j,k,Xvel) + p4(i-1,j,k,Xvel))*ViscTens[0]+
+                          (p4(i,j,k,Yvel) + p4(i-1,j,k,Yvel))*ViscTens[3]+
+                          (p4(i,j,k,Zvel) + p4(i-1,j,k,Zvel))*ViscTens[5])
+                          << "\tfluxX Eden q_flux\t" 
+                          << q_flux[0] << "\n";
+                }
+
+                fluxX(i,j,k,Xmom) += ViscTens[0];
+                fluxX(i,j,k,Ymom) += ViscTens[3];
+                fluxX(i,j,k,Zmom) += ViscTens[5];
+                //assume typo in livescue formulation
+                fluxX(i,j,k,Eden) += 0.5*((p4(i,j,k,Xvel) + p4(i-1,j,k,Xvel))*ViscTens[0]+
+                        (p4(i,j,k,Yvel) + p4(i-1,j,k,Yvel))*ViscTens[3]+
+                        (p4(i,j,k,Zvel) + p4(i-1,j,k,Zvel))*ViscTens[5])
+                        + q_flux[0];
+                //+(d4(i,j,k,iKappa)+d4(i-1,j,k,iKappa))*dTdx);
+            }
+        }
+    }
+
+    /*
+    if (GD::verbose >=3) {
+      if (passed_idx == electron_idx) {
+        Print() << "\nqu_e_max = " << qu_e_temp_max << "\nqt_e_max = " << qt_e_temp_max ;
+      } else if (passed_idx == ion_idx) {
+        Print() << "\nqt_i_max = " << qt_i_temp_max ;
+      } else {
+        Print() << "\nHouston...";
+      }
+    }
+    */
+
+#if AMREX_SPACEDIM >= 2
+
+    //Print() << "\nfluxY call\n";
+    Real tauyy, tauyz;
+    Array4<Real> const& fluxY = fluxes[1].array();
+    for     (int k = lo.z; k <= hi.z; ++k) {
+        for   (int j = lo.y; j <= hi.y + 1; ++j) {
+            AMREX_PRAGMA_SIMD
+                    for (int i = lo.x; i <= hi.x; ++i) {
+#ifdef AMREX_USE_EB
+                if (f4(i,j,k).isCovered())
+                    continue;
+#endif
+                if (passed_idx == electron_idx) {
+                    //Print() << "\nElectron";
+                    faceCoefficients[iBeta1] = 0.5*(d4(i,j,k,iBeta1)+d4(i,j-1,k,iBeta1));
+                    faceCoefficients[iBeta2] = 0.5*(d4(i,j,k,iBeta2)+d4(i,j-1,k,iBeta2));
+                    faceCoefficients[iBeta3] = 0.5*(d4(i,j,k,iBeta3)+d4(i,j-1,k,iBeta3));
+                }
+                             
+                //Print() << "Kappa1 coefficient\ti, j, k\t" << i << " " << j << " " << k << " "  << d4(i,j,k,iKappa1) << "\tj\t" << d4(i,j-1,k,iKappa1) << "\n";
+
+                faceCoefficients[iKappa1] = 0.5*(d4(i,j,k,iKappa1)+d4(i,j-1,k,iKappa1));
+                faceCoefficients[iKappa2] = 0.5*(d4(i,j,k,iKappa2)+d4(i,j-1,k,iKappa2));
+                faceCoefficients[iKappa3] = 0.5*(d4(i,j,k,iKappa3)+d4(i,j-1,k,iKappa3));
+
+                faceCoefficients[iEta0] = 0.5*(d4(i,j,k,iEta0)+d4(i,j-1,k,iEta0));
+                faceCoefficients[iEta1] = 0.5*(d4(i,j,k,iEta1)+d4(i,j-1,k,iEta1));
+                faceCoefficients[iEta2] = 0.5*(d4(i,j,k,iEta2)+d4(i,j-1,k,iEta2));
+                faceCoefficients[iEta3] = 0.5*(d4(i,j,k,iEta3)+d4(i,j-1,k,iEta3));
+                faceCoefficients[iEta4] = 0.5*(d4(i,j,k,iEta4)+d4(i,j-1,k,iEta4));
+
+                xB = 0.5*(prim_EM4(i,j,k,+FieldState::ConsIdx::Bx) + prim_EM4(i,j-1,k,+FieldState::ConsIdx::Bx)); // using i j k  means you are taking the magnetic field in the cell i, not on the interface 
+                yB = 0.5*(prim_EM4(i,j,k,+FieldState::ConsIdx::By) + prim_EM4(i,j-1,k,+FieldState::ConsIdx::By));
+                zB = 0.5*(prim_EM4(i,j,k,+FieldState::ConsIdx::Bz) + prim_EM4(i,j-1,k,+FieldState::ConsIdx::Bz));
+                u_rel[0] = 0.5*(prim_ELE4(i,j,k,Xvel) + prim_ELE4(i,j-1,k,Xvel) - prim_ION4(i,j,k,Xvel) - prim_ION4(i,j-1,k,Xvel)); //TODO fix up flux
+                u_rel[1] = 0.5*(prim_ELE4(i,j,k,Yvel) + prim_ELE4(i,j-1,k,Yvel) - prim_ION4(i,j,k,Yvel) - prim_ION4(i,j-1,k,Yvel));
+                u_rel[2] = 0.5*(prim_ELE4(i,j,k,Zvel) + prim_ELE4(i,j-1,k,Zvel) - prim_ION4(i,j,k,Zvel) - prim_ION4(i,j-1,k,Zvel));
+
+                dTdy = (d4(i,j,k,iTemp)-d4(i,j-1,k,iTemp))*dxinv[1];
+
+                dudy = (p4(i,j,k,Xvel)-p4(i,j-1,k,Xvel))*dxinv[1];
+                dvdy = (p4(i,j,k,Yvel)-p4(i,j-1,k,Yvel))*dxinv[1];
+                dwdy = (p4(i,j,k,Zvel)-p4(i,j-1,k,Zvel))*dxinv[1];
+
+                dudx = (p4(i+1,j,k,Xvel)+p4(i+1,j-1,k,Xvel)-p4(i-1,j,k,Xvel)-p4(i-1,j-1,k,Xvel))*(0.25*dxinv[0]);
+                dvdx = (p4(i+1,j,k,Yvel)+p4(i+1,j-1,k,Yvel)-p4(i-1,j,k,Yvel)-p4(i-1,j-1,k,Yvel))*(0.25*dxinv[0]);
+                //--- retrive the viscous stress tensor and heat flux vector on this face
+                ///TODO hacks because of transform which needs to be turned into algebra...
+                dwdx = (p4(i+1,j,k,Zvel)+p4(i+1,j-1,k,Zvel)-p4(i-1,j,k,Zvel)-p4(i-1,j-1,k,Zvel))*(0.25*dxinv[0]);
+
+#if AMREX_SPACEDIM == 3
+                dvdz = (p4(i,j,k+1,Yvel)+p4(i,j-1,k+1,Yvel)-p4(i,j,k-1,Yvel)-p4(i,j-1,k-1,Yvel))*(0.25*dxinv[2]);
+                dwdz = (p4(i,j,k+1,Zvel)+p4(i,j-1,k+1,Zvel)-p4(i,j,k-1,Zvel)-p4(i,j-1,k-1,Zvel))*(0.25*dxinv[2]);
+
+                //--- retrive the viscous stress tensor and heat flux vector on this face
+                ///TODO hacks because of transform which needs to be turned into algebra...
+                dudz = (p4(i,j,k+1,Xvel)+p4(i,j-1,k+1,Xvel)-p4(i,j,k-1,Xvel)-p4(i,j-1,k-1,Xvel))*(0.25*dxinv[2]);
+
+#endif
+                divu = dudx + dvdy + dwdz;
+                //muf = 0.5*(d4(i,j,k,iMu)+d4(i,j-1,k,iMu));
+                //tauyy = muf*(2*dvdy-two_thirds*divu);
+                //tauxy = muf*(dudy+dvdx);
+                //tauyz = muf*(dwdy+dvdz);
+
+
+                BraginskiiViscousTensorHeatFlux(passed_idx, ion_idx, electron_idx, em_idx, i, j, k, box, dxinv,
+                                                xB, yB, zB, u_rel, dTdx, dTdy, dTdz,
+                                                dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, dwdy, dwdz,
+                                                faceCoefficients, ViscTens, q_flux);
+
+                if (true && GD::verbose > 1) Print() << "fluxY\ti, j, k: " << i << " " << j << " " << k << "\n";
+                if (false && GD::verbose >1) {
+                  //Print()<<"Check sign tensor product of viscous stress tensor and velocity";
+                  Print() << "i, j, k: " << i << " " << j << " " << k << "\nfluxY Xmom\t" << ViscTens[0] 
+                          << "\tfluxY Ymom\t" <<  ViscTens[3]
+                          << "\tfluxY Zmom\t" <<  ViscTens[5]
+                          << "\nfluxY Eden visc \t" 
+                          <<  0.5*((p4(i,j,k,Xvel) + p4(i,j-1,k,Xvel))*ViscTens[3]+
+                          (p4(i,j,k,Yvel) + p4(i,j-1,k,Yvel))*ViscTens[1]+
+                          (p4(i,j,k,Zvel) + p4(i,j-1,k,Zvel))*ViscTens[4])
+                          << "\tfluxX Eden q_flux\t" 
+                          << q_flux[1] << "\n";
+                }
+                if (GD::verbose >4) {
+                  Print() << "Adding viscous terms to flux array";
+                }
+                fluxY(i,j,k,Xmom) += ViscTens[3];//tauxy;
+                fluxY(i,j,k,Ymom) += ViscTens[1];//tauyy;
+                fluxY(i,j,k,Zmom) += ViscTens[4];//tauyz;
+                fluxY(i,j,k,Eden) += 0.5*((p4(i,j,k,Xvel)+p4(i,j-1,k,Xvel))*ViscTens[3]+
+                        (p4(i,j,k,Yvel)+p4(i,j-1,k,Yvel))*ViscTens[1]+
+                        (p4(i,j,k,Zvel)+p4(i,j-1,k,Zvel))*ViscTens[4])
+                        + q_flux[1];
+                //+(d4(i,j,k,iKappa) + d4(i,j-1,k,iKappa))*dTdy);
+            }
+        }
+    }
+#endif
+
+#if AMREX_SPACEDIM == 3
+    //Print() << "\nfluxZ call\n";
+    Real tauzz ;
+    Array4<Real> const& fluxZ = fluxes[2].array();
+    for     (int k = lo.z; k <= hi.z; ++k) {
+        for   (int j = lo.y; j <= hi.y + 1; ++j) {
+            AMREX_PRAGMA_SIMD
+                    for (int i = lo.x; i <= hi.x; ++i) {
+#ifdef AMREX_USE_EB
+                if (f4(i,j,k).isCovered())
+                    continue;
+#endif
+                if (passed_idx == electron_idx) {
+                    faceCoefficients[iBeta1] = 0.5*(d4(i,j,k,iBeta1)+d4(i,j,k-1,iBeta1));
+                    faceCoefficients[iBeta2] = 0.5*(d4(i,j,k,iBeta2)+d4(i,j,k-1,iBeta2));
+                    faceCoefficients[iBeta3] = 0.5*(d4(i,j,k,iBeta3)+d4(i,j,k-1,iBeta3));
+                }
+        
+                faceCoefficients[iKappa1] = 0.5*(d4(i,j,k,iKappa1)+d4(i,j,k-1,iKappa1));
+                faceCoefficients[iKappa2] = 0.5*(d4(i,j,k,iKappa2)+d4(i,j,k-1,iKappa2));
+                faceCoefficients[iKappa3] = 0.5*(d4(i,j,k,iKappa3)+d4(i,j,k-1,iKappa3));
+
+                faceCoefficients[iEta0] = 0.5*(d4(i,j,k,iEta0)+d4(i,j,k-1,iEta0));
+                faceCoefficients[iEta1] = 0.5*(d4(i,j,k,iEta1)+d4(i,j,k-1,iEta1));
+                faceCoefficients[iEta2] = 0.5*(d4(i,j,k,iEta2)+d4(i,j,k-1,iEta2));
+                faceCoefficients[iEta3] = 0.5*(d4(i,j,k,iEta3)+d4(i,j,k-1,iEta3));
+                faceCoefficients[iEta4] = 0.5*(d4(i,j,k,iEta4)+d4(i,j,k-1,iEta4));
+
+                xB = 0.5*(prim_EM4(i,j,k,+FieldState::ConsIdx::Bx) + prim_EM4(i,j,k-1,+FieldState::ConsIdx::Bx)); // using i j k  means you are taking the magnetic field in the cell i, not on the interface 
+                yB = 0.5*(prim_EM4(i,j,k,+FieldState::ConsIdx::By) + prim_EM4(i,j,k-1,+FieldState::ConsIdx::By));
+                zB = 0.5*(prim_EM4(i,j,k,+FieldState::ConsIdx::Bz) + prim_EM4(i,j,k-1,+FieldState::ConsIdx::Bz));
+                u_rel[0] = 0.5*(prim_ELE4(i,j,k,Xvel) + prim_ELE4(i,j,k-1,Xvel) - prim_ION4(i,j,k,Xvel) - prim_ION4(i,j,k-1,Xvel)); //TODO fix up flux
+                u_rel[1] = 0.5*(prim_ELE4(i,j,k,Yvel) + prim_ELE4(i,j,k-1,Yvel) - prim_ION4(i,j,k,Yvel) - prim_ION4(i,j,k-1,Yvel));
+                u_rel[2] = 0.5*(prim_ELE4(i,j,k,Zvel) + prim_ELE4(i,j,k-1,Zvel) - prim_ION4(i,j,k,Zvel) - prim_ION4(i,j,k-1,Zvel));
+
+                dTdz = (d4(i,j,k,iTemp)-d4(i,j,k-1,iTemp))*dxinv[2];
+                dudz = (p4(i,j,k,Xvel)-p4(i,j,k-1,Xvel))*dxinv[2];
+                dvdz = (p4(i,j,k,Yvel)-p4(i,j,k-1,Yvel))*dxinv[2];
+                dwdz = (p4(i,j,k,Zvel)-p4(i,j,k-1,Zvel))*dxinv[2];
+
+                dudx = (p4(i+1,j,k,Xvel)+p4(i+1,j,k-1,Xvel)-p4(i-1,j,k,Xvel)-p4(i-1,j,k-1,Xvel))*(0.25*dxinv[0]);
+                dwdx = (p4(i+1,j,k,Zvel)+p4(i+1,j,k-1,Zvel)-p4(i-1,j,k,Zvel)-p4(i-1,j,k-1,Zvel))*(0.25*dxinv[0]);
+                dvdy = (p4(i,j+1,k,Yvel)+p4(i,j+1,k-1,Yvel)-p4(i,j-1,k,Yvel)-p4(i,j-1,k-1,Yvel))*(0.25*dxinv[1]);
+                dwdy = (p4(i,j+1,k,Zvel)+p4(i,j+1,k-1,Zvel)-p4(i,j-1,k,Zvel)-p4(i,j-1,k-1,Zvel))*(0.25*dxinv[1]);
+                divu = dudx + dvdy + dwdz;
+                //muf = 0.5*(d4(i,j,k,iMu)+d4(i,j,k-1,iMu));
+                //tauxz = muf*(dudz+dwdx);
+                //tauyz = muf*(dvdz+dwdy);
+                //tauzz = muf*(2.*dwdz-two_thirds*divu);
+
+                ///TODO hacks because of transform which needs to be turned into algebra...
+                dvdx = (p4(i+1,j,k,Yvel)+p4(i+1,j,k-1,Yvel)-p4(i-1,j,k,Yvel)-p4(i-1,j,k-1,Yvel))*(0.25*dxinv[0]);
+                dudy = (p4(i,j+1,k,Xvel)+p4(i,j+1,k-1,Xvel)-p4(i,j-1,k,Xvel)-p4(i,j-1,k-1,Xvel))*(0.25*dxinv[1]);
+
+                //--- retrive the viscous stress tensor and heat flux vector on this face
+                BraginskiiViscousTensorHeatFlux(passed_idx, ion_idx, electron_idx, em_idx, i, j, k, box, dxinv,
+                                                xB, yB, zB, u_rel, dTdx, dTdy, dTdz,
+                                                dudx, dudy, dudz, dvdx, dvdy, dvdz,
+                                                dwdx, dwdy, dwdz, faceCoefficients, ViscTens, q_flux);
+
+                if (GD::verbose >4) {
+                  Print() << "Adding viscous terms to flux array";
+                }
+                fluxZ(i,j,k,Xmom) += ViscTens[5];//tauxz;
+                fluxZ(i,j,k,Ymom) += ViscTens[4];//tauyz;
+                fluxZ(i,j,k,Zmom) += ViscTens[2];//tauzz;
+                fluxZ(i,j,k,Eden) += 0.5*((p4(i,j,k,Xvel)+p4(i,j,k-1,Xvel))*ViscTens[5]+
+                        (p4(i,j,k,Yvel)+p4(i,j,k-1,Yvel))*ViscTens[4]+
+                        (p4(i,j,k,Zvel)+p4(i,j,k-1,Zvel))*ViscTens[2])
+                        +q_flux[2];
+                //+(d4(i,j,k,iKappa) +d4(i,j,k-1,iKappa))*dTdz);
+
+            }
+        }
+    }
+
+#endif
+
     return;
+}
+
+// ===================================================================================
+// function for calculating the viscous stress tensor and heat flux vector 
+// for the braginskii transport 
+void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
+                                                 int ion_idx,
+                                                 int electron_idx,
+                                                 int em_idx,
+                                                 int i, int j, int k,
+                                                 const Box& box,
+                                                 Array<Real, AMREX_SPACEDIM>& dxinv,
+                                                 Real xB, Real yB, Real zB, Vector<Real> u_rel,
+                                                 Real dTdx, Real dTdy, Real dTdz,
+                                                 Real dudx, Real dudy, Real dudz,
+                                                 Real dvdx, Real dvdy, Real dvdz,
+                                                 Real dwdx, Real dwdy, Real dwdz,
+                                                 Vector<Real> faceCoefficients, 
+                                                 //Array4<const Real> const& d4,
+                                                 Vector<Real>& ViscTens,
+                                                 Vector<Real>& q_flux) const {
+    BL_PROFILE("HydroState::BraginskiiViscousTensorHeatFlux")
+    //Note all the properties used in here need to be for the interface, not just the cell i!!!
+    if (GD::verbose > 4) {
+      Print() << "dudx\t" << dudx << "\ndudy\t" << dudy << "\ndudz\t" << dudz 
+              << "\ndvdx\t" << dvdx << "\ndvdy\t" << dvdy << "\ndvdz\t" << dvdz
+              << "\ndwdx\t" << dwdx << "\ndwdy\t" << dwdy << "\ndwdz\t" << dwdz << "\n";
+    }
+
+    //--- choose index extensions depending on the direction
+    /*
+    int x_hi=0, x_lo=0, y_hi=0, y_lo=0, z_hi=0, z_lo=0;
+    if (flux_dim == 0) {
+      x_hi = 1; x_lo = 0;
+     } else if (flux_dim == 1) {
+      y_hi = 1; y_lo = 0;
+     } else {
+      z_hi = 1; z_lo = 0;
+    }
+    */
+
+    //---Sorting out indexing and storage access
+    const Dim3 lo = amrex::lbound(box);
+    const Dim3 hi = amrex::ubound(box);
+    Real bx_pp=0.,by_pp=0.,bz_pp=0.,bx_p=0.,by_p=0.,B=0.,B_pp=0.,B_p=0.;
+    Real qu_e_temp_max=0., qt_e_temp_max=0., qt_i_temp_max=0.;
+
+    Real divu = dudx + dvdy + dwdz ;
+    int i_disp, j_disp, k_disp;
+    //Using the formulation of Li 2018 "High-order two-fluid plasma
+    // solver for direct numerical simulations of plasma flowswith full
+    // transport phenomena"  --- this is outdated, i think i was eefering
+    // to the coulomb loagrithm which i just ended up taking fro braginskii
+
+    //---get magnetic field orientated unit vectors
+    B = xB*xB + yB*yB + zB*zB;
+    if (B < 0.0) { //Perhaps remove this, will never happen we're not using imaginary numbers
+        Print() << "MFP_hydro.cpp ln 2002 - Negative magnetic field error";
+        Print() << std::to_string(B);
+        amrex::Abort("Negative magnetic field - ln 2002 MFP_hydro.cpp");
+    } else {
+        if (B < GD::effective_zero) {
+            if (GD::verbose >= 3) {
+                Print() << "\nZero magnetic field \n";
+            }
+            //amrex::Warning("zero magnetic field check the viscous stress matrix is not transformed at all.");
+            B_pp = 0.;
+            B_p  = 0.;
+        } else if ( (std::abs(xB) < GD::effective_zero) && (std::abs(yB) < GD::effective_zero) &&
+                    (std::abs(zB) > GD::effective_zero) ) {
+            if (GD::verbose >= 4) {
+                Print() << "\nZero x and y magnetic field \n";
+                amrex::Warning("fixed frame aligned mag field, check the viscous stress matrix is not transformed at all.");
+            }
+            B_pp = 1/sqrt(B); // B prime prime
+            B_p  = 0.;
+        } else {
+            B_pp = 1/sqrt(B); // B prime prime
+            B_p  = 1/sqrt(xB*xB + yB*yB); // B prime
+        }
+
+        //added for Q transformation matrix See Li 2018 "High-order
+        // two-fluid plasma solver for direct numerical simulations
+        // of plasma flowswith full transport phenomena"
+    }
+
+    bx_pp = xB*B_pp; bx_p = xB*B_p;
+    by_pp = yB*B_pp; by_p = yB*B_p;
+    bz_pp = zB*B_pp;
+    
+    Vector<Real> B_unit(3); //Magnetic field unit vector
+    Vector<Real> u_para(3); //Velocity parallel to B_unit
+    Vector<Real> u_perp(3); //Velocity perpendicular to B_unit
+    Vector<Real> u_chev(3); //unit vector perp to u and B_unit
+    Vector<Real> TG_para(3);//Temp grad parallel to B_unit
+    Vector<Real> TG_perp(3);//Temp grad perpendicular to B_unit
+    Vector<Real> TG_chev(3);//unit vector perp to gradT and B_unit
+
+    B_unit[0] = bx_pp; B_unit[1] = by_pp; B_unit[2] = bz_pp;
+
+    Vector<int> prim_vel_id = get_prim_vector_idx();
+
+    int Xvel = prim_vel_id[0] + 0;
+    int Yvel = prim_vel_id[0] + 1;
+    int Zvel = prim_vel_id[0] + 2;
+
+    int iTemp=-1, iEta0=-1, iEta1=-1, iEta2=-1, iEta3=-1, iEta4=-1, iKappa1=-1,
+            iKappa2=-1, iKappa3=-1, iBeta1=-1, iBeta2=-1, iBeta3=-1;
+
+    if (passed_idx == ion_idx) {
+        iTemp = Viscous::IonTemp;
+        iEta0 = Viscous::IonEta0; iEta1 = Viscous::IonEta1; iEta2 = Viscous::IonEta2;
+        iEta3 = Viscous::IonEta3; iEta4 = Viscous::IonEta4;
+        iKappa1=Viscous::IonKappa1;iKappa2=Viscous::IonKappa2;iKappa3 = Viscous::IonKappa3;
+
+        State &ELEstate = GD::get_state(electron_idx); //electron state info
+    } else if (passed_idx == electron_idx) {
+        iTemp = Viscous::EleTemp;
+        iEta0 = Viscous::EleEta0;  iEta1 = Viscous::EleEta1;   iEta2 = Viscous::EleEta2;
+        iEta3 = Viscous::EleEta3;  iEta4 = Viscous::EleEta4;
+        iKappa1=Viscous::EleKappa1;iKappa2=Viscous::EleKappa2;iKappa3= Viscous::EleKappa3;
+        iBeta1 =Viscous::EleBeta1; iBeta2= Viscous::EleBeta2; iBeta3 = Viscous::EleBeta3;
+
+        State &IONstate = GD::get_state(ion_idx); //ion state info
+    } else {
+        amrex::Abort("MFP_hydro.cpp ln 1196 - Shits fucked bruh, rogue state. ");
+    }
+
+    Real dot_B_unit_TG, dot_B_unit_U ;//temp variables
+    
+    dot_B_unit_U = bx_pp*u_rel[0] + by_pp*u_rel[1] + bz_pp*u_rel[2];
+    dot_B_unit_TG= bx_pp*dTdx + by_pp*dTdy + bz_pp*dTdz;
+    // Prepare the x-components components
+    u_para[0] = B_unit[0]*dot_B_unit_U ;
+    TG_para[0]= B_unit[0]*dot_B_unit_TG ;
+    u_perp[0] = u_rel[0] - u_para[0];
+    u_chev[0] = B_unit[1]*u_rel[2] - B_unit[2]*u_rel[1];
+    TG_perp[0]= dTdx - TG_para[0];
+    TG_chev[0]= B_unit[1]*dTdz-B_unit[2]*dTdy;
+    // Prepare the y-components components
+    u_para[1] = B_unit[1]*dot_B_unit_U ;
+    TG_para[1]= B_unit[1]*dot_B_unit_TG ;
+    u_perp[1] = u_rel[1] - u_para[1];
+    u_chev[1] = -(B_unit[0]*u_rel[2]-B_unit[2]*u_rel[0]);
+    TG_perp[1]= dTdy - TG_para[1];
+    TG_chev[1]= -(B_unit[0]*dTdz-B_unit[2]*dTdx);
+    // Prepare the z-components components
+    u_para[2] = B_unit[2]*dot_B_unit_U ;
+    TG_para[2]= B_unit[2]*dot_B_unit_TG ;
+    u_perp[2] = u_rel[2] - u_para[2];
+    u_chev[2] = B_unit[0]*u_rel[1]-B_unit[1]*u_rel[0];
+    TG_perp[2]= dTdz - TG_para[2];
+    TG_chev[2]= B_unit[0]*dTdy-B_unit[1]*dTdx;
+
+    int rowFirst=3,columnFirst=3,columnSecond=3;
+    /* Matrix representations of viscous stree tensor and associated
+    quantities are defined as:
+    Trans       - the transformation matrix Q
+    Strain      - Strain rate matrix mate W
+    StrainTrans - Strain rate matrix transformed into the B aligned frame
+    ViscStress  - Viscous stress tensor in lab frame, PI
+    ViscStressTrans - Viscous stress tensor in B aligned frame, PI'
+    TransT      - Transpose of the transformation matrix, Q'
+    */
+    Vector<Vector<Real> > Trans(3,Vector<Real>(3));
+    Vector<Vector<Real> > Strain(3,Vector<Real>(3));
+    Vector<Vector<Real> > StrainTrans(3,Vector<Real>(3));
+    Vector<Vector<Real> > ViscStress(3,Vector<Real>(3)), ViscStressTrans(3,Vector<Real>(3)), TransT(3,Vector<Real>(3));
+    Vector<Vector<Real> > WorkingMatrix(3,Vector<Real>(3));
+
+    //if (global_idx == electron_idx)
+    if (passed_idx == electron_idx) {
+        Real qu_e_temp = faceCoefficients[iBeta1]*u_para[0] + faceCoefficients[iBeta2]*u_perp[0] + faceCoefficients[iBeta3]*u_chev[0] ;
+        Real qt_e_temp = -faceCoefficients[iKappa1]*TG_para[0] - faceCoefficients[iKappa2]*TG_perp[0] - faceCoefficients[iKappa3]*TG_chev[0];
+
+        qu_e_temp_max = std::max(std::fabs(qu_e_temp_max), std::fabs(qu_e_temp));
+        qt_e_temp_max = std::max(std::fabs(qt_e_temp_max), std::fabs(qt_e_temp));
+
+        q_flux[0] = qt_e_temp + qu_e_temp ;
+//#if AMREX_SPACEDIM >= 2
+        q_flux[1] = faceCoefficients[iBeta1]*u_para[1] + faceCoefficients[iBeta2]*u_perp[1] + faceCoefficients[iBeta3]*u_chev[1]
+                   -faceCoefficients[iKappa1]*TG_para[1] - faceCoefficients[iKappa2]*TG_perp[1] - faceCoefficients[iKappa3]*TG_chev[1];
+//#endif
+
+//#if AMREX_SPACEDIM == 3
+        q_flux[2] = faceCoefficients[iBeta1]*u_para[2] + faceCoefficients[iBeta2]*u_perp[2] + faceCoefficients[iBeta3]*u_chev[2]
+                   -faceCoefficients[iKappa1]*TG_para[2] - faceCoefficients[iKappa2]*TG_perp[2] - faceCoefficients[iKappa3]*TG_chev[2];
+
+        if (true && GD::verbose > 2) {
+            Print() << "ele kappa[i]\t" << faceCoefficients[iKappa1] << "\t" << faceCoefficients[iKappa2] << "\t" << faceCoefficients[iKappa3] << "\n";
+            Print() << "\tTG_[0]\t" << TG_para[0] << "\t" << TG_perp[0] << "\t" << TG_chev[0] << "\n";
+
+            Print() << "\tTG_[1]\t" << TG_para[1] << "\t" << TG_perp[1] << "\t" << TG_chev[1] << "\n";
+
+            Print() << "\tTG_[2]\t" << TG_para[2] << "\t" << TG_perp[2] << "\t" << TG_chev[2] << "\n";
+        }
+
+        if (false) {
+          Print() << "ele q_flux[i]\t" << q_flux[0] << "\t" << q_flux[1] << "\t" << q_flux[2] << "\n";  
+        }
+
+//#endif
+    } else {
+        q_flux[0] = -faceCoefficients[iKappa1]*TG_para[0] - faceCoefficients[iKappa2]*TG_perp[0] + faceCoefficients[iKappa3]*TG_chev[0];
+
+        qt_i_temp_max=std::max(std::fabs(qt_i_temp_max),std::fabs(q_flux[0]));
+
+//#if AMREX_SPACEDIM >= 2
+        q_flux[1] = -faceCoefficients[iKappa1]*TG_para[1] - faceCoefficients[iKappa2]*TG_perp[1] + faceCoefficients[iKappa3]*TG_chev[1];
+//#endif
+
+//#if AMREX_SPACEDIM == 3
+        q_flux[2] = -faceCoefficients[iKappa1]*TG_para[2] - faceCoefficients[iKappa2]*TG_perp[2] + faceCoefficients[iKappa3]*TG_chev[2];
+
+        if (true && GD::verbose > 2) {
+            Print() << "ion kappa[i]\t" << faceCoefficients[iKappa1] << "\t" << faceCoefficients[iKappa2] << "\t" << faceCoefficients[iKappa3] << "\n";
+            Print() << "\tTG_[0]\t" << TG_para[0] << "\t" << TG_perp[0] << "\t" << TG_chev[0] << "\n";
+            Print() << "\tTG_[1]\t" << TG_para[1] << "\t" << TG_perp[1] << "\t" << TG_chev[1] << "\n";
+            Print() << "\tTG_[2]\t" << TG_para[2] << "\t" << TG_perp[2] << "\t" << TG_chev[2] << "\n";
+        }
+        if (false) {
+          Print() << "ion q_flux[i]\t" << q_flux[0] << "\t" << q_flux[1] << "\t" << q_flux[2] << "\n";
+        }
+//#endif
+    }
+
+    //Calculate the viscous stress tensor
+      //Populate strain rate tensor in B unit aligned cartesian frame
+      //This is braginskii's  - the strain rate tensor multplied by negative one later to Li
+      // Livescue formulation
+    Strain[0][0] = 2*dudx - 2./3.*divu;
+    Strain[0][1] = dudy + dvdx;
+    Strain[0][2] = dwdx + dudz;
+    Strain[1][0] = Strain[0][1];
+    Strain[1][1] = 2*dvdy - 2./3.*divu;
+    Strain[1][2] = dvdz + dwdy;
+    Strain[2][0] = Strain[0][2];
+    Strain[2][1] = Strain[1][2];
+    Strain[2][2] = 2*dwdz - 2./3.*divu;
+
+    for (i_disp=0; i_disp<3; ++i_disp) { // set to zero
+        for (j_disp=0; j_disp<3; ++j_disp) {
+            WorkingMatrix[i_disp][j_disp] = 0.;
+            StrainTrans[i_disp][j_disp] = 0.;
+
+            if (GD::verbose >= 9) Print() << "Livescue on ";
+                  
+            Strain[i_disp][j_disp] = - Strain[i_disp][j_disp] ; //make negtive for Li Livescue
+        }
+    }
+
+    if (GD::verbose >= 9) {
+        Print() << "Test each of the B field conditions to try break the code";
+    }
+
+      // Do we have a special case of B=0 or Bx=By=0 and Bz = B?
+    if (1) { //(B < GD::effective_zero) { // #####################Note for now we are hard coding for non-gyro viscosity.
+      if (GD::verbose >= 9) {
+        Print() << "\nHard coded non-hyro viscosity\n";
+      }
+
+      ViscStress[0][0] = faceCoefficients[iEta0]*Strain[0][0];
+      
+      ViscStress[0][1] = faceCoefficients[iEta0]*Strain[0][1];
+      ViscStress[1][0] = ViscStress[0][1];
+  
+      ViscStress[0][2] = faceCoefficients[iEta0]*Strain[0][2];
+      ViscStress[2][0] = ViscStress[0][2];
+  
+      ViscStress[1][1] = faceCoefficients[iEta0]*Strain[1][1];
+      ViscStress[1][2] = faceCoefficients[iEta0]*Strain[1][2];
+      ViscStress[2][1] = ViscStress[1][2];
+  
+      ViscStress[2][2] = faceCoefficients[iEta0]*Strain[2][2];
+
+    } else if ( (std::abs(xB) < GD::effective_zero) && (std::abs(yB) < GD::effective_zero) &&
+                    (std::abs(zB) > GD::effective_zero) ) {
+      ViscStress[0][0]=-1/2*faceCoefficients[iEta0]*
+              (Strain[0][0] + Strain[1][1])
+              -1/2*faceCoefficients[iEta1]*
+              (Strain[0][0] - Strain[1][1])
+              -faceCoefficients[iEta3]*(Strain[0][1]);
+      
+      ViscStress[0][1]=-faceCoefficients[iEta1]*Strain[0][1]
+              +1/2*faceCoefficients[iEta3]*
+              (Strain[0][0] - Strain[1][1]);
+  
+      ViscStress[1][0]= ViscStress[0][1];
+  
+      ViscStress[0][2]=-faceCoefficients[iEta2]*Strain[0][2]
+              - faceCoefficients[iEta4]*Strain[1][2];
+  
+      ViscStress[2][0]= ViscStress[0][2];
+  
+      ViscStress[1][1]=-1/2*faceCoefficients[iEta0]*
+              (Strain[0][0] + Strain[1][1])
+              -1/2*faceCoefficients[iEta1]*
+              (Strain[1][1] - Strain[0][0])
+              +faceCoefficients[iEta3]*Strain[0][1];
+  
+      ViscStress[1][2]=-faceCoefficients[iEta2]*Strain[1][2] +
+              faceCoefficients[iEta4]*Strain[0][2];
+  
+      ViscStress[2][1]=ViscStress[1][2];
+  
+      ViscStress[2][2]=-faceCoefficients[iEta0]*Strain[2][2];
+
+    } else { //the generic case with non trivial magnetic field requiring a transform
+      //Populate the transformation matrix from cartesian normal to B unit
+      // aligned cartesian - Li 2018
+
+      Trans[0][0]=-by_p; Trans[0][1]=-bx_p*bz_pp; Trans[0][2]=bx_pp;
+  
+      Trans[1][0]= bx_p; Trans[1][1]=-by_p*bz_pp; Trans[1][2] = by_pp;
+  
+      Trans[2][0]= 0;    Trans[2][1]= bx_p*bx_pp
+              +by_p*by_pp; Trans[2][2] =bz_pp;
+        //Populate the transpose of the transformation matrix
+      TransT[0][0]=Trans[0][0]; TransT[0][1]=Trans[1][0]; TransT[0][2]=Trans[2][0];
+  
+      TransT[1][0]=Trans[0][1]; TransT[1][1]=Trans[1][1]; TransT[1][2]=Trans[2][1];
+  
+      TransT[2][0]=Trans[0][2]; TransT[2][1]=Trans[1][2]; TransT[2][2]=Trans[2][2];
+  
+      // Multiplying Q' (Transpose) by W (StressStrain)
+      for (i_disp = 0; i_disp< rowFirst; ++i_disp) {
+          for(j_disp = 0; j_disp< columnSecond; ++j_disp) {
+              for(k_disp=0; k_disp<columnFirst; ++k_disp) {
+                  WorkingMatrix[i_disp][j_disp] += TransT[i_disp][k_disp]*
+                          Strain[k_disp][j_disp];
+              }
+          }
+      }
+      // Multiplying Q'W by Q
+      for(i_disp = 0; i_disp< rowFirst; ++i_disp) {
+          for(j_disp = 0; j_disp< columnSecond; ++j_disp) {
+              for(k_disp=0; k_disp<columnFirst; ++k_disp) {
+                  StrainTrans[i_disp][j_disp] += WorkingMatrix[i_disp][k_disp] *
+                          Trans[k_disp][j_disp];
+              }
+          }
+      }
+      //faceCoefficients[iKappa3]
+      //Populate visc stress tensor in cartesian normal frame
+      ViscStressTrans[0][0]=-1/2*faceCoefficients[iEta0]*
+              (StrainTrans[0][0] + StrainTrans[1][1])
+              -1/2*faceCoefficients[iEta1]*
+              (StrainTrans[0][0] - StrainTrans[1][1])
+              -faceCoefficients[iEta3]*(StrainTrans[0][1]);
+      //check the removal of the negative sign before the second bracket in ViscStressTrans00 was not a mistake
+      ViscStressTrans[0][1]=-faceCoefficients[iEta1]*StrainTrans[0][1]
+              +1/2*faceCoefficients[iEta3]*
+              (StrainTrans[0][0] - StrainTrans[1][1]);
+  
+      ViscStressTrans[1][0]= ViscStressTrans[0][1];
+  
+      ViscStressTrans[0][2]=-faceCoefficients[iEta2]*StrainTrans[0][2]
+              - faceCoefficients[iEta4]*StrainTrans[1][2];
+  
+      ViscStressTrans[2][0]= ViscStressTrans[0][2];
+  
+      ViscStressTrans[1][1]=-1/2*faceCoefficients[iEta0]*
+              (StrainTrans[0][0] + StrainTrans[1][1])
+              -1/2*faceCoefficients[iEta1]*
+              (StrainTrans[1][1] - StrainTrans[0][0])
+              +faceCoefficients[iEta3]*StrainTrans[0][1];
+  
+      ViscStressTrans[1][2]=-faceCoefficients[iEta2]*StrainTrans[1][2] +
+              faceCoefficients[iEta4]*StrainTrans[0][2];
+  
+      ViscStressTrans[2][1]=ViscStressTrans[1][2];
+  
+      ViscStressTrans[2][2]=-faceCoefficients[iEta0]*StrainTrans[2][2];
+  
+      for (i_disp=0; i_disp<3; ++i_disp) {//Set to zero
+          for (j_disp=0; j_disp<3; ++j_disp) {
+              WorkingMatrix[i_disp][j_disp] = 0.;
+              ViscStress[i_disp][j_disp] = 0.;
+          }
+      }
+      // Multiplying Q (Trans) by PI' (ViscStressTrans)
+      for(i_disp = 0; i_disp< rowFirst; ++i_disp) {
+          for(j_disp = 0; j_disp< columnSecond; ++j_disp) {
+              for(k_disp=0; k_disp<columnFirst; ++k_disp) {
+                  WorkingMatrix[i_disp][j_disp] += Trans[i_disp][k_disp] *
+                          ViscStressTrans[k_disp][j_disp];
+              }
+          }
+      }
+      // Multiplying Q*PI' by Q^T
+      for(i_disp = 0; i_disp< rowFirst; ++i_disp) {
+          for(j_disp = 0; j_disp< columnSecond; ++j_disp) {
+              for(k_disp=0; k_disp<columnFirst; ++k_disp) {
+                  ViscStress[i_disp][j_disp] += WorkingMatrix[i_disp][k_disp] *
+                          TransT[k_disp][j_disp];
+              }
+          }
+      }
+    }
+ 
+    //Storing
+    //NOTE STORAGE ACCORDING TO THE TAUXX, TAUYY, TAUZZ, TAUXY OR TAUYX,
+    // TAUYZ OR TAUZY, TAUXZ OR TAUZX
+    ViscTens[0] = ViscStress[0][0];
+    ViscTens[1] = ViscStress[1][1];
+    ViscTens[2] = ViscStress[2][2];
+    ViscTens[3] = ViscStress[0][1];
+    ViscTens[4] = ViscStress[1][2];
+    ViscTens[5] = ViscStress[0][2];
+
+    if (true && GD::verbose >= 1) {
+    /*
+    Print() << "Bunit\t" << B_unit[0] << "\nBunit\t" << B_unit[1] << "\nBunit\t" << B_unit[2] << "\n";
+
+    Print() << "u_rel:\t" << u_rel[0] << "\nu_rel:\t" << u_rel[1] << "\nu_rel:\t" 
+            << u_rel[2] << "\n";
+    Print() << "dot_B_unit_U\t" << dot_B_unit_U<< "\n";
+    Print() << "dot_B_unit_TG\t" << dot_B_unit_TG<< "\n";
+    Print() << "u_para\t" << u_para[0] << "\nu_para\t" << u_para[1] << "\nu_para\t" 
+            << u_para[2] << "\n";
+    Print() << "u_perp\t" << u_perp[0] << "\nu_perp\t" << u_perp[1] << "\nu_perp\t" 
+            << u_perp[2] << "\n";
+    Print() << "u_chev\t" << u_chev[0] << "\nu_chev\t" << u_chev[1] << "\nu_chev\t" 
+            << u_chev[2]  << "\n";
+    Print() << "TG_para\t" << TG_para[0] << "\nTG_para\t" << TG_para[1] << "\nTG_para\t" 
+            << TG_para[2] << "\n";
+    Print() << "TG_perp\t" << TG_perp[0] << "\nTG_perp\t" << TG_perp[1] << "\nTG_perp\t" 
+            << TG_perp[2] << "\n";
+    Print() << "TG_chev\t" << TG_chev[0] << "\nTG_chev\t" << TG_chev[1] << "\nTG_chev\t" 
+            << TG_chev[2] << "\n";
+    */
+    if (true && GD::verbose>1) {
+      Print() << "qVector\t" << q_flux[0] << "\nqVector\t" << q_flux[1] 
+              << "\nqVector\t" << q_flux[2] << "\n";
+
+      Print() <<  "ViscTens\t" << ViscTens[0] << "\nviscTens\t" << ViscTens[1] 
+              << "\nviscTens\t" << ViscTens[2] << "\nviscTens\t" <<ViscTens[3] 
+              << "\nviscTens\t" << ViscTens[4] << "\nviscTens\t" << ViscTens[5] << "\n";
+      }
+    }
+    
+    return ;
 }
 
 

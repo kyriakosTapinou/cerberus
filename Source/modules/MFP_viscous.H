@@ -6,6 +6,8 @@
 
 #include "MFP_factory.H"
 #include "sol.hpp"
+// Forward declaration of class State for use in Braginskii viscosity
+class State;
 
 using amrex::Real;
 using amrex::Vector;
@@ -32,18 +34,49 @@ public:
   };
 
   enum IonDiffusionCoeffs {
+    IonTemp = 0,
+    IonEta0,
+    IonEta1,
+    IonEta2,
+    IonEta3,
+    IonEta4,
+    IonKappa1,
+    IonKappa2,
+    IonKappa3,
     NUM_ION_DIFF_COEFFS
   };
 
   enum ElectronDiffusionCoeffs {
+    EleTemp = 0,
+    EleEta0,
+    EleEta1,
+    EleEta2,
+    EleEta3,
+    EleEta4,
+    EleKappa1,
+    EleKappa2,
+    EleKappa3,
+    EleBeta1, 
+    EleBeta2,
+    EleBeta3,
     NUM_ELE_DIFF_COEFFS
   };
 
   virtual int get_type();
+  virtual int get_BraginskiiIdentity();
   virtual int get_num();
   virtual void get_neutral_coeffs(const Vector<Real> &Q, Real &T, Real &mu, Real &kappa);
-  virtual void get_ion_coeffs(){return;}
-  virtual void get_electron_coeffs(){return;}
+  virtual void get_ion_coeffs(State& EMstate, State& ELEstate,
+                              const Vector<Real>& Q_i,const Vector<Real>& Q_e,
+                              const Vector<Real>& B_xyz,Real& T_i,Real& eta0,
+                              Real& eta1,Real& eta2,Real& eta3,Real& eta4,
+                              Real& kappa1,Real& kappa2,Real& kappa3);
+  virtual void get_electron_coeffs(State& EMstate, State& IONstate,
+                                   const Vector<Real>& Q_i,const Vector<Real>& Q_e,
+                                   const Vector<Real>& B_xyz,Real& T_e,Real& eta0,
+                                   Real& eta1,Real& eta2,Real& eta3,Real& eta4,
+                                   Real& kappa1,Real& kappa2,Real& kappa3, 
+                                   Real& beta1,Real& beta2,Real& beta3);
   virtual void update_linked_states();
   virtual Vector<int> get_linked_states() {return {idx};}
   virtual Real get_max_speed(const Vector<Vector<Real>> &U);
@@ -52,6 +85,7 @@ public:
   virtual const std::map<std::string, Real> get_refs() const {return {};}
   virtual std::string str() const;
 
+  virtual Real get_coulomb_logarithm(const Real& T_i,const Real& T_e,const Real& nd_e);
   int idx;
   Real cfl;
 };
@@ -68,6 +102,7 @@ public:
   Real mu_0, T0, S, Prandtl;
 
   virtual int get_type() override;
+  virtual int get_BraginskiiIdentity() override;
   virtual int get_num() override;
   virtual void get_neutral_coeffs(const Vector<Real> &Q, Real &T, Real &mu, Real &kappa) override;
   virtual Vector<int> get_linked_states() override {return {idx};}
@@ -100,6 +135,7 @@ public:
   Real mu_0, T0, n, Prandtl;
 
   virtual int get_type() override;
+  virtual int get_BraginskiiIdentity() override;
   virtual int get_num() override;
   virtual void get_neutral_coeffs(const Vector<Real> &Q, Real &T, Real &mu, Real &kappa) override;
   virtual Vector<int> get_linked_states() override {return {idx};}
@@ -112,6 +148,114 @@ public:
   static bool registered;
   static std::string tag;
 };
+
+
+// ====================================================================================
+
+class BraginskiiIon : public Viscous
+{
+public:
+  BraginskiiIon();
+  BraginskiiIon(const int global_idx, const sol::table& def);
+  //BraginskiiIon(const Real mu_ref, const Real T_ref, const int BT, const int i);
+  ~BraginskiiIon(); 
+
+  enum IonDiffusiveVariable {
+    Temp = 0,
+    Eta0,
+    Eta1,
+    Eta2,
+    Eta3,
+    Eta4,
+    Kappa1,
+    Kappa2,
+    Kappa3,
+    NUM_ION_DIFF_COEFFS
+  };
+
+  Real mu_0, T0, BT;
+  Real T_i,eta0,eta1,eta2,eta3,eta4,kappa1,kappa2,kappa3;
+
+  int linked_electron, linked_em;
+
+  virtual int get_type() override;
+  virtual int get_BraginskiiIdentity() override;
+  virtual int get_num() override;
+  virtual void get_ion_coeffs(State & EMstate,State & ELEstate,
+                              const Vector<Real>& Q_i,const Vector<Real>& Q_e,
+                              const Vector<Real>& B_xyz,Real& T_i,Real& eta0,
+                              Real& eta1,Real& eta2,Real& eta3,Real& eta4,
+                              Real& kappa1,Real& kappa2,Real& kappa3) override;
+  virtual void update_linked_states() override;
+
+  virtual Vector<int> get_linked_states() override {return {idx, linked_electron, linked_em};}
+
+  virtual Real get_max_speed(const Vector<Vector<Real>>& U) override;
+  static bool valid_state(const int idx);
+  virtual const std::string& get_tag() const override {return tag;}
+  virtual const std::map<std::string, Real> get_refs() const override {
+      return {{"mu_0", mu_0},{"T0", T0}, {"BT",BT}};
+  }
+  static bool registered;
+  static std::string tag;
+};
+
+// ====================================================================================
+
+class BraginskiiEle : public Viscous
+{
+public:
+  BraginskiiEle();
+  BraginskiiEle(const int global_idx, const sol::table& def);
+  //BraginskiiEle(const Real mu_ref, const Real T_ref, const int BT, const int i);
+  ~BraginskiiEle(); 
+
+  enum EleDiffusiveVariable {
+    Temp = 0,
+    Eta0,
+    Eta1,
+    Eta2,
+    Eta3,
+    Eta4,
+    Kappa1,
+    Kappa2,
+    Kappa3,
+    Beta1, 
+    Beta2,
+    Beta3, 
+    NUM_ELE_DIFF_COEFFS
+  };
+
+  Real mu_0, T0, BT;
+  Real T_e,eta0,eta1,eta2,eta3,eta4,kappa1,kappa2,kappa3,beta1,beta2,beta3;
+
+  int linked_ion, linked_em;
+
+  virtual int get_type() override;
+  virtual int get_BraginskiiIdentity() override;
+  virtual int get_num() override;
+  virtual void get_electron_coeffs(State& EMstate,State& IONstate,
+                                   const Vector<Real>& Q_i,const Vector<Real>& Q_e,
+                                   const Vector<Real>& B_xyz,Real& T_e,Real& eta0,
+                                   Real& eta1,Real& eta2,Real& eta3,Real& eta4,
+                                   Real& kappa1,Real& kappa2,Real& kappa3, 
+                                   Real& beta1,Real& beta2,Real& beta3) override;
+  virtual void update_linked_states() override;
+
+  virtual Vector<int> get_linked_states() override {return {idx, linked_ion, linked_em};}
+
+  virtual Real get_max_speed(const Vector<Vector<Real>>& U) override;
+  static bool valid_state(const int idx);
+  virtual const std::string& get_tag() const override {return tag;}
+  virtual const std::map<std::string, Real> get_refs() const override {
+      return {{"mu_0", mu_0},{"T0", T0}, {"BT",BT}};
+  }
+  static bool registered;
+  static std::string tag;
+
+};
+
+
 
 // ====================================================================================
 

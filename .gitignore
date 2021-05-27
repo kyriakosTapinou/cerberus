@@ -12,3 +12,5 @@ movie-level=*
 Particle_H
 *.h5
 run_log.txt
+*plt*
+*chk*
