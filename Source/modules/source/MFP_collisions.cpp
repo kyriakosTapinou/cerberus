@@ -169,39 +169,61 @@ Vector<dual> Collisions::collisions(const Vector<dual> &y0,
 
             dual du2 = 0.0;
             Array<dual,3> du;
-            for (int i=0; i<3; ++i) {
-                du[i] = Q_b[vec_idx_b + i] - Q_a[vec_idx_a + i];
-                du2 += du[i]*du[i];
+            // Check to see if this is an electron fluid, use the ion-electron relations if so 
+            if (q_b < 0) {
+                for (int i=0; i<3; ++i) {
+                    du[i] = Q_a[vec_idx_a + i] - Q_b[vec_idx_b + i] ;
+                    du2 += du[i]*du[i];
+                }
+
+                dual nu; Array<dual,3> R;
+                nu = c1 * q_a2 * pow(q_b2, 2) *rho_a/m_a* lnC / (pow(m_b, 2)*pow(T_b/m_b, 1.5));
+                dual Q = -3*rho_b*nu/(m_a+m_b)*(T_a-T_b);
+                for (int i = 0; i < 3; ++i) {
+                    R[i] = -rho_b * nu * du[i];
+                    Q += R[i] * Q_a[vec_idx_a + i];
+                }
+
+                for (int i = 0; i < 3; ++i) {
+                    ydot[offset_a.solver + vec_idx_a + i] += R[i];
+                    ydot[offset_b.solver + vec_idx_b + i] -= R[i];
+                }
+                ydot[offset_a.solver + nrg_idx_a] += Q;
+                ydot[offset_b.solver + nrg_idx_b] -= Q;
+            // Otherwise if an ion, then use the ion-ion relations
+            } else { 
+                for (int i=0; i<3; ++i) {
+                    du[i] = Q_b[vec_idx_b + i] - Q_a[vec_idx_a + i];
+                    du2 += du[i]*du[i];
+                }
+
+                //collision frequency
+                dual nu;
+                if ((q_a != 0) && (q_b != 0)) {
+                    Real coeff_1 = c1*((q_a2*q_b2*lnC)/(m_ab*m_a));
+                    nu = n_b*coeff_1*pow(c2*du2 + T_a/m_a + T_b/m_b, -1.5);
+                } else {
+                    Real coeff_2 = (m_b*ccs[a][b])/(m_a + m_b);
+                    nu = n_b*coeff_2*c3*sqrt(T_a/m_a + T_b/m_b);
+                }
+    
+                // effect of collisions
+                dual Q = m_ab*rho_a/m_a*nu*du2 + 3*rho_a*nu/(m_a + m_b)*(T_b - T_a);
+    
+                Array<dual,3> R;
+                for (int i=0; i<3; ++i) {
+                    R[i] = rho_a*nu*du[i];
+                    Q += R[i]*Q_a[vec_idx_a + i];
+                }
+    
+                for (int i=0; i<3; ++i) {
+                    ydot[offset_a.solver + vec_idx_a + i] += R[i];
+                    ydot[offset_b.solver + vec_idx_b + i] -= R[i];
+                }
+    
+                ydot[offset_a.solver + nrg_idx_a] += Q;
+                ydot[offset_b.solver + nrg_idx_b] -= Q;
             }
-
-            //collision frequency
-            dual nu;
-            if ((q_a != 0) && (q_b != 0)) {
-                Real coeff_1 = c1*((q_a2*q_b2*lnC)/(m_ab*m_a));
-                nu = n_b*coeff_1*pow(c2*du2 + T_a/m_a + T_b/m_b, -1.5);
-            } else {
-                Real coeff_2 = (m_b*ccs[a][b])/(m_a + m_b);
-                nu = n_b*coeff_2*c3*sqrt(T_a/m_a + T_b/m_b);
-            }
-
-            // effect of collisions
-
-            dual Q = m_ab*rho_a/m_a*nu*du2 + 3*rho_a*nu/(m_a + m_b)*(T_b - T_a);
-
-            Array<dual,3> R;
-            for (int i=0; i<3; ++i) {
-                R[i] = rho_a*nu*du[i];
-                Q += R[i]*Q_a[vec_idx_a + i];
-            }
-
-            for (int i=0; i<3; ++i) {
-                ydot[offset_a.solver + vec_idx_a + i] += R[i];
-                ydot[offset_b.solver + vec_idx_b + i] -= R[i];
-            }
-
-            ydot[offset_a.solver + nrg_idx_a] += Q;
-            ydot[offset_b.solver + nrg_idx_b] -= Q;
-
         }
     }
 
