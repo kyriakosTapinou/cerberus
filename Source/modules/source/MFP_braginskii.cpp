@@ -82,8 +82,7 @@ void BraginskiiSource::calc_slopes(const Box& box,
                                    EB_OPTIONAL(Vector<const EBCellFlagFab*> &flags,)
                                    const Real *dx) const
 {
-    BL_PROFILE("BraginskiiSource::num_slopes"); // unsure of usage, new push or old ignored?
-
+    BL_PROFILE("BraginskiiSource::num_slopes"); 
     slopes.resize(num_slopes());
     int cnt = 0;
 
@@ -152,7 +151,7 @@ void BraginskiiSource::retrieve_slopes(
 
 
 Real BraginskiiSource::get_coulomb_logarithm(Real T_i,Real T_e,Real nd_e){
-  BL_PROFILE("BraginskiiSource::get_coulomb_logarithm")
+  BL_PROFILE("BraginskiiSource::get_coulomb_logarithm");
   // Coulomb logairthm as reported in BRaginskii OG paper. 
   // Alternative is to use the formulation from 
   // "Ionic transport in high-energy-density matter" Stanton 2016

@@ -18,12 +18,12 @@ USE_CVODE_LIBS=FALSE
 HDF5_HOME   = /usr/lib/x86_64-linux-gnu/hdf5/openmpi
 USE_HDF5 = FALSE
 
-USE_EB = TRUE 
-AMREX_PARTICLES = FALSE
+USE_EB = FALSE 
+AMREX_PARTICLES = FALSE 
 
 PYTHON_PLOT = FALSE
-PYTHON_INCLUDE=/usr/include/python3.8
-PYTHON_LIB=/usr/lib/python3.8/config-3.8-x86_64-linux-gnu
+PYTHON_INCLUDE=/usr/include/python3.6
+PYTHON_LIB=/usr/lib/python3.6/config-3.6m-x86_64-linux-gnu/
 
 PPROF = FALSE
 PPROF_INCLUDE = /usr/include/gperftools

@@ -196,6 +196,11 @@ void MFP::calc_cell_source (const Box& box,
         // link the solver to the data
         ode.solver->init_data(&y0, &yout);
 
+        //for (int local_idx = 0; local_idx < ode.n_states; ++local_idx) {
+        //  const int global_idx = ode.local2global_index[local_idx]; // what the source term is operating on
+          // for debug, use plot diagnostics
+          //plot_FAB_2d( src_dat[global_idx], 0, "zeroth prop", true);
+        //}
 
         // go through cell-by-cell and calculate the contribution to the source vector
         for     (int k = lo.z; k <= hi.z; ++k) {
@@ -205,7 +210,7 @@ void MFP::calc_cell_source (const Box& box,
                 AMREX_PRAGMA_SIMD
                         for (int i = lo.x; i <= hi.x; ++i) {
                     x = prob_lo[0] + (i + 0.5)*dx[0];
-
+                    //Print() << "\ni, j , k" << i << "\t" << j << "\t" << k ;
 #ifdef AMREX_USE_EB
                     // inform the source if it is holding invalid data
                     for (int local_idx = 0; local_idx < ode.n_states; ++local_idx) {
@@ -366,11 +371,13 @@ void MFP::apply_cell_sources(const Real time,
         }
     }
 
-//    for (int si = 0; si < gd.num_solve_state; ++si) {
-//        State& istate = gd.get_state(si);
-//        MultiFab::Subtract(filled_state[si],get_new_data(si),0,0,istate.n_cons(),istate.reconstruction->num_grow);
-//        plot_FAB_2d(filled_state[si], 0, 0, istate.name, false, si == gd.num_solve_state-1);
-//    }
+    //for (int si = 0; si < gd.num_solve_state; ++si) {
+    //    State& istate = gd.get_state(si);
+
+        //MultiFab::Subtract(filled_state[si],get_new_data(si),0,0,istate.n_cons(),istate.reconstruction->num_grow);
+        //plot_FAB_2d(filled_state[si], 0, 0, istate.name, false, si == gd.num_solve_state-1);
+    //    plot_FAB_2d(const Box& box, const EBCellFlagFab& src, std::string title, bool block)
+    //}
 
     return;
 }

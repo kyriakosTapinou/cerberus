@@ -428,7 +428,7 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
 }
 
 Real BraginskiiIon::get_max_speed(const Vector<Vector<amrex::Real>>&U) {
-    BL_PROFILE("BraginskiiIon::get_max_speed")
+    BL_PROFILE("BraginskiiIon::get_max_speed");
 
     const Vector<Real>& U_e = U[0];
     const Vector<Real>& U_i = U[1];
@@ -677,7 +677,7 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
                                         Real& eta1,Real& eta2,Real& eta3,Real& eta4,
                                         Real& kappa1,Real& kappa2,Real& kappa3,
                                         Real& beta1,Real& beta2,Real& beta3){
-    BL_PROFILE("BraginskiiEle::get_electron_coeffs")
+    BL_PROFILE("BraginskiiEle::get_electron_coeffs");
     Real mass_i,mass_e,charge_i,charge_e,T_i,nd_i,nd_e,alpha_e,alpha_i;
     State &istate = GD::get_state(idx);
 
@@ -810,7 +810,7 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
 }
 
 Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
-    BL_PROFILE("BraginskiiEle::get_max_speed")
+    BL_PROFILE("BraginskiiEle::get_max_speed");
     const Vector<Real>& U_e = U[0];
     const Vector<Real>& U_i = U[1];
     const Vector<Real>& U_em = U[2];

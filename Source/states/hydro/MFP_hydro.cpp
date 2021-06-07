@@ -1139,6 +1139,7 @@ void HydroState::calc_viscous_fluxes(const Box& box,
                                             dx);
                 break;
             case Viscous::Ion :
+                if (GD::verbose > 1) Print() << "\nIon viscous flux routine\n" ;
                 calc_ion_viscous_fluxes(box,
                                         fluxes,
                                         pbox,
@@ -1147,6 +1148,7 @@ void HydroState::calc_viscous_fluxes(const Box& box,
                                         dx);
                 break;
             case Viscous::Electron :
+                if (GD::verbose > 1) Print() << "\nElectron viscous flux routine\n" ;
                 calc_electron_viscous_fluxes(box,
                                              fluxes,
                                              pbox,
@@ -2156,14 +2158,14 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                           << q_flux[0] << "\n";
                 }
 
-                fluxX(i,j,k,Xmom) += ViscTens[0];
-                fluxX(i,j,k,Ymom) += ViscTens[3];
-                fluxX(i,j,k,Zmom) += ViscTens[5];
+                fluxX(i,j,k,Xmom) -= ViscTens[0];
+                fluxX(i,j,k,Ymom) -= ViscTens[3];
+                fluxX(i,j,k,Zmom) -= ViscTens[5];
                 //assume typo in livescue formulation
-                fluxX(i,j,k,Eden) += 0.5*((p4(i,j,k,Xvel) + p4(i-1,j,k,Xvel))*ViscTens[0]+
+                fluxX(i,j,k,Eden) += -0.5*((p4(i,j,k,Xvel) + p4(i-1,j,k,Xvel))*ViscTens[0]+
                         (p4(i,j,k,Yvel) + p4(i-1,j,k,Yvel))*ViscTens[3]+
-                        (p4(i,j,k,Zvel) + p4(i-1,j,k,Zvel))*ViscTens[5])
-                        + q_flux[0];
+                        (p4(i,j,k,Zvel) + p4(i-1,j,k,Zvel))*ViscTens[5]);
+                        //+ q_flux[0];
                 //+(d4(i,j,k,iKappa)+d4(i-1,j,k,iKappa))*dTdx);
             }
         }
@@ -2269,13 +2271,13 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                 if (GD::verbose >4) {
                   Print() << "Adding viscous terms to flux array";
                 }
-                fluxY(i,j,k,Xmom) += ViscTens[3];//tauxy;
-                fluxY(i,j,k,Ymom) += ViscTens[1];//tauyy;
-                fluxY(i,j,k,Zmom) += ViscTens[4];//tauyz;
-                fluxY(i,j,k,Eden) += 0.5*((p4(i,j,k,Xvel)+p4(i,j-1,k,Xvel))*ViscTens[3]+
+                fluxY(i,j,k,Xmom) -= ViscTens[3];//tauxy;
+                fluxY(i,j,k,Ymom) -= ViscTens[1];//tauyy;
+                fluxY(i,j,k,Zmom) -= ViscTens[4];//tauyz;
+                fluxY(i,j,k,Eden) += -0.5*((p4(i,j,k,Xvel)+p4(i,j-1,k,Xvel))*ViscTens[3]+
                         (p4(i,j,k,Yvel)+p4(i,j-1,k,Yvel))*ViscTens[1]+
-                        (p4(i,j,k,Zvel)+p4(i,j-1,k,Zvel))*ViscTens[4])
-                        + q_flux[1];
+                        (p4(i,j,k,Zvel)+p4(i,j-1,k,Zvel))*ViscTens[4]);
+                //        + q_flux[1];
                 //+(d4(i,j,k,iKappa) + d4(i,j-1,k,iKappa))*dTdy);
             }
         }
@@ -2345,13 +2347,13 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                 if (GD::verbose >4) {
                   Print() << "Adding viscous terms to flux array";
                 }
-                fluxZ(i,j,k,Xmom) += ViscTens[5];//tauxz;
-                fluxZ(i,j,k,Ymom) += ViscTens[4];//tauyz;
-                fluxZ(i,j,k,Zmom) += ViscTens[2];//tauzz;
-                fluxZ(i,j,k,Eden) += 0.5*((p4(i,j,k,Xvel)+p4(i,j,k-1,Xvel))*ViscTens[5]+
+                fluxZ(i,j,k,Xmom) -= ViscTens[5];//tauxz;
+                fluxZ(i,j,k,Ymom) -= ViscTens[4];//tauyz;
+                fluxZ(i,j,k,Zmom) -= ViscTens[2];//tauzz;
+                fluxZ(i,j,k,Eden) += -0.5*((p4(i,j,k,Xvel)+p4(i,j,k-1,Xvel))*ViscTens[5]+
                         (p4(i,j,k,Yvel)+p4(i,j,k-1,Yvel))*ViscTens[4]+
-                        (p4(i,j,k,Zvel)+p4(i,j,k-1,Zvel))*ViscTens[2])
-                        +q_flux[2];
+                        (p4(i,j,k,Zvel)+p4(i,j,k-1,Zvel))*ViscTens[2]);
+                //        +q_flux[2];
                 //+(d4(i,j,k,iKappa) +d4(i,j,k-1,iKappa))*dTdz);
 
             }
@@ -2382,7 +2384,7 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
                                                  //Array4<const Real> const& d4,
                                                  Vector<Real>& ViscTens,
                                                  Vector<Real>& q_flux) const {
-    BL_PROFILE("HydroState::BraginskiiViscousTensorHeatFlux")
+    BL_PROFILE("HydroState::BraginskiiViscousTensorHeatFlux");
     //Note all the properties used in here need to be for the interface, not just the cell i!!!
     if (GD::verbose > 4) {
       Print() << "dudx\t" << dudx << "\ndudy\t" << dudy << "\ndudz\t" << dudz 
@@ -2549,7 +2551,7 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
         q_flux[2] = faceCoefficients[iBeta1]*u_para[2] + faceCoefficients[iBeta2]*u_perp[2] + faceCoefficients[iBeta3]*u_chev[2]
                    -faceCoefficients[iKappa1]*TG_para[2] - faceCoefficients[iKappa2]*TG_perp[2] - faceCoefficients[iKappa3]*TG_chev[2];
 
-        if (true && GD::verbose > 2) {
+        if (true && GD::verbose > 1) {
             Print() << "ele kappa[i]\t" << faceCoefficients[iKappa1] << "\t" << faceCoefficients[iKappa2] << "\t" << faceCoefficients[iKappa3] << "\n";
             Print() << "\tTG_[0]\t" << TG_para[0] << "\t" << TG_perp[0] << "\t" << TG_chev[0] << "\n";
 
@@ -2575,7 +2577,7 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
 //#if AMREX_SPACEDIM == 3
         q_flux[2] = -faceCoefficients[iKappa1]*TG_para[2] - faceCoefficients[iKappa2]*TG_perp[2] + faceCoefficients[iKappa3]*TG_chev[2];
 
-        if (true && GD::verbose > 2) {
+        if (true && GD::verbose > 1) {
             Print() << "ion kappa[i]\t" << faceCoefficients[iKappa1] << "\t" << faceCoefficients[iKappa2] << "\t" << faceCoefficients[iKappa3] << "\n";
             Print() << "\tTG_[0]\t" << TG_para[0] << "\t" << TG_perp[0] << "\t" << TG_chev[0] << "\n";
             Print() << "\tTG_[1]\t" << TG_para[1] << "\t" << TG_perp[1] << "\t" << TG_chev[1] << "\n";
@@ -2793,12 +2795,12 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
             << TG_chev[2] << "\n";
     */
     if (true && GD::verbose>1) {
-      Print() << "qVector\t" << q_flux[0] << "\nqVector\t" << q_flux[1] 
-              << "\nqVector\t" << q_flux[2] << "\n";
-
+      Print() << "qVector x y z \t" << q_flux[0] << "\t" << q_flux[1] 
+              << "\t" << q_flux[2] << "\n";
       Print() <<  "ViscTens\t" << ViscTens[0] << "\nviscTens\t" << ViscTens[1] 
               << "\nviscTens\t" << ViscTens[2] << "\nviscTens\t" <<ViscTens[3] 
-              << "\nviscTens\t" << ViscTens[4] << "\nviscTens\t" << ViscTens[5] << "\n";
+              << "\nviscTens\t" << ViscTens[4] << "\nviscTens\t" << ViscTens[5] 
+              << "\ndTdx dy dz\t" << dTdx << "\t" << dTdy << "\t" << dTdz << "\n";
       }
     }
     
