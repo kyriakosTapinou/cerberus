@@ -1,6 +1,5 @@
-
 #include "MFP.H"
-
+#include <string>
 #ifdef AMREX_USE_EB
 #include <AMReX_EB2.H>
 #include <AMReX_EBFArrayBox.H>
@@ -66,9 +65,27 @@ void MFP::apply_cell_transport(Real time, Real dt)
         EB2::IndexSpace::push(const_cast<EB2::IndexSpace*>(istate.eb2_index));
 #endif
         FillPatch(*this, local_new[idx], ng, time, idx, 0, ns);
+        //TODO 
+        /*
+        if (istate.get_type() != +StateType::isField) {
+            std::string plotOutputName;
+            if (istate.get_charge( 0.) < 0.) {
+                plotOutputName= " electron";
+            } else {
+                plotOutputName = " ion";
+            }
+            Print() << "\ncumTime:\t" << parent->cumTime();
+            if (parent->cumTime() > 0.00408) {
+                Print() << "\nDebug in MFP_transport.cpp --- before flux update\n"; 
+              //plot_FAB_2d(local_new[idx], 0, ng, "cons density" + plotOutputName, false, true);
+              //plot_FAB_2d(local_new[idx], 4, ng, "cons eden" + plotOutputName, false, true);
+                plot_FAB_1d(local_new[idx], 0, ng, "cons density" + plotOutputName, false, true);
+                plot_FAB_1d(local_new[idx], 4, ng, "cons eden" + plotOutputName, false, true);
 
-//        plot_FAB_2d(local_new[idx], 0, 0, "cons density", false, false);
-//        plot_FAB_2d(flag, "flag", true);
+                //plot_FAB_2d(flag, "flag", true);
+            }
+        }
+        */
 
         if (istate.reflux && level < parent->finestLevel()) {
             MFP& fine_level = getLevel(level + 1);

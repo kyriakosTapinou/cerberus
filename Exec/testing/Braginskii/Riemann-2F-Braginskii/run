@@ -2,13 +2,13 @@
 
 (cd ../../../local && make -j8 DIM=1 USE_EB=FALSE AMREX_PARTICLES=FALSE)
 
-EXE=../../../local/MFP.1d.gnu.MPI.ex
+EXE=../../../local/MFP.1d.gnu.MPI.PYTHON.ex
                    
 INPUTS=*.inputs
 
-rm -r *plt* *chk*
+#rm -r *plt* *chk*
 
-mpirun -n 8 ${EXE} ${INPUTS} 2>&1 | tee run_log.txt
+mpirun -n 1 ${EXE} ${INPUTS} 2>&1 | tee run_log.txt
 
 #python3 check.py
 

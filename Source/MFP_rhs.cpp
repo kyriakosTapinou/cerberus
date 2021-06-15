@@ -315,7 +315,25 @@ void MFP::apply_cell_sources(const Real time,
 #ifdef AMREX_USE_EB
         EB2::IndexSpace::push(const_cast<EB2::IndexSpace*>(istate.eb2_index));
 #endif
-        FillPatch(*this, filled_state[idx], ng, time, idx, 0, nc);
+        FillPatch(*this, filled_state[idx], ng, time, idx, 0, nc); //populate each state cons data  
+        //TODO 
+        /*
+        if (istate.get_type() != +StateType::isField) {
+            std::string plotOutputName;
+            if (istate.get_charge( 0.) < 0.) {
+                plotOutputName= " electron";
+            } else {
+                plotOutputName = " ion";
+            }
+
+            if (parent->cumTime() > 0.07) {
+                Print() << "\nDebug in MFP_rhs.cpp --- before flux update\n"; 
+                plot_FAB_2d(filled_state[idx], 1, ng, "cons energy" + plotOutputName, false, true);
+                plot_FAB_2d(filled_state[idx], 2, ng, "cons energy" + plotOutputName, false, true);
+                //plot_FAB_2d(flag, "flag", true);
+            }
+        }
+        */
         for_iteration = &filled_state[idx];
     }
 
@@ -376,7 +394,7 @@ void MFP::apply_cell_sources(const Real time,
 
         //MultiFab::Subtract(filled_state[si],get_new_data(si),0,0,istate.n_cons(),istate.reconstruction->num_grow);
         //plot_FAB_2d(filled_state[si], 0, 0, istate.name, false, si == gd.num_solve_state-1);
-    //    plot_FAB_2d(const Box& box, const EBCellFlagFab& src, std::string title, bool block)
+        //plot_FAB_2d(const Box& box, const EBCellFlagFab& src, std::string title, bool block)
     //}
 
     return;

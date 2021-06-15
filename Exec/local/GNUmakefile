@@ -21,7 +21,7 @@ USE_HDF5 = FALSE
 USE_EB = FALSE 
 AMREX_PARTICLES = FALSE 
 
-PYTHON_PLOT = FALSE
+PYTHON_PLOT = TRUE
 PYTHON_INCLUDE=/usr/include/python3.6
 PYTHON_LIB=/usr/lib/python3.6/config-3.6m-x86_64-linux-gnu/
 

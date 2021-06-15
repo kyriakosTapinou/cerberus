@@ -68,18 +68,51 @@ lightspeed = 25 --100.0
 Larmor = 1/30 --1/300
 Debye = Larmor/lightspeed --Larmor/100
 
-ref_length =  1e11 -- m
+mass_ratio = 100 --1836.0
+mu_0_dim = 1.25663706e-6 ; -- m kg s-2 A-2
 
-mu_0= 1.25663706e-6 ; -- m kg s-2 A-2
+ep_0_dim = 8.85418782e-12
+kb = 1.38064852e-23
+
 n_ref = 1e7;
 u_ref = 299792458.0/lightspeed;
-B_ref = 10e10;
+B_ref = 10e-9;
+q_ref = 1.60217662e-19 -- Coulombs
+
 skinyBoi = Debye*lightspeed --skin depth
 betaBoi = 2*(Larmor/skinyBoi)^2 -- magnetic interaction parameter
-ref_mass = B_ref^2*betaBoi/(2*mu_0*n_ref*u_ref^2) -- kg
-ref_density = ref_mass*n_ref -- kg/m^3
 
-mass_ratio = 100 --1836.0
+ref_length =  1e11 -- m
+ref_mass = B_ref^2*betaBoi/(2*mu_0_dim*n_ref*u_ref^2) -- kg
+ref_density = ref_mass*n_ref -- kg/m^3
+i_skin = ref_mass/(q_ref*math.sqrt(mu_0_dim*ref_density))
+
+print('Ion skin depth:\t', i_skin)a
+
+print('Non-dimensional ion skin depth:\t', i_skin/ref_length)
+
+print('Dimensional Collision time scales, t_e, t_i')
+t_e = 6*math.sqrt(2)*math.pow(math.pi, 3./2.)*ep0_dim*ep0_dim*math.sqrt(ref_mass/mass_ratio)*math.pow(kb*Te*ref_temp_user, 3./2.)/(10*math.pow(q_ref, 4)*n_ele*ref_nd_user)
+t_i = 12*math.pow(math.pi, 3./2.)*ep0_dim*ep0_dim*math.sqrt(mi*ref_mass)*math.pow(kb*Ti*ref_temp_user, 3./2.)/(10*math.pow(q_ref, 4)*n_ion*ref_nd_user)
+print(t_e)
+print(t_i)
+
+print('Non-dimensional collision time scales, t_e, t_i')
+print(t_e/ref_time_user, t_i/ref_time_user)
+
+print('Knudsen number in this regiem')
+Kn_dim = t_i*ref_velocity_user/ref_length
+print(Kn_dim)
+
+if (Kn_dim > 10e-5) and (Kn_dim<10e-2) then
+    print('Braginskii model appropriate')
+end 
+
+eta0 = (ref_mass/q_ref/ref_density)*(ref_mass/mass_ratio/q_ref/t_e) -- background resistivity
+v_a = B_ref/math.sqrt(mu_0_dim*n_ref*ref_mass) -- alfven velocity
+Re_m = ref_density* v_a * ref_length / eta0
+
+
 
 interface_x = 0.0
 

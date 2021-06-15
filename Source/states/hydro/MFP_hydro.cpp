@@ -1146,6 +1146,9 @@ void HydroState::calc_viscous_fluxes(const Box& box,
                                         prim,
                                         EB_OPTIONAL(flag,)
                                         dx);
+
+                //plot_FABs_2d(const std::map<std::string,FArrayBox>& src, const int fi, bool log, bool block)
+
                 break;
             case Viscous::Electron :
                 if (GD::verbose > 1) Print() << "\nElectron viscous flux routine\n" ;
@@ -1155,6 +1158,7 @@ void HydroState::calc_viscous_fluxes(const Box& box,
                                              prim,
                                              EB_OPTIONAL(flag,)
                                              dx);
+
                 break;
             default :
                 break;
@@ -2158,14 +2162,14 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                           << q_flux[0] << "\n";
                 }
 
-                fluxX(i,j,k,Xmom) -= ViscTens[0];
-                fluxX(i,j,k,Ymom) -= ViscTens[3];
-                fluxX(i,j,k,Zmom) -= ViscTens[5];
+                fluxX(i,j,k,Xmom) += ViscTens[0];
+                fluxX(i,j,k,Ymom) += ViscTens[3];
+                fluxX(i,j,k,Zmom) += ViscTens[5];
                 //assume typo in livescue formulation
-                fluxX(i,j,k,Eden) += -0.5*((p4(i,j,k,Xvel) + p4(i-1,j,k,Xvel))*ViscTens[0]+
+                fluxX(i,j,k,Eden) += 0.5*((p4(i,j,k,Xvel) + p4(i-1,j,k,Xvel))*ViscTens[0]+
                         (p4(i,j,k,Yvel) + p4(i-1,j,k,Yvel))*ViscTens[3]+
                         (p4(i,j,k,Zvel) + p4(i-1,j,k,Zvel))*ViscTens[5]);
-                        //+ q_flux[0];
+                        + q_flux[0];
                 //+(d4(i,j,k,iKappa)+d4(i-1,j,k,iKappa))*dTdx);
             }
         }
@@ -2271,13 +2275,13 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                 if (GD::verbose >4) {
                   Print() << "Adding viscous terms to flux array";
                 }
-                fluxY(i,j,k,Xmom) -= ViscTens[3];//tauxy;
-                fluxY(i,j,k,Ymom) -= ViscTens[1];//tauyy;
-                fluxY(i,j,k,Zmom) -= ViscTens[4];//tauyz;
-                fluxY(i,j,k,Eden) += -0.5*((p4(i,j,k,Xvel)+p4(i,j-1,k,Xvel))*ViscTens[3]+
+                fluxY(i,j,k,Xmom) += ViscTens[3];//tauxy;
+                fluxY(i,j,k,Ymom) += ViscTens[1];//tauyy;
+                fluxY(i,j,k,Zmom) += ViscTens[4];//tauyz;
+                fluxY(i,j,k,Eden) += 0.5*((p4(i,j,k,Xvel)+p4(i,j-1,k,Xvel))*ViscTens[3]+
                         (p4(i,j,k,Yvel)+p4(i,j-1,k,Yvel))*ViscTens[1]+
                         (p4(i,j,k,Zvel)+p4(i,j-1,k,Zvel))*ViscTens[4]);
-                //        + q_flux[1];
+                        + q_flux[1];
                 //+(d4(i,j,k,iKappa) + d4(i,j-1,k,iKappa))*dTdy);
             }
         }
@@ -2347,13 +2351,13 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                 if (GD::verbose >4) {
                   Print() << "Adding viscous terms to flux array";
                 }
-                fluxZ(i,j,k,Xmom) -= ViscTens[5];//tauxz;
-                fluxZ(i,j,k,Ymom) -= ViscTens[4];//tauyz;
-                fluxZ(i,j,k,Zmom) -= ViscTens[2];//tauzz;
-                fluxZ(i,j,k,Eden) += -0.5*((p4(i,j,k,Xvel)+p4(i,j,k-1,Xvel))*ViscTens[5]+
+                fluxZ(i,j,k,Xmom) += ViscTens[5];//tauxz;
+                fluxZ(i,j,k,Ymom) += ViscTens[4];//tauyz;
+                fluxZ(i,j,k,Zmom) += ViscTens[2];//tauzz;
+                fluxZ(i,j,k,Eden) += +0.5*((p4(i,j,k,Xvel)+p4(i,j,k-1,Xvel))*ViscTens[5]+
                         (p4(i,j,k,Yvel)+p4(i,j,k-1,Yvel))*ViscTens[4]+
                         (p4(i,j,k,Zvel)+p4(i,j,k-1,Zvel))*ViscTens[2]);
-                //        +q_flux[2];
+                        + q_flux[2];
                 //+(d4(i,j,k,iKappa) +d4(i,j,k-1,iKappa))*dTdz);
 
             }
@@ -2608,7 +2612,7 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
             WorkingMatrix[i_disp][j_disp] = 0.;
             StrainTrans[i_disp][j_disp] = 0.;
 
-            if (GD::verbose >= 9) Print() << "Livescue on ";
+            if (GD::verbose > 1) Print() << "Livescue on ";
                   
             Strain[i_disp][j_disp] = - Strain[i_disp][j_disp] ; //make negtive for Li Livescue
         }

@@ -190,7 +190,7 @@ PlotData2D get_2d_data(const Box& box, const EBCellFlagFab& src)
 
 void plot_FAB_2d(const Box& box, const EBCellFlagFab& src, std::string title, bool block)
 {
-
+    //I believe this is only for EB?
     plt::figure_size(1200, 780);
 
     PlotData2D pd = get_2d_data(box, src);
@@ -548,13 +548,12 @@ void plot_FABs_2d(const MultiFab& src, const int fi, std::string title, bool log
 
 void plot_FAB_2d(const MultiFab& src, const int fi, const int shrink, std::string title, bool log, bool block)
 {
+    //src - the multifab source data for the specific state
+    //fi - the cons/prim var index integer, shrink - the number of cells to trim i.e. ghost cells
+    //title of the output, log? maybe log scale, block - true to plot now, false to wait till next 
 
     plt::figure_size(1200, 780);
-
-
-
     int N = src.size();
-
     // figure out subplot array sizes
 //    int npr, npc;
 //    npr = (int)std::floor(std::sqrt(N));

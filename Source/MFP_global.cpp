@@ -578,7 +578,7 @@ void GlobalData::update_ref()
             << std::scientific << x_ref/u_ref << "\n\n  Electromagnetic\n  c_ref = "
             << std::scientific << c_ref << "\n  B_ref = " << std::scientific
             << B_ref << "\n  E_ref = " << std::scientific << E_ref
-            << "\n\n  NonDimensional c = " << std::scientific << c
+            << "\n\n  NonDimensional c = " << std::scientific << lightspeed
             << "\n  NonDimensional beta = " << std::scientific << beta
             << "\n  NonDimensional skin_depth = " << std::scientific << skin_depth
             << "\n  NonDimensional Larmor = " << std::scientific << Larmor
