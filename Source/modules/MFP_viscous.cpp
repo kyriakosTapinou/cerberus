@@ -370,6 +370,13 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
     eta4 = nd_i*T_i*t_collision_ion*x_coef*(x_coef*x_coef + 2.38)/delta_eta;
     eta3 = nd_i*T_i*t_collision_ion*(2*x_coef)*((2*x_coef)*(2*x_coef) + 2.38)/delta_eta2;
 
+    if (x_coef < 1e-8 ) {
+      eta2 = eta2/x_coef/x_coef;
+      eta1 = eta1/x_coef/x_coef;
+      eta4 = eta4/x_coef;
+      eta3 = eta3/x_coef;
+    }
+
     if (GD::verbose >= 9 ) {
         Print() << "\nIon 5 dynamic viscosity coefficients\t" << eta0 <<"\t" << eta1 
                 <<"\t" << eta2 <<"\t" << eta3 <<"\t" << eta4 << "\n"; 
@@ -400,10 +407,15 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
     kappa1 = 3.906*nd_i*T_i*t_collision_ion/mass_i;
     kappa2 = (2.*x_coef*x_coef + 2.645)/delta_kappa*nd_i*T_i*t_collision_ion/mass_i;
     kappa3 = (5./2.*x_coef*x_coef + 4.65)*x_coef*nd_i*T_i*t_collision_ion/mass_i/delta_kappa;
-
-    if (GD::verbose >= 9 ) {
-        Print() << "\nIon heat conductivity coefficients\n"
-                << kappa1 << "\n" << kappa2 << "\n" << kappa3 ;
+    //TODO remove after comparison to plasmapy
+    if (true && GD::verbose >= 1) {
+        Print() << "\n\nIon viscous coefficients and thermal conductivity coefficients";
+        Print() << "\neta0 = " << eta0 ;
+        Print() << "\neta1 = " << eta1 ;
+        Print() << "\neta2 = " << eta2 ;
+        Print() << "\neta3 = " << eta3 ;
+        Print() << "\neta4 = " << eta4 ;
+        Print() << "\nkappa_para\t" << kappa1 << "\nkappa_perp\t" << kappa2 << "\nkappa_chev\t" << kappa3 ;
     }
 
     if ((kappa1<0) || (kappa2<0) || (kappa3 < 0)) {
@@ -511,6 +523,14 @@ Real BraginskiiIon::get_max_speed(const Vector<Vector<amrex::Real>>&U) {
     eta1 = nd_i*T_i*t_collision_ion*(6./5.*(2*x_coef)*(2*x_coef)+2.23)/delta_eta2;
     eta4 = nd_i*T_i*t_collision_ion*x_coef*(x_coef*x_coef + 2.38)/delta_eta;
     eta3 = nd_i*T_i*t_collision_ion*(2*x_coef)*((2*x_coef)*(2*x_coef) + 2.38)/delta_eta2;
+
+    if (x_coef < 1e-8 ) {
+      eta2 = eta2/x_coef/x_coef;
+      eta1 = eta1/x_coef/x_coef;
+      eta4 = eta4/x_coef;
+      eta3 = eta3/x_coef;
+    }
+
     if ((eta0<0) || (eta1<0) || (eta2<0) || (eta3<0) || (eta4<0)) {
         Print () << "\nNon-physical eta\n" << eta0;
         Print () << "\n" << eta1;
@@ -741,7 +761,7 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
     }    
 
     Real delta_kappa, delta_eta, delta_eta2, x_coef;// coefficients used exclusively in the braginskii
-    x_coef = omega_ce*t_collision_ele;
+    x_coef = omega_ce*t_collision_ele; 
     // TODO fix up these table 2 page 251 BT
     Real delta_0=3.7703, delta_1=14.79;
     delta_kappa= x_coef*x_coef*x_coef*x_coef+delta_1*x_coef*x_coef + delta_0;
@@ -756,6 +776,13 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
     eta1 = nd_e *T_e*t_collision_ele*(2.05*(2*x_coef)*(2*x_coef)+8.5)/delta_eta2;
     eta4 = -nd_e*T_e*t_collision_ele*x_coef*(x_coef*x_coef+7.91)/delta_eta;
     eta3 = -nd_e*T_e*t_collision_ele*(2*x_coef)*((2*x_coef)*(2*x_coef)+7.91)/delta_eta2;
+
+    if (x_coef < 1e-8 ) {
+      eta2 = eta2/x_coef/x_coef;
+      eta1 = eta1/x_coef/x_coef;
+      eta4 = eta4/x_coef;
+      eta3 = eta3/x_coef;
+    }
 
     if (GD::verbose >= 9 ) {
         Print() << "\nElectron 5 dynamic viscosity coefficients\t" <<  eta0 << "\t" 
@@ -774,9 +801,15 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
     kappa2=(BT_gamma_1_p*x_coef*x_coef+BT_gamma_0_p)/delta_kappa*nd_e*T_e*t_collision_ele/mass_e;
     kappa3=(BT_gamma_1_pp*x_coef*x_coef+BT_gamma_0_pp)*x_coef*nd_e*T_e*t_collision_ele
            /mass_e/delta_kappa;
-    if (GD::verbose >= 9 ) {
-        Print() << "\nElectron heat conductivity coefficients\n"
-                << kappa1 << "\n" << kappa2 << "\n" << kappa3 ;
+    //TODO remove after comparison to plasmapy
+    if (true && GD::verbose >= 1) {
+        Print() << "\n\nElectron viscous coefficients and thermal conductivity coefficients";
+        Print() << "\neta0 = " << eta0 ;
+        Print() << "\neta1 = " << eta1 ;
+        Print() << "\neta2 = " << eta2 ;
+        Print() << "\neta3 = " << eta3 ;
+        Print() << "\neta4 = " << eta4 ;
+        Print() << "\nkappa_para\t" << kappa1 << "\nkappa_perp\t" << kappa2 << "\nkappa_chev\t" << kappa3 ;
     }
 
     if ((kappa1<0.) || (kappa2<0.) || (kappa3 < 0.)) {
@@ -893,6 +926,12 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
     eta1 = nd_e *T_e*t_collision_ele*(2.05*(2*x_coef)*(2*x_coef)+8.5)/delta_eta2;
     eta4 = -nd_e*T_e*t_collision_ele*x_coef*(x_coef*x_coef+7.91)/delta_eta;
     eta3 = -nd_e*T_e*t_collision_ele*(2*x_coef)*((2*x_coef)*(2*x_coef)+7.91)/delta_eta2;
+    if (x_coef < 1e-8 ) {
+      eta2 = eta2/x_coef/x_coef;
+      eta1 = eta1/x_coef/x_coef;
+      eta4 = eta4/x_coef;
+      eta3 = eta3/x_coef;
+    }
 
     //Srinivasan recomendation
     

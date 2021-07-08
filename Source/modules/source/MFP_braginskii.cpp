@@ -606,12 +606,21 @@ void BraginskiiSource::get_alpha_beta_coefficients(Real mass_e, Real T_e, Real c
   alpha_2 = mass_e*nd_e/t_c_e*x_coef*(a_1_pp*x_coef*x_coef+a_0_pp)/delta_coef;
 
   Real b_0 = 0.711, b_0_pp = 3.053, b_0_p=2.681, b_1_p=5.101, b_1_pp=3./2.;
+  
   beta_0 = nd_e*b_0;
   beta_1 = nd_e*(b_1_p*x_coef*x_coef+b_0_p)/delta_coef;
   beta_2 = nd_e*x_coef*(b_1_pp*x_coef*x_coef+b_0_pp)/delta_coef;
   if  (false && GD::verbose >= 4) {
     Print() << "1/tau_e\t" << 1/t_c_e << "\nomega_ce\t" << omega_ce 
         << "\nomega_p\t" << omega_p << "\nmass_e\t" << mass_e << "\nnd_e\t" << nd_e << "\n";
+  }
+  //TODO remove after comparison with plasmapy braginskii
+  if (true && GD::verbose >= 1) {
+      Print() << "\n\nResistivity\nrhor_para\t" <<1/(nd_e*nd_e*charge_e*charge_e/alpha_0);
+      Print() << "\nrhor_perp\t" << 1/(nd_e*nd_e*charge_e*charge_e/alpha_1);
+      Print() << "\nrhor_chev\t" << 1/(nd_e*nd_e*charge_e*charge_e/alpha_2);
+      
+      Print() << "\n\nThermoelectric conductivity\nbeta_para\t" << beta_0 << "\nbeta_perp\t" << beta_1 << "\nbeta_chev\t" << beta_2 ;
   }
 
   return ;
