@@ -70,13 +70,13 @@ public:
                               const Vector<Real>& Q_i,const Vector<Real>& Q_e,
                               const Vector<Real>& B_xyz,Real& T_i,Real& eta0,
                               Real& eta1,Real& eta2,Real& eta3,Real& eta4,
-                              Real& kappa1,Real& kappa2,Real& kappa3);
+                              Real& kappa1,Real& kappa2,Real& kappa3, int& truncatedTau);
   virtual void get_electron_coeffs(State& EMstate, State& IONstate,
                                    const Vector<Real>& Q_i,const Vector<Real>& Q_e,
                                    const Vector<Real>& B_xyz,Real& T_e,Real& eta0,
                                    Real& eta1,Real& eta2,Real& eta3,Real& eta4,
                                    Real& kappa1,Real& kappa2,Real& kappa3, 
-                                   Real& beta1,Real& beta2,Real& beta3);
+                                   Real& beta1,Real& beta2,Real& beta3, int& truncatedTau);
   virtual void update_linked_states();
   virtual Vector<int> get_linked_states() {return {idx};}
   virtual Real get_max_speed(const Vector<Vector<Real>> &U);
@@ -185,7 +185,7 @@ public:
                               const Vector<Real>& Q_i,const Vector<Real>& Q_e,
                               const Vector<Real>& B_xyz,Real& T_i,Real& eta0,
                               Real& eta1,Real& eta2,Real& eta3,Real& eta4,
-                              Real& kappa1,Real& kappa2,Real& kappa3) override;
+                              Real& kappa1,Real& kappa2,Real& kappa3, int& truncatedTau) override;
   virtual void update_linked_states() override;
 
   virtual Vector<int> get_linked_states() override {return {idx, linked_electron, linked_em};}
@@ -239,7 +239,7 @@ public:
                                    const Vector<Real>& B_xyz,Real& T_e,Real& eta0,
                                    Real& eta1,Real& eta2,Real& eta3,Real& eta4,
                                    Real& kappa1,Real& kappa2,Real& kappa3, 
-                                   Real& beta1,Real& beta2,Real& beta3) override;
+                                   Real& beta1,Real& beta2,Real& beta3, int& truncatedTau) override;
   virtual void update_linked_states() override;
 
   virtual Vector<int> get_linked_states() override {return {idx, linked_ion, linked_em};}

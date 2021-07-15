@@ -104,6 +104,7 @@ public:
     static Real force_dt;
 
     // Parameters
+    static int srin_switch; //only used for braginskii source and fluxes to turn on or off srinivassan's collision switch
     static int verbose;
     static int linear_solver_verbosity;
     static IntVect tile_size;

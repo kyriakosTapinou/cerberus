@@ -579,8 +579,8 @@ void BraginskiiSource::get_alpha_beta_coefficients(Real mass_e, Real T_e, Real c
 
   if (1/t_c_e < GD::effective_zero) t_c_e = 1/GD::effective_zero;
 
-  if (true && (1/t_c_e < omega_ce/10/2/pi_num) && (1/t_c_e < omega_p/10/2/pi_num)) {
-      if  (GD::verbose > 1) {
+  if (GD::srin_switch && (1/t_c_e < omega_ce/10/2/pi_num) && (1/t_c_e < omega_p/10/2/pi_num)) {
+      if  (GD::verbose >= 1) {
       Print() << "1/tau_e = " << 1/t_c_e << "\tomega_ce = " << omega_ce 
             << "\tomega_p = " << omega_p << "\n";
       }

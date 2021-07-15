@@ -55,6 +55,7 @@ int GlobalData::do_tracer_particles = 0;
 int GlobalData::particle_verbose = 0;
 #endif
 
+int GlobalData::srin_switch = 0;
 //int GlobalData::do_tracer_particles = 0;
 //int GlobalData::particle_verbose = 0;
 //std::string GlobalData::particle_init_file;
@@ -163,6 +164,7 @@ void GlobalData::read_config(const Vector<int> &is_periodic, const bool plot_out
     ParallelDescriptor::Barrier();
 
     verbose = lua["verbosity"];
+    srin_switch = lua["srin_switch"];
 
     linear_solver_verbosity = lua["linear_solver_verbosity"];
 

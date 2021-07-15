@@ -1691,7 +1691,7 @@ void HydroState::calc_ion_diffusion_terms(const Box& box,const Vector<FArrayBox>
     Vector<Real> Q_i(np), Q_e(np), B_xyz(3);
     //prefix of p_ denotes particle characteristic
     Real alpha, T_i, eta_0, eta_1, eta_2, eta_3, eta_4, kappa_1, kappa_2, kappa_3;
-
+    int truncatedTau;
     for (int k = lo.z; k <= hi.z; ++k) {
         for (int j = lo.y; j <= hi.y; ++j) {
             AMREX_PRAGMA_SIMD
@@ -1722,7 +1722,9 @@ void HydroState::calc_ion_diffusion_terms(const Box& box,const Vector<FArrayBox>
                     Print() << "\ni,j,k:\t" << i << " " << j << " " << k << "\n";
                 }
                 V.get_ion_coeffs(EMstate,ELEstate,Q_i,Q_e,B_xyz,T_i,eta_0,eta_1,eta_2,eta_3,
-                                 eta_4, kappa_1,kappa_2, kappa_3);
+                                 eta_4, kappa_1,kappa_2, kappa_3, truncatedTau);
+                //if the switch was used, notify 
+                //if (truncatedTau) Print() <<"\nion srin_switch used cell i, j, k: " << i << " " << j << " " << k << "\n";
                 //assign values to the diff (d4) matrix for usage in the superior function
                 d4(i,j,k,Viscous::IonTemp) = T_i;
                 d4(i,j,k,Viscous::IonKappa1) = kappa_1;
@@ -1820,7 +1822,7 @@ void HydroState::calc_electron_diffusion_terms(const Box& box,const Vector<FArra
     Vector<Real> Q_i(np), Q_e(np), B_xyz(3);
     //prefix of p_ denotes particle characteristic
     Real alpha, T_e, eta_0, eta_1, eta_2, eta_3, eta_4, kappa_1, kappa_2, kappa_3, beta1, beta2, beta3;
-
+    int truncatedTau;
     for (int k = lo.z; k <= hi.z; ++k) {
         for (int j = lo.y; j <= hi.y; ++j) {
             AMREX_PRAGMA_SIMD
@@ -1847,7 +1849,9 @@ void HydroState::calc_electron_diffusion_terms(const Box& box,const Vector<FArra
                 }
 
                 V.get_electron_coeffs(EMstate, IONstate,Q_i,Q_e,B_xyz,T_e,eta_0,eta_1,eta_2,eta_3,
-                                      eta_4, kappa_1,kappa_2, kappa_3, beta1, beta2, beta3);
+                                      eta_4, kappa_1,kappa_2, kappa_3, beta1, beta2, beta3, truncatedTau);
+                //if the switch was used, notify 
+                //if (truncatedTau) Print() <<"\nele srin_switch used cell i, j, k: " << i << " " << j << " " << k << "\n";
                 //assign values to the diff (d4) matrix for usage in the superior function
                 d4(i,j,k,Viscous::EleTemp) = T_e;
                 d4(i,j,k,Viscous::EleKappa1) = kappa_1;
@@ -2014,6 +2018,10 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
     int Xvel = prim_vel_id[0] + 0;
     int Yvel = prim_vel_id[0] + 1;
     int Zvel = prim_vel_id[0] + 2;
+    int Temp = prim_vel_id[0] + 4;
+    //TODO 
+    //Print() << "ln 2018 debug me --- prim_vel_idx[0] = " << prim_vel_id[0] << "\n";
+    //Print() << "ln 2019 debug me --- prim_vel_idx[1] = " << prim_vel_id[1] << "\n";
 
     Vector<int> cons_vel_id = get_cons_vector_idx();
 
@@ -2048,7 +2056,62 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
     }
     */
 
+    // calculate all the arithmetic gradients which are required for the limited 
+    // transverse gradients use for calculation of the thermal conduction and viscous stress tensor
+
     //Print() << "\nfluxX call\n";
+
+
+    FArrayBox transGrad(pbox, 12); // # components for each variable that requires gradients i.e. 3*number(u,v,w,m, T)
+    Array4<Real> const& tGrad = transGrad.array();
+    int Xvel_grad = 0; // y,z gradients on x face, x,z on the y face, x, y gradients on the z face 
+    int Yvel_grad = 6;
+    int Zvel_grad = 12;
+    int Temp_grad = 18;
+    int xFace = 0, yFace = 2, zFace = 4;
+    
+    //TODO for debugging make sure that the gradient array is initialised to negative 1 or somethig so we can check everything is being assigned a proper value later. 
+    //TODO resume transverse grad fix
+    /*
+    for (int k = lo.z; k <= hi.z; ++k) { //Note we work with the same face indexing as for the loop below (i in this loop refers to face i-1/2 between cell i and i-1)
+        for (int j = lo.y; j <= hi.y; ++j) {
+            AMREX_PRAGMA_SIMD
+                for (int i = lo.x; i <= hi.x + 1; ++i) {
+                  Print() << "i, j , k:\t" << i << "\t" << j << "\t" << k <<"\n";
+                  tGrad(i,j,k, Temp_grad)  =  (d4(i,j,k,iTemp) - d4(i-1,j,k,iTemp))*dxinv[0];    // x gradient of temperature on the x face of the finite volume element 
+#if AMREX_SPACEDIM >= 2
+                  tGrad(i,j,k, Temp_grad + 1)  = (d4(i,j,k,iTemp) - d4(i,j-1,k,iTemp))*dxinv[0]; // y gradient of temperature on the y face of the finite volume element 
+                  tGrad(i,j,k, Xvel_grad + xFace + 0)  = 0.5*(p4(i-1,j+1,k,Xvel) + p4(i,j+1,k,Xvel) - p4(i,j,k,Xvel) - p4(i-1,j,k,Xvel) )/dxinv[1]; // dvx_dy on x face
+                  tGrad(i,j,k, Yvel_grad + xFace + 0)  = 0.5*(p4(i-1,j+1,k,Yvel) + p4(i,j+1,k,Yvel) - p4(i,j,k,Yvel) - p4(i-1,j,k,Yvel) )/dxinv[1]; // dvy_dy on x face
+                  tGrad(i,j,k, Zvel_grad + xFace + 0)  = 0.5*(p4(i-1,j+1,k,Zvel) + p4(i,j+1,k,Zvel) - p4(i,j,k,Zvel) - p4(i-1,j,k,Zvel) )/dxinv[1]; // dvz_dy on x face
+
+                  tGrad(i,j,k, Xvel_grad + yFace + 0)  = 0.5*(p4(i,j+1,k,Xvel) + p4(i,j,k,Xvel) - p4(i-1,j+1,k,Xvel) - p4(i-1,j,k,Xvel) )/dxinv[0]; // dvx_dx on y face
+                  tGrad(i,j,k, Yvel_grad + yFace + 0)  = 0.5*(p4(i,j+1,k,Yvel) + p4(i,j,k,Yvel) - p4(i-1,j+1,k,Yvel) - p4(i-1,j,k,Yvel) )/dxinv[0]; // dvy_dx on y face
+                  tGrad(i,j,k, Zvel_grad + yFace + 0)  = 0.5*(p4(i,j+1,k,Zvel) + p4(i,j,k,Zvel) - p4(i-1,j+1,k,Zvel) - p4(i-1,j,k,Zvel) )/dxinv[0]; // dvz_dx on y face
+#endif
+
+#if AMREX_SPACEDIM == 3
+                  tGrad(i,j,k, Temp_grad + 2)  = (d4(i,j,k,iTemp) - d4(i,j,k-1,iTemp))*dxinv[0]; // z gradient of temperature on the z face of the finite volume element 
+                  tGrad(i,j,k, Xvel_grad + xFace + 1)  = 0.5*(p4(i-1,j,k,Xvel) + p4(i,j,k,Xvel) - p4(i-1,j,k-1,Xvel) - p4(i,j,k-1,Xvel) )/dxinv[1]; // dvx_dz on x face
+                  tGrad(i,j,k, Yvel_grad + xFace + 1)  = 0.5*(p4(i-1,j,k,Yvel) + p4(i,j,k,Yvel) - p4(i-1,j,k-1,Yvel) - p4(i,j,k-1,Yvel) )/dxinv[1]; // dvy_dz on x face
+                  tGrad(i,j,k, Zvel_grad + xFace + 1)  = 0.5*(p4(i-1,j,k,Zvel) + p4(i,j,k,Zvel) - p4(i-1,j,k-1,Zvel) - p4(i,j,k-1,Zvel) )/dxinv[1]; // dvz_dz on x face
+
+                  tGrad(i,j,k, Xvel_grad + yFace + 1)  = 0.5*(p4(i,j+1,k,Xvel) + p4(i,j,k,Xvel) - p4(i,j+1,k-1,Xvel) - p4(i,j,k-1,Xvel) )/dxinv[2]; // dvx_dz on y face 
+                  tGrad(i,j,k, Yvel_grad + yFace + 1)  = 0.5*(p4(i,j+1,k,Yvel) + p4(i,j,k,Yvel) - p4(i,j+1,k-1,Yvel) - p4(i,j,k-1,Yvel) )/dxinv[2]; // dvy_dz on y face 
+                  tGrad(i,j,k, Zvel_grad + yFace + 1)  = 0.5*(p4(i,j+1,k,Zvel) + p4(i,j,k,Zvel) - p4(i,j+1,k-1,Zvel) - p4(i,j,k-1,Zvel) )/dxinv[2]; // dvz_dz on y face
+
+                  tGrad(i,j,k, Xvel_grad + zFace + 0)  = 0.5*(p4(i,j,k+1,Xvel) + p4(i,j,k,Xvel) - p4(i-1,j,k+1,Xvel) - p4(i-1,j,k,Xvel) )/dxinv[0]; // dvx_dx on z face
+                  tGrad(i,j,k, Xvel_grad + zFace + 1)  = 0.5*(p4(i,j,k+1,Xvel) + p4(i,j,k,Xvel) - p4(i,j-1,k+1,Xvel) - p4(i,j-1,k,Xvel) )/dxinv[1]; // dvx_dy on z face
+                  tGrad(i,j,k, Yvel_grad + zFace + 0)  = 0.5*(p4(i,j,k+1,Yvel) + p4(i,j,k,Yvel) - p4(i-1,j,k+1,Yvel) - p4(i-1,j,k,Yvel) )/dxinv[0]; // dvy_dx on z face
+                  tGrad(i,j,k, Yvel_grad + zFace + 1)  = 0.5*(p4(i,j,k+1,Yvel) + p4(i,j,k,Yvel) - p4(i,j-1,k+1,Yvel) - p4(i,j-1,k,Yvel) )/dxinv[1]; // dvy_dy on z face
+                  tGrad(i,j,k, Zvel_grad + zFace + 0)  = 0.5*(p4(i,j,k+1,Zvel) + p4(i,j,k,Zvel) - p4(i-1,j,k+1,Zvel) - p4(i-1,j,k,Zvel) )/dxinv[0]; // dvz_dx on z face
+                  tGrad(i,j,k, Zvel_grad + zFace + 1)  = 0.5*(p4(i,j,k+1,Zvel) + p4(i,j,k,Zvel) - p4(i,j-1,k+1,Zvel) - p4(i,j-1,k,Zvel) )/dxinv[1]; // dvz_dy on z face
+#endif 
+            }
+        }   
+    }
+    */
+
     Vector<Real> u_rel(3);
     Array4<Real> const& fluxX = fluxes[0].array();
     for (int k = lo.z; k <= hi.z; ++k) {
@@ -2064,8 +2127,9 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                     faceCoefficients[iBeta2] = 0.5*(d4(i,j,k,iBeta2)+d4(i-1,j,k,iBeta2));
                     faceCoefficients[iBeta3] = 0.5*(d4(i,j,k,iBeta3)+d4(i-1,j,k,iBeta3));
                 }
-        
-                //Print() << "\nKappa1 coefficient\ti, j, k\t" << i << " " << j << " " << k << " "  << d4(i,j,k,iKappa1) << "\tj\t" << d4(i-1,j,k,iKappa1) << "\n";
+                //TODO remove this shit 
+                if (false && GD::verbose >= 1 ) Print() << "\ni, j, k\t" << i << " " << j << "\n";
+                //TODO Print() << "\nKappa1 coefficient\ti, j, k\t" << i << " " << j << " " << k << " "  << d4(i,j,k,iKappa1) << "\tj\t" << d4(i-1,j,k,iKappa1) << "\n";
                 faceCoefficients[iKappa1] = 0.5*(d4(i,j,k,iKappa1)+d4(i-1,j,k,iKappa1));
                 faceCoefficients[iKappa2] = 0.5*(d4(i,j,k,iKappa2)+d4(i-1,j,k,iKappa2));
                 faceCoefficients[iKappa3] = 0.5*(d4(i,j,k,iKappa3)+d4(i-1,j,k,iKappa3));
@@ -2533,6 +2597,7 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
     */
     Vector<Vector<Real> > Trans(3,Vector<Real>(3));
     Vector<Vector<Real> > Strain(3,Vector<Real>(3));
+
     Vector<Vector<Real> > StrainTrans(3,Vector<Real>(3));
     Vector<Vector<Real> > ViscStress(3,Vector<Real>(3)), ViscStressTrans(3,Vector<Real>(3)), TransT(3,Vector<Real>(3));
     Vector<Vector<Real> > WorkingMatrix(3,Vector<Real>(3));
@@ -2798,7 +2863,7 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
     Print() << "TG_chev\t" << TG_chev[0] << "\nTG_chev\t" << TG_chev[1] << "\nTG_chev\t" 
             << TG_chev[2] << "\n";
     */
-    if (true && GD::verbose>1) {
+    if (true && GD::verbose>=2) {
       Print() << "qVector x y z \t" << q_flux[0] << "\t" << q_flux[1] 
               << "\t" << q_flux[2] << "\n";
       Print() <<  "ViscTens\t" << ViscTens[0] << "\nviscTens\t" << ViscTens[1] 
