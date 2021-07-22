@@ -2232,7 +2232,7 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                 //assume typo in livescue formulation
                 fluxX(i,j,k,Eden) += 0.5*((p4(i,j,k,Xvel) + p4(i-1,j,k,Xvel))*ViscTens[0]+
                         (p4(i,j,k,Yvel) + p4(i-1,j,k,Yvel))*ViscTens[3]+
-                        (p4(i,j,k,Zvel) + p4(i-1,j,k,Zvel))*ViscTens[5]);
+                        (p4(i,j,k,Zvel) + p4(i-1,j,k,Zvel))*ViscTens[5])
                         + q_flux[0];
                 //+(d4(i,j,k,iKappa)+d4(i-1,j,k,iKappa))*dTdx);
             }
@@ -2342,10 +2342,10 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                 fluxY(i,j,k,Xmom) += ViscTens[3];//tauxy;
                 fluxY(i,j,k,Ymom) += ViscTens[1];//tauyy;
                 fluxY(i,j,k,Zmom) += ViscTens[4];//tauyz;
-                fluxY(i,j,k,Eden) += 0.5*((p4(i,j,k,Xvel)+p4(i,j-1,k,Xvel))*ViscTens[3]+
+                fluxY(i,j,k,Eden) += +0.5*((p4(i,j,k,Xvel)+p4(i,j-1,k,Xvel))*ViscTens[3]+
                         (p4(i,j,k,Yvel)+p4(i,j-1,k,Yvel))*ViscTens[1]+
-                        (p4(i,j,k,Zvel)+p4(i,j-1,k,Zvel))*ViscTens[4]);
-                        + q_flux[1];
+                        (p4(i,j,k,Zvel)+p4(i,j-1,k,Zvel))*ViscTens[4])
+                        + q_flux[1]; 
                 //+(d4(i,j,k,iKappa) + d4(i,j-1,k,iKappa))*dTdy);
             }
         }
@@ -2420,8 +2420,8 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                 fluxZ(i,j,k,Zmom) += ViscTens[2];//tauzz;
                 fluxZ(i,j,k,Eden) += +0.5*((p4(i,j,k,Xvel)+p4(i,j,k-1,Xvel))*ViscTens[5]+
                         (p4(i,j,k,Yvel)+p4(i,j,k-1,Yvel))*ViscTens[4]+
-                        (p4(i,j,k,Zvel)+p4(i,j,k-1,Zvel))*ViscTens[2]);
-                        + q_flux[2];
+                        (p4(i,j,k,Zvel)+p4(i,j,k-1,Zvel))*ViscTens[2]) 
+                        + q_flux[2]; 
                 //+(d4(i,j,k,iKappa) +d4(i,j,k-1,iKappa))*dTdz);
 
             }

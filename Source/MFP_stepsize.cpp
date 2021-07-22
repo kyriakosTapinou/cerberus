@@ -85,9 +85,9 @@ void MFP::estimate_dt (const Box& box,
 
     }
 
+    //Print() << "after inviscid step, dt = " << dt << "\n"; //TODO delete
     // time step due to viscous fluxes
     Vector<Vector<Real>> UU;
-
 
     for (int idx=0; idx<src.size(); ++idx) {
 
@@ -151,11 +151,11 @@ void MFP::estimate_dt (const Box& box,
 
                     // now do the viscous time step calculation
                     Real v = V.get_max_speed(UU);
-                    for (int d=0; d<AMREX_SPACEDIM; ++d)
+                    for (int d=0; d<AMREX_SPACEDIM; ++d) {
                         istate.dt = std::min(istate.dt, dx[d]*dx[d]/v);
-
-
-
+                        //Print() << "i,j,k: " << i << " " << j << " " << k << "\n" << dx[0] 
+                        //        << "\n" << v << "\n" << istate.dt << "\n";
+                        }
                 }
             }
         }
@@ -163,6 +163,7 @@ void MFP::estimate_dt (const Box& box,
         dt = std::min(dt, istate.dt);
     }
 
+    //Print() << "after visc step, dt = " << dt << "\n";//TODO delete
     // do collective states from source terms
 
     Vector<Real> y(gd.full_state_size); // all of the states
@@ -222,7 +223,6 @@ void MFP::estimate_dt (const Box& box,
                             Real freq = source->get_max_freq(y);
                             Real src_dt = 1/freq;
                             dt = std::min(dt, src_dt);
-
                             // update the source dt
                             for (const auto &idx : index) {
                                 State& istate = *gd.states[idx.global];
@@ -234,4 +234,6 @@ void MFP::estimate_dt (const Box& box,
             }
         }
     }
+
+    //Print() << "after source step, dt = " << dt << "\n";//TODO delete
 }

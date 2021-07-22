@@ -188,7 +188,7 @@ public:
                               Real& kappa1,Real& kappa2,Real& kappa3, int& truncatedTau) override;
   virtual void update_linked_states() override;
 
-  virtual Vector<int> get_linked_states() override {return {idx, linked_electron, linked_em};}
+  virtual Vector<int> get_linked_states() override {return {idx, linked_electron, linked_em};}//Note last must always eb linked_em for dependencies in viscous time step estimate in MFP_stepsize.cpp
 
   virtual Real get_max_speed(const Vector<Vector<Real>>& U) override;
   static bool valid_state(const int idx);
@@ -242,7 +242,7 @@ public:
                                    Real& beta1,Real& beta2,Real& beta3, int& truncatedTau) override;
   virtual void update_linked_states() override;
 
-  virtual Vector<int> get_linked_states() override {return {idx, linked_ion, linked_em};}
+  virtual Vector<int> get_linked_states() override {return {idx, linked_ion, linked_em};}//Note last must always eb linked_em for dependencies in viscous time step estimate in MFP_stepsize.cpp
 
   virtual Real get_max_speed(const Vector<Vector<Real>>& U) override;
   static bool valid_state(const int idx);

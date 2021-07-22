@@ -580,7 +580,7 @@ void BraginskiiSource::get_alpha_beta_coefficients(Real mass_e, Real T_e, Real c
   if (1/t_c_e < GD::effective_zero) t_c_e = 1/GD::effective_zero;
 
   if (GD::srin_switch && (1/t_c_e < omega_ce/10/2/pi_num) && (1/t_c_e < omega_p/10/2/pi_num)) {
-      if  (GD::verbose >= 1) {
+      if  (GD::verbose >= 2) {
       Print() << "1/tau_e = " << 1/t_c_e << "\tomega_ce = " << omega_ce 
             << "\tomega_p = " << omega_p << "\n";
       }
@@ -615,7 +615,7 @@ void BraginskiiSource::get_alpha_beta_coefficients(Real mass_e, Real T_e, Real c
         << "\nomega_p\t" << omega_p << "\nmass_e\t" << mass_e << "\nnd_e\t" << nd_e << "\n";
   }
   //TODO remove after comparison with plasmapy braginskii
-  if (true && GD::verbose >= 1) {
+  if (false && GD::verbose >= 1) {
       Print() << "\n\nResistivity\nrhor_para\t" <<1/(nd_e*nd_e*charge_e*charge_e/alpha_0);
       Print() << "\nrhor_perp\t" << 1/(nd_e*nd_e*charge_e*charge_e/alpha_1);
       Print() << "\nrhor_chev\t" << 1/(nd_e*nd_e*charge_e*charge_e/alpha_2);

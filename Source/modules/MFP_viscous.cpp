@@ -249,7 +249,8 @@ BraginskiiIon::BraginskiiIon(const int global_idx, const sol::table& def)
 
     idx = global_idx;
 
-    cfl = def.get_or("cfl",1.0);
+    cfl = def.get_or("cfl",1.0); 
+    //Print() << "\nln 253 - cfl viscous ion: " << cfl << "\n"; 
 }
 
 void BraginskiiIon::update_linked_states()
@@ -436,20 +437,24 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
         kappa3 = kappa1;
     }
 
+    //Print() << "\nln 440 - cfl viscous ion: " << cfl << "\n";
     return;
 }
 
 Real BraginskiiIon::get_max_speed(const Vector<Vector<amrex::Real>>&U) {
     BL_PROFILE("BraginskiiIon::get_max_speed");
 
-    const Vector<Real>& U_e = U[0];
-    const Vector<Real>& U_i = U[1];
-    const Vector<Real>& U_em = U[2];
-
     State &ELEstate = GD::get_state(linked_electron);
     State &EMstate = GD::get_state(linked_em);
     State &IONstate = GD::get_state(idx);
 
+    const Vector<Real>& U_i = U[0]; //TODO check the indexing of incoming U as its not according to anythng sensible 
+    const Vector<Real>& U_e = U[1];
+    const Vector<Real>& U_em = U[2];
+
+
+    //Print() << "\nIon getMaxSpeed\n" << idx << "\n" << linked_em << "\n" << linked_electron << "\n";
+    //Print() << "\n" << U_e[0] << "\n" << U_i[0] << "\n" << U_em[+FieldState::ConsIdx::Bx] << "\n"; 
     //---Calculate the coefficients from scratch
     Real mass_i,mass_e,charge_i,charge_e,T_e,T_i,nd_i,nd_e,alpha_i,alpha_e;
     Real eta0, eta1, eta2, eta3, eta4, kappa1, kappa2, kappa3;
@@ -460,6 +465,7 @@ Real BraginskiiIon::get_max_speed(const Vector<Vector<amrex::Real>>&U) {
     alpha_e = ELEstate.get_alpha_from_cons(U_e);
     charge_e= ELEstate.get_charge(U_e); // electron propertis
     mass_e  = ELEstate.get_mass(U_e);
+    //Print() << "\nmass_e" << mass_e << "\n";
     T_e     = ELEstate.get_temperature_from_cons(U_e);
     nd_e    = ELEstate.get_density_from_cons(U_e)/mass_e;
 
@@ -467,6 +473,7 @@ Real BraginskiiIon::get_max_speed(const Vector<Vector<amrex::Real>>&U) {
     alpha_i = IONstate.get_alpha_from_cons(U_i);
     charge_i= IONstate.get_charge(U_i);
     mass_i  = IONstate.get_mass(U_i);
+    //Print() << "\nmass_i" << mass_i << "\n";
     T_i     = IONstate.get_temperature_from_cons(U_i); //
     nd_i    = IONstate.get_density_from_cons(U_i)/mass_i;
 
@@ -603,15 +610,23 @@ Real BraginskiiIon::get_max_speed(const Vector<Vector<amrex::Real>>&U) {
     Real rho = IONstate.get_density_from_cons(U_i);
     Real cp_ion = IONstate.get_cp(alpha_i);
     Real gamma_ion = IONstate.get_gamma(alpha_i);
-    Real Prandtl = cp_ion*eta0/kappa1;
-    Real nu_thermal = (4*eta0*gamma_ion/(Prandtl*rho))/cfl/n0_ref;
-    Real nu_visc = (eta0/rho)/cfl/n0_ref;
-
+    //Real Prandtl = cp_ion*eta0/kappa1;
+    //Real nu_thermal = (4*eta0*gamma_ion/(Prandtl*rho))/cfl/n0_ref;
+    Real nu_thermal = kappa1/rho/cp_ion/cfl; //thermal diffusivity 
+    //Real nu_visc = (eta0/rho)/cfl/n0_ref;
+    Real nu_visc = (eta0/rho)/cfl;
     if (GD::verbose>4) {
       Print() << "Debug and test Prandtl viscous time step ln 553 feature\nnu_visc\t" 
               << nu_visc << "\tnu_thermal\t" << nu_thermal << "\teta0\t" << eta0 << "\n";
     }
-
+    //TODO delete 
+    if (false) {
+      Print() << "rho etc.\n" <<  rho << "\n";
+      Print() << cp_ion<< "\n";
+      Print() << gamma_ion<< "\n";
+      Print() << nu_thermal << "\n";
+      Print() << nu_visc << "\n";
+    }
     Real nu; 
     if (nu_thermal> nu_visc) {  
       nu = nu_thermal ;
@@ -619,7 +634,8 @@ Real BraginskiiIon::get_max_speed(const Vector<Vector<amrex::Real>>&U) {
       nu = nu_visc ;
     }
 
-    return nu;
+    //Print() << "\nln 622 - cfl viscous ion: " << cfl;
+    return 2*nu;
     //return t_collision_ion ;
     //return (eta0/rho)/cfl;
     //return std::max(eta0, std::max(eta1, std::max(eta2, std::max(eta3,eta4))))/rho;
@@ -653,8 +669,7 @@ BraginskiiEle::BraginskiiEle(const int global_idx, const sol::table& def)
     idx = global_idx;
 
     cfl = def.get_or("cfl",1.0);
-
-
+    //Print() << "\nln 656 - cfl viscous ele: " << cfl << "\n";
 }
 
 void BraginskiiEle::update_linked_states()
@@ -839,19 +854,24 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
     beta1 = nd_e*b_0*T_e;
     beta2 = nd_e*(b_1_p*x_coef*x_coef+b_0_p)/delta_kappa*T_e;
     beta3 = nd_e*x_coef*(b_1_pp*x_coef*x_coef+b_0_pp)/delta_kappa*T_e;
+
+    //Print() << "\nln 844 - cfl viscous ele: " << cfl << "\n";
     return;
 }
 
 Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
     BL_PROFILE("BraginskiiEle::get_max_speed");
-    const Vector<Real>& U_e = U[0];
-    const Vector<Real>& U_i = U[1];
-    const Vector<Real>& U_em = U[2];
 
     State &ELEstate = GD::get_state(idx);
     State &EMstate = GD::get_state(linked_em);
     State &IONstate = GD::get_state(linked_ion);
 
+    const Vector<Real>& U_e = U[0];
+    const Vector<Real>& U_i = U[1];
+    const Vector<Real>& U_em = U[2];
+
+    //Print() << "\nEle getMaxSpeed\n" << idx << "\n" << linked_em << "\n" << linked_ion << "\n";
+    //Print() << "\n" << U_e[0] << "\n" << U_i[0] << "\n" << U_em[+FieldState::ConsIdx::Bx] << "\n"; 
     //TODO Fix get_max_speed to be compatible with electrona and ion
     //---Calculate the coefficients from scratch
     Real mass_i,mass_e,charge_i,charge_e,T_e,T_i,nd_i,nd_e,alpha_i,alpha_e;
@@ -864,6 +884,8 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
     alpha_e = ELEstate.get_alpha_from_cons(U_e);
     charge_e= ELEstate.get_charge(U_e); // electron propertis
     mass_e  = ELEstate.get_mass(U_e);
+
+    //Print() << "\nmass_i" << mass_i << "\n";
     T_e     = ELEstate.get_temperature_from_cons(U_e);
     nd_e    = ELEstate.get_density_from_cons(U_e)/mass_e;
 
@@ -871,6 +893,7 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
     alpha_i = IONstate.get_alpha_from_cons(U_i);
     charge_i= IONstate.get_charge(U_i);
     mass_i  = IONstate.get_mass(U_i);
+    //Print() << "\nmass_i" << mass_i << "\n";
     T_i     = IONstate.get_temperature_from_cons(U_i); //
     nd_i    = IONstate.get_density_from_cons(U_i)/mass_i;
 
@@ -990,10 +1013,19 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
     Real rho = ELEstate.get_density_from_cons(U_e);
     Real cp_ele = ELEstate.get_cp(alpha_e);
     Real gamma_ele = ELEstate.get_gamma(alpha_e);
-    Real Prandtl = cp_ele*eta0/kappa1;
-    Real nu_thermal = (4*eta0*gamma_ele/(Prandtl*rho))/cfl/n0_ref;
-    Real nu_visc = (eta0/rho)/cfl/n0_ref;
-
+    //Real Prandtl = cp_ele*eta0/kappa1;
+    //Real nu_thermal = (4*eta0*gamma_ele/(Prandtl*rho))/cfl/n0_ref;
+    //Real nu_visc = (eta0/rho)/cfl/n0_ref;
+    Real nu_thermal = kappa1/rho/cp_ele/cfl; //thermal diffusivity 
+    Real nu_visc = (eta0/rho)/cfl;
+    //TODO delete 
+    if (false) { //TODO delete
+      Print() << "rho etc\n" <<  rho << "\n";
+      Print() << cp_ele<< "\n";
+      Print() << gamma_ele<< "\n";
+      Print() << nu_thermal << "\n";
+      Print() << nu_visc << "\n";
+    }
     if (GD::verbose>4) {
       Print() << "Debug and test Prandtl viscous time step ln 867 feature\nnu_visc\t" 
               << nu_visc << "\tnu_thermal\t" << nu_thermal << "\teta0\t" << eta0 << "\n";
@@ -1005,7 +1037,9 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
     } else if (nu_thermal <= nu_visc) {
       nu = nu_visc ;
     }
-    return nu;
+
+    //Print() << "\nln 1011 - cfl viscous ele: " << cfl;
+    return 2*nu;
     //TODO verify the expression used for this
     //return t_collision_ele ;
     //return (eta0/rho)/cfl;
