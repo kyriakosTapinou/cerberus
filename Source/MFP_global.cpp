@@ -56,6 +56,7 @@ int GlobalData::particle_verbose = 0;
 #endif
 
 int GlobalData::srin_switch = 0;
+int GlobalData::braginskii_anisotropic = 0; //default to isotropic
 //int GlobalData::do_tracer_particles = 0;
 //int GlobalData::particle_verbose = 0;
 //std::string GlobalData::particle_init_file;
@@ -165,6 +166,7 @@ void GlobalData::read_config(const Vector<int> &is_periodic, const bool plot_out
 
     verbose = lua["verbosity"];
     srin_switch = lua["srin_switch"];
+    braginskii_anisotropic = lua["braginskii_isotropic"];
 
     linear_solver_verbosity = lua["linear_solver_verbosity"];
 

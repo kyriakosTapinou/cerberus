@@ -2207,7 +2207,11 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                 //--- retrive the viscous stress tensor and heat flux vector on this face
 
                 //TODO Print() << "Check changes to BRaginskiiViscousTensor... and calculation of xB, .. on interfaces are correct.";
-                BraginskiiViscousTensorHeatFlux(passed_idx, ion_idx, electron_idx, em_idx, i, j, k, box, dxinv,
+                if (GD::braginskii_anisotropic) BraginskiiViscousTensorHeatFlux(passed_idx, ion_idx, electron_idx, em_idx, i, j, k, box, dxinv,
+                                                xB, yB, zB, u_rel, dTdx, dTdy, dTdz,
+                                                dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, dwdy, dwdz,
+                                                faceCoefficients, ViscTens, q_flux);
+                else IsotropicBraginskiiViscousTensorHeatFlux(passed_idx, ion_idx, electron_idx, em_idx, i, j, k, box, dxinv,
                                                 xB, yB, zB, u_rel, dTdx, dTdy, dTdz,
                                                 dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, dwdy, dwdz,
                                                 faceCoefficients, ViscTens, q_flux);
@@ -2876,6 +2880,135 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
     return ;
 }
 
+
+// ===================================================================================
+// function for calculating the viscous stress tensor and heat flux vector 
+// for the braginskii transport 
+void HydroState::IsotropicBraginskiiViscousTensorHeatFlux(int passed_idx,
+                                                 int ion_idx,
+                                                 int electron_idx,
+                                                 int em_idx,
+                                                 int i, int j, int k,
+                                                 const Box& box,
+                                                 Array<Real, AMREX_SPACEDIM>& dxinv,
+                                                 Real xB, Real yB, Real zB, Vector<Real> u_rel,
+                                                 Real dTdx, Real dTdy, Real dTdz,
+                                                 Real dudx, Real dudy, Real dudz,
+                                                 Real dvdx, Real dvdy, Real dvdz,
+                                                 Real dwdx, Real dwdy, Real dwdz,
+                                                 Vector<Real> faceCoefficients, 
+                                                 //Array4<const Real> const& d4,
+                                                 Vector<Real>& ViscTens,
+                                                 Vector<Real>& q_flux) const {
+    BL_PROFILE("HydroState::IsotropicBraginskiiViscousTensorHeatFlux");
+    //Note all the properties used in here need to be for the interface, not just the cell i!!!
+
+    //---Sorting out indexing and storage access
+    const Dim3 lo = amrex::lbound(box);
+    const Dim3 hi = amrex::ubound(box);
+
+    Real divu = dudx + dvdy + dwdz ;
+    int i_disp, j_disp, k_disp;
+    //Using the formulation of Li 2018 "High-order two-fluid plasma
+    // solver for direct numerical simulations of plasma flowswith full
+    // transport phenomena"  --- this is outdated, i think i was eefering
+    // to the coulomb loagrithm which i just ended up taking fro braginskii
+
+    Vector<int> prim_vel_id = get_prim_vector_idx();
+
+    int Xvel = prim_vel_id[0] + 0;
+    int Yvel = prim_vel_id[0] + 1;
+    int Zvel = prim_vel_id[0] + 2;
+
+    int iTemp=-1, iEta0=-1, iEta1=-1, iEta2=-1, iEta3=-1, iEta4=-1, iKappa1=-1,
+            iKappa2=-1, iKappa3=-1, iBeta1=-1, iBeta2=-1, iBeta3=-1;
+
+    if (passed_idx == ion_idx) {
+        iTemp = Viscous::IonTemp;
+        iEta0 = Viscous::IonEta0; iEta1 = Viscous::IonEta1; iEta2 = Viscous::IonEta2;
+        iEta3 = Viscous::IonEta3; iEta4 = Viscous::IonEta4;
+        iKappa1=Viscous::IonKappa1;iKappa2=Viscous::IonKappa2;iKappa3 = Viscous::IonKappa3;
+
+        State &ELEstate = GD::get_state(electron_idx); //electron state info
+    } else if (passed_idx == electron_idx) {
+        iTemp = Viscous::EleTemp;
+        iEta0 = Viscous::EleEta0;  iEta1 = Viscous::EleEta1;   iEta2 = Viscous::EleEta2;
+        iEta3 = Viscous::EleEta3;  iEta4 = Viscous::EleEta4;
+        iKappa1=Viscous::EleKappa1;iKappa2=Viscous::EleKappa2;iKappa3= Viscous::EleKappa3;
+        iBeta1 =Viscous::EleBeta1; iBeta2= Viscous::EleBeta2; iBeta3 = Viscous::EleBeta3;
+
+        State &IONstate = GD::get_state(ion_idx); //ion state info
+    } else {
+        amrex::Abort("MFP_hydro.cpp ln 1196 - Shits fucked bruh, rogue state. ");
+    }
+
+    int rowFirst=3,columnFirst=3,columnSecond=3;
+    /* Matrix representations of viscous stree tensor and associated
+    quantities are defined as:
+    Strain      - Strain rate matrix mate W
+    ViscStress  - Viscous stress tensor in lab frame, PI
+    */
+    Vector<Vector<Real> > Strain(3,Vector<Real>(3));
+    Vector<Vector<Real> > ViscStress(3,Vector<Real>(3));
+
+    //if (global_idx == electron_idx)
+    if (passed_idx == electron_idx) {
+        q_flux[0] = faceCoefficients[iBeta1]*u_rel[0] - faceCoefficients[iKappa1]*dTdx;
+        q_flux[1] = faceCoefficients[iBeta1]*u_rel[1] - faceCoefficients[iKappa1]*dTdy;
+        q_flux[2] = faceCoefficients[iBeta1]*u_rel[2] - faceCoefficients[iKappa1]*dTdz;
+        } else {
+        q_flux[0] = -faceCoefficients[iKappa1]*dTdx;
+        q_flux[1] = -faceCoefficients[iKappa1]*dTdy;
+        q_flux[2] = -faceCoefficients[iKappa1]*dTdz;
+    }
+
+    //Calculate the viscous stress tensor
+      //Populate strain rate tensor in B unit aligned cartesian frame
+      //This is braginskii's  - the strain rate tensor multplied by negative one later to Li
+      // Livescue formulation
+    Strain[0][0] = 2*dudx - 2./3.*divu;
+    Strain[0][1] = dudy + dvdx;
+    Strain[0][2] = dwdx + dudz;
+    Strain[1][0] = Strain[0][1];
+    Strain[1][1] = 2*dvdy - 2./3.*divu;
+    Strain[1][2] = dvdz + dwdy;
+    Strain[2][0] = Strain[0][2];
+    Strain[2][1] = Strain[1][2];
+    Strain[2][2] = 2*dwdz - 2./3.*divu;
+
+    for (i_disp=0; i_disp<3; ++i_disp) { // set to zero
+        for (j_disp=0; j_disp<3; ++j_disp) {
+            if (GD::verbose > 1) Print() << "Livescue on ";
+            Strain[i_disp][j_disp] = - Strain[i_disp][j_disp] ; //make negtive for Li Livescue
+        }
+    }
+
+    ViscStress[0][0] = faceCoefficients[iEta0]*Strain[0][0];
+    
+    ViscStress[0][1] = faceCoefficients[iEta0]*Strain[0][1];
+    ViscStress[1][0] = ViscStress[0][1];
+
+    ViscStress[0][2] = faceCoefficients[iEta0]*Strain[0][2];
+    ViscStress[2][0] = ViscStress[0][2];
+
+    ViscStress[1][1] = faceCoefficients[iEta0]*Strain[1][1];
+    ViscStress[1][2] = faceCoefficients[iEta0]*Strain[1][2];
+    ViscStress[2][1] = ViscStress[1][2];
+
+    ViscStress[2][2] = faceCoefficients[iEta0]*Strain[2][2];
+
+    //Storing
+    //NOTE STORAGE ACCORDING TO THE TAUXX, TAUYY, TAUZZ, TAUXY OR TAUYX,
+    // TAUYZ OR TAUZY, TAUXZ OR TAUZX
+    ViscTens[0] = ViscStress[0][0];
+    ViscTens[1] = ViscStress[1][1];
+    ViscTens[2] = ViscStress[2][2];
+    ViscTens[3] = ViscStress[0][1];
+    ViscTens[4] = ViscStress[1][2];
+    ViscTens[5] = ViscStress[0][2];
+
+    return ;
+}
 
 // ====================================================================================
 void HydroState::write_info(nlohmann::json& js) const

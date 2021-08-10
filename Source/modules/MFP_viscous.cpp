@@ -365,17 +365,21 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
     delta_eta2  = 16*x_coef*x_coef*x_coef*x_coef + 4*4.030*x_coef*x_coef + 2.330;
 
     eta0 = 0.96*nd_i*T_i*t_collision_ion ;//* n0_ref;
-    eta2 = nd_i*T_i*t_collision_ion*(6./5.*x_coef*x_coef+2.23)/delta_eta;
-    eta1 = nd_i*T_i*t_collision_ion*(6./5.*(2*x_coef)*(2*x_coef)+2.23)/delta_eta2;
-    eta4 = nd_i*T_i*t_collision_ion*x_coef*(x_coef*x_coef + 2.38)/delta_eta;
-    eta3 = nd_i*T_i*t_collision_ion*(2*x_coef)*((2*x_coef)*(2*x_coef) + 2.38)/delta_eta2;
-
-    if (x_coef < 1e-8 ) {
-      eta2 = eta2/x_coef/x_coef;
-      eta1 = eta1/x_coef/x_coef;
-      eta4 = eta4/x_coef;
-      eta3 = eta3/x_coef;
-    }
+    if (GD::braginskii_anisotropic) {
+      eta2 = nd_i*T_i*t_collision_ion*(6./5.*x_coef*x_coef+2.23)/delta_eta;
+      eta1 = nd_i*T_i*t_collision_ion*(6./5.*(2*x_coef)*(2*x_coef)+2.23)/delta_eta2;
+      eta4 = nd_i*T_i*t_collision_ion*x_coef*(x_coef*x_coef + 2.38)/delta_eta;
+      eta3 = nd_i*T_i*t_collision_ion*(2*x_coef)*((2*x_coef)*(2*x_coef) + 2.38)/delta_eta2;
+      if (x_coef < 1e-8 ) {
+        eta2 = eta2/x_coef/x_coef;
+        eta1 = eta1/x_coef/x_coef;
+        eta4 = eta4/x_coef;
+        eta3 = eta3/x_coef; }
+    } else {
+      eta2 = 0;
+      eta1 = 0;
+      eta4 = 0;
+      eta3 = 0; }
 
     if (GD::verbose >= 9 ) {
         Print() << "\nIon 5 dynamic viscosity coefficients\t" << eta0 <<"\t" << eta1 
@@ -405,8 +409,11 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
 
     //TODO Print() << "\nget_ion_coefficients - Test if 1/no_ref on Diverence(q) and n0_ref of Kappa makes a difference (they cancel out overall but perhaps the numerics?\n";
     kappa1 = 3.906*nd_i*T_i*t_collision_ion/mass_i;
-    kappa2 = (2.*x_coef*x_coef + 2.645)/delta_kappa*nd_i*T_i*t_collision_ion/mass_i;
-    kappa3 = (5./2.*x_coef*x_coef + 4.65)*x_coef*nd_i*T_i*t_collision_ion/mass_i/delta_kappa;
+    if (GD::braginskii_anisotropic) {
+      kappa2 = (2.*x_coef*x_coef + 2.645)/delta_kappa*nd_i*T_i*t_collision_ion/mass_i;
+      kappa3 = (5./2.*x_coef*x_coef + 4.65)*x_coef*nd_i*T_i*t_collision_ion/mass_i/delta_kappa;
+    } else {kappa2 = 0; kappa3 = 0; }
+
     //TODO remove after comparison to plasmapy
     if (false && GD::verbose >= 1) {
         Print() << "\n\nIon viscous coefficients and thermal conductivity coefficients";
@@ -525,18 +532,22 @@ Real BraginskiiIon::get_max_speed(const Vector<Vector<amrex::Real>>&U) {
     delta_eta   = x_coef*x_coef*x_coef*x_coef + 4.030*x_coef*x_coef + 2.330;
     delta_eta2  = 16*x_coef*x_coef*x_coef*x_coef + 4*4.030*x_coef*x_coef + 2.330;
 
-    eta0 = 0.96*nd_i*T_i*t_collision_ion ;// * n0_ref;
-    eta2 = nd_i*T_i*t_collision_ion*(6./5.*x_coef*x_coef+2.23)/delta_eta;
-    eta1 = nd_i*T_i*t_collision_ion*(6./5.*(2*x_coef)*(2*x_coef)+2.23)/delta_eta2;
-    eta4 = nd_i*T_i*t_collision_ion*x_coef*(x_coef*x_coef + 2.38)/delta_eta;
-    eta3 = nd_i*T_i*t_collision_ion*(2*x_coef)*((2*x_coef)*(2*x_coef) + 2.38)/delta_eta2;
-
-    if (x_coef < 1e-8 ) {
-      eta2 = eta2/x_coef/x_coef;
-      eta1 = eta1/x_coef/x_coef;
-      eta4 = eta4/x_coef;
-      eta3 = eta3/x_coef;
-    }
+    eta0 = 0.96*nd_i*T_i*t_collision_ion ;//* n0_ref;
+    if (GD::braginskii_anisotropic) {
+      eta2 = nd_i*T_i*t_collision_ion*(6./5.*x_coef*x_coef+2.23)/delta_eta;
+      eta1 = nd_i*T_i*t_collision_ion*(6./5.*(2*x_coef)*(2*x_coef)+2.23)/delta_eta2;
+      eta4 = nd_i*T_i*t_collision_ion*x_coef*(x_coef*x_coef + 2.38)/delta_eta;
+      eta3 = nd_i*T_i*t_collision_ion*(2*x_coef)*((2*x_coef)*(2*x_coef) + 2.38)/delta_eta2;
+      if (x_coef < 1e-8 ) {
+        eta2 = eta2/x_coef/x_coef;
+        eta1 = eta1/x_coef/x_coef;
+        eta4 = eta4/x_coef;
+        eta3 = eta3/x_coef; }
+    } else {
+      eta2 = 0;
+      eta1 = 0;
+      eta4 = 0;
+      eta3 = 0; }
 
     if ((eta0<0) || (eta1<0) || (eta2<0) || (eta3<0) || (eta4<0)) {
         Print () << "\nNon-physical eta\n" << eta0;
@@ -573,8 +584,10 @@ Real BraginskiiIon::get_max_speed(const Vector<Vector<amrex::Real>>&U) {
     // TODO Add in flexibility for different atomic numbers of the ion species used,
     // see Braginskii
     kappa1 = 3.906*nd_i*T_i*t_collision_ion/mass_i;
-    kappa2 = (2.*x_coef*x_coef + 2.645)/delta_kappa*nd_i*T_i*t_collision_ion/mass_i;
-    kappa3 = (5./2.*x_coef*x_coef + 4.65)*x_coef*nd_i*T_i*t_collision_ion/mass_i/delta_kappa;
+    if (GD::braginskii_anisotropic) {
+      kappa2 = (2.*x_coef*x_coef + 2.645)/delta_kappa*nd_i*T_i*t_collision_ion/mass_i;
+      kappa3 = (5./2.*x_coef*x_coef + 4.65)*x_coef*nd_i*T_i*t_collision_ion/mass_i/delta_kappa;
+    } else {kappa2 = 0; kappa3 = 0; }
 
     if (GD::verbose >= 9 ) {
         Print() << "\nIon heat conductivity coefficients\n"
@@ -786,17 +799,21 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
     //        << t_collision_ele << "\n";
 
     eta0 = 0.733*nd_e *T_e * t_collision_ele;
-    eta2 = nd_e *T_e*t_collision_ele*(2.05*x_coef*x_coef+8.5)/delta_eta;
-    eta1 = nd_e *T_e*t_collision_ele*(2.05*(2*x_coef)*(2*x_coef)+8.5)/delta_eta2;
-    eta4 = -nd_e*T_e*t_collision_ele*x_coef*(x_coef*x_coef+7.91)/delta_eta;
-    eta3 = -nd_e*T_e*t_collision_ele*(2*x_coef)*((2*x_coef)*(2*x_coef)+7.91)/delta_eta2;
-
-    if (x_coef < 1e-8 ) {
-      eta2 = eta2/x_coef/x_coef;
-      eta1 = eta1/x_coef/x_coef;
-      eta4 = eta4/x_coef;
-      eta3 = eta3/x_coef;
-    }
+    if (GD::braginskii_anisotropic) {
+      eta2 = nd_e *T_e*t_collision_ele*(2.05*x_coef*x_coef+8.5)/delta_eta;
+      eta1 = nd_e *T_e*t_collision_ele*(2.05*(2*x_coef)*(2*x_coef)+8.5)/delta_eta2;
+      eta4 = -nd_e*T_e*t_collision_ele*x_coef*(x_coef*x_coef+7.91)/delta_eta;
+      eta3 = -nd_e*T_e*t_collision_ele*(2*x_coef)*((2*x_coef)*(2*x_coef)+7.91)/delta_eta2;
+      if (x_coef < 1e-8 ) {
+        eta2 = eta2/x_coef/x_coef;
+        eta1 = eta1/x_coef/x_coef;
+        eta4 = eta4/x_coef;
+        eta3 = eta3/x_coef; }
+    } else {
+      eta2 = 0;
+      eta1 = 0;
+      eta4 = 0;
+      eta3 = 0; }
 
     if (GD::verbose >= 9 ) {
         Print() << "\nElectron 5 dynamic viscosity coefficients\t" <<  eta0 << "\t" 
@@ -812,9 +829,12 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
     Real BT_gamma_0_pp=21.67;
 
     kappa1=nd_e*T_e*t_collision_ele/mass_e*BT_gamma_0;
-    kappa2=(BT_gamma_1_p*x_coef*x_coef+BT_gamma_0_p)/delta_kappa*nd_e*T_e*t_collision_ele/mass_e;
-    kappa3=(BT_gamma_1_pp*x_coef*x_coef+BT_gamma_0_pp)*x_coef*nd_e*T_e*t_collision_ele
+    if (GD::braginskii_anisotropic) {
+      kappa2=(BT_gamma_1_p*x_coef*x_coef+BT_gamma_0_p)/delta_kappa*nd_e*T_e*t_collision_ele/mass_e;
+      kappa3=(BT_gamma_1_pp*x_coef*x_coef+BT_gamma_0_pp)*x_coef*nd_e*T_e*t_collision_ele
            /mass_e/delta_kappa;
+    } else {kappa2 = 0; kappa3 = 0;}
+
     //TODO remove after comparison to plasmapy
     if (false && GD::verbose >= 1) {
         Print() << "\n\nElectron viscous coefficients and thermal conductivity coefficients";
@@ -852,8 +872,10 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
 
     Real b_0 = 0.711, b_0_pp = 3.053, b_0_p=2.681, b_1_p=5.101, b_1_pp=3./2.;
     beta1 = nd_e*b_0*T_e;
+    if (GD::braginskii_anisotropic) {
     beta2 = nd_e*(b_1_p*x_coef*x_coef+b_0_p)/delta_kappa*T_e;
-    beta3 = nd_e*x_coef*(b_1_pp*x_coef*x_coef+b_0_pp)/delta_kappa*T_e;
+    beta3 = nd_e*x_coef*(b_1_pp*x_coef*x_coef+b_0_pp)/delta_kappa*T_e; 
+    } else {beta2 = 0; beta3 = 0;}
 
     //Print() << "\nln 844 - cfl viscous ele: " << cfl << "\n";
     return;
@@ -945,21 +967,23 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
     delta_eta2 = 16*x_coef*x_coef*x_coef*x_coef+4*13.8*x_coef*x_coef + 11.6;
 
     eta0 = 0.733*nd_e *T_e * t_collision_ele;
-    eta2 = nd_e *T_e*t_collision_ele*(2.05*x_coef*x_coef+8.5)/delta_eta;
-    eta1 = nd_e *T_e*t_collision_ele*(2.05*(2*x_coef)*(2*x_coef)+8.5)/delta_eta2;
-    eta4 = -nd_e*T_e*t_collision_ele*x_coef*(x_coef*x_coef+7.91)/delta_eta;
-    eta3 = -nd_e*T_e*t_collision_ele*(2*x_coef)*((2*x_coef)*(2*x_coef)+7.91)/delta_eta2;
-    if (x_coef < 1e-8 ) {
-      eta2 = eta2/x_coef/x_coef;
-      eta1 = eta1/x_coef/x_coef;
-      eta4 = eta4/x_coef;
-      eta3 = eta3/x_coef;
-    }
+    if (GD::braginskii_anisotropic) {
+      eta2 = nd_e *T_e*t_collision_ele*(2.05*x_coef*x_coef+8.5)/delta_eta;
+      eta1 = nd_e *T_e*t_collision_ele*(2.05*(2*x_coef)*(2*x_coef)+8.5)/delta_eta2;
+      eta4 = -nd_e*T_e*t_collision_ele*x_coef*(x_coef*x_coef+7.91)/delta_eta;
+      eta3 = -nd_e*T_e*t_collision_ele*(2*x_coef)*((2*x_coef)*(2*x_coef)+7.91)/delta_eta2;
+      if (x_coef < 1e-8 ) {
+        eta2 = eta2/x_coef/x_coef;
+        eta1 = eta1/x_coef/x_coef;
+        eta4 = eta4/x_coef;
+        eta3 = eta3/x_coef; }
+    } else {
+      eta2 = 0;
+      eta1 = 0;
+      eta4 = 0;
+      eta3 = 0; }
 
     //Srinivasan recomendation
-    
-    // do we need all these prints???
-
     if (std::abs(eta0) < std::abs(eta1)) {
         Print() << "\nelectron viscous coefficient eta1 greater than eta0\n";
         Print() << "\n" + std::to_string(eta0) + "\n";
@@ -985,9 +1009,10 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
     Real BT_gamma_0_pp=21.67;
 
     kappa1=nd_e*T_e*t_collision_ele/mass_e*BT_gamma_0;
-    kappa2=(BT_gamma_1_p*x_coef*x_coef+BT_gamma_0_p)/delta_kappa*nd_e*T_e*t_collision_ele/mass_e;
-    kappa3=(BT_gamma_1_pp*x_coef*x_coef+BT_gamma_0_pp)*x_coef*nd_e*T_e*t_collision_ele
-           /mass_e/delta_kappa;
+    if (GD::braginskii_anisotropic) {
+      kappa2=(BT_gamma_1_p*x_coef*x_coef+BT_gamma_0_p)/delta_kappa*nd_e*T_e*t_collision_ele/mass_e;
+      kappa3=(BT_gamma_1_pp*x_coef*x_coef+BT_gamma_0_pp)*x_coef*nd_e*T_e*t_collision_ele
+           /mass_e/delta_kappa;}
 
     if ((kappa1<0.) || (kappa2<0.) || (kappa3 < 0.)) {
         //amrex::Abort("mfp_viscous.cpp ln: 673 - Braginski Ion coefficients are non-physical");

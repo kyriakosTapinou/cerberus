@@ -227,6 +227,7 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
     Vector<Vector<Real> > hydro_prim(num_hydroBT);//(index.size());
     Vector<Real> EM_prim(num_field);
     int nc, np;
+    //TODO find away around the variable declaration in the case of isotropic - may just need to bite the bullet and hav a spearate function 
     Vector<Real> B_unit(3); //Magnetic field unit vector 
     Vector<Real> u_para(3); //Velocity parallel to B_unit
     Vector<Real> u_perp(3); //Velocity perpendicular to B_unit
@@ -234,9 +235,8 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
     Vector<Real> TG_para(3);//Temp grad parallel to B_unit 
     Vector<Real> TG_perp(3);//Temp grad perpendicular to B_unit
     Vector<Real> TG_chev(3);//unit vector perp to gradT and B_unit
-  
 
-    Real B_p=0.,B_pp=0.,bx_pp=0.,by_pp=0.,bz_pp=0.,bx_p=0.,by_p=0., xB, yB, zB;
+    Real B_p=0.,B_pp=0.,bx_pp=0.,by_pp=0.,bz_pp=0.,bx_p=0.,by_p=0., xB=0, yB=0, zB=0; //initialised and set to zero to allow get_alpha_beta_coeffs to be run without any changes for both iso and aniso cae 
 
     int hydro_counter = 0;
     for (const auto &idx : index) {// for each state we are looking at. 
@@ -254,7 +254,7 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
           hydro_prim[hydro_counter].resize(Q.size()); // save for later - changed from previous implementation 
           std::copy(Q.begin(), Q.end(), hydro_prim[hydro_counter].begin());
           hydro_counter += 1;
-        } else if (istate.get_type() == +StateType::isField) {
+        } else if ((GD::braginskii_anisotropic) && (istate.get_type() == +StateType::isField)) {
           // magnetic field
           xB = y[idx.solver + +FieldState::ConsIdx::Bx];
           yB = y[idx.solver + +FieldState::ConsIdx::By];
@@ -348,7 +348,7 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
     //const Real dv_dx   = slope[cnt]; cnt++;
     //const Real dw_dx   = slope[cnt]; cnt++;
     //const Real dp_dx   = slope[cnt]; cnt++;
-    const Real dT_dx   = slope[cnt]; cnt++;
+    const Real dT_dx = slope[cnt]; cnt++;
 
 #if AMREX_SPACEDIM >= 2
     //const Real drho_dy = slope[cnt]; cnt++;
@@ -356,7 +356,7 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
     //const Real dv_dy   = slope[cnt]; cnt++;
     //const Real dw_dy   = slope[cnt]; cnt++;
     //const Real dp_dy   = slope[cnt]; cnt++;
-    const Real dT_dy   = slope[cnt]; cnt++;
+    const Real dT_dy = slope[cnt]; cnt++;
 #else
     const Real drho_dy=0, du_dy=0, dv_dy=0, dw_dy=0, dp_dy=0, dT_dy=0;
 #endif
@@ -367,7 +367,7 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
     //const Real dv_dz   = slope[cnt]; cnt++;
     //const Real dw_dz   = slope[cnt]; cnt++;
     //const Real dp_dz   = slope[cnt]; cnt++;
-    //const Real dT_dz   = slope[cnt]; cnt++;
+    const Real dT_dz = slope[cnt]; cnt++;
 #else
     const Real drho_dz=0, du_dz=0, dv_dz=0, dw_dz=0, dp_dz=0, dT_dz=0;
 #endif
@@ -409,53 +409,56 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
         Print() << "\nT_b = " + std::to_string(T_b);
     }
 
+
     //Braginskii directionality stuff.  
-    Real dot_B_unit_TG, dot_B_unit_U ;//temp variables
-
-    dot_B_unit_U = bx_pp*du + by_pp*dv + bz_pp*dw;
-    dot_B_unit_TG = bx_pp*dT_dx + by_pp*dT_dy + bz_pp*dT_dz;
-
-    for (int i_disp = 0; i_disp < 3; ++i_disp) {//i_disp - i disposable 
-      u_para[i_disp] = B_unit[i_disp]*dot_B_unit_U ;
-      TG_para[i_disp]= B_unit[i_disp]*dot_B_unit_TG ;
-      if (i_disp==0){
-        u_perp[i_disp] = du - u_para[0]; // couuld be automated with 
-                                                // index = prim_vel_id[0] + i_disp 
-        u_chev[i_disp] = B_unit[1]*dw-B_unit[2]*dv;
-        TG_perp[i_disp]= dT_dx - TG_para[0];  //...automated with dT_i vector...
-        TG_chev[i_disp]= B_unit[1]*dT_dz-B_unit[2]*dT_dy;
+    if (GD::braginskii_anisotropic) {    
+      Real dot_B_unit_TG, dot_B_unit_U ;//temp variables
+  
+      dot_B_unit_U = bx_pp*du + by_pp*dv + bz_pp*dw;
+      dot_B_unit_TG = bx_pp*dT_dx + by_pp*dT_dy + bz_pp*dT_dz;
+  
+      for (int i_disp = 0; i_disp < 3; ++i_disp) {//i_disp - i disposable 
+        u_para[i_disp] = B_unit[i_disp]*dot_B_unit_U ;
+        TG_para[i_disp]= B_unit[i_disp]*dot_B_unit_TG ;
+        if (i_disp==0){
+          u_perp[i_disp] = du - u_para[0]; // couuld be automated with 
+                                                  // index = prim_vel_id[0] + i_disp 
+          u_chev[i_disp] = B_unit[1]*dw-B_unit[2]*dv;
+          TG_perp[i_disp]= dT_dx - TG_para[0];  //...automated with dT_i vector...
+          TG_chev[i_disp]= B_unit[1]*dT_dz-B_unit[2]*dT_dy;
+        }
+        else if (i_disp==1) {
+          u_perp[1] = dv - u_para[1];
+          u_chev[1] = -(B_unit[0]*dw-B_unit[2]*du);
+          TG_perp[1] = dT_dy - TG_para[1];
+          TG_chev[1]= -(B_unit[0]*dT_dz-B_unit[2]*dT_dx);
+        }
+        else {
+          u_perp[i_disp] = dw - u_para[2];
+          u_chev[i_disp] = B_unit[0]*dv-B_unit[1]*du;
+          TG_perp[i_disp] = dT_dz - TG_para[2];
+          TG_chev[i_disp]= B_unit[0]*dT_dy-B_unit[1]*dT_dx;
+        }
       }
-      else if (i_disp==1) {
-        u_perp[1] = dv - u_para[1];
-        u_chev[1] = -(B_unit[0]*dw-B_unit[2]*du);
-        TG_perp[1] = dT_dy - TG_para[1];
-        TG_chev[1]= -(B_unit[0]*dT_dz-B_unit[2]*dT_dx);
+      if (GD::verbose > 4) {
+        Print() << "\nBunit\t" << B_unit[0] << "\nBunit\t" << B_unit[1] 
+                << "\nBunit\t" << B_unit[2] << "\n";
+        Print() << "u_rel\t" << du << "\nu_rel\t" << dv << "\nu_rel\t" << dw << "\n";
+        Print() << "dot_B_unit_U\t" << dot_B_unit_U << "\n";
+        Print() << "dot_B_unit_TG\t" << dot_B_unit_TG << "\n";
+        Print() << "u_para[0]\t" << u_para[0] << "\nu_para\t" << u_para[1] 
+                << "\nu_para\t" << u_para[2] << "\n";
+        Print() << "u_perp[0]\t" << u_perp[0] << "\nu_perp\t" << u_perp[1] 
+                << "\nu_perp\t" << u_perp[2] << "\n";  
+        Print() << "u_chev[0]\t" << u_chev[0] << "\nu_chev[1]\t" << u_chev[1] 
+                << "\nu_chev[2]\t" << u_chev[2] << "\n";
+        Print() << "TG_para[0]\t" << TG_para[0] << "\nTG_para[1]\t" << TG_para[1] 
+                << "\nTG_para[2]\t" << TG_para[2] << "\n";
+        Print() << "TG_perp[0]\t" << TG_perp[0] << "\nTG_perp[1]\t" << TG_perp[1] 
+                << "\nTG_perp[2]\t" << TG_perp[2] << "\n";
+        Print() << "TG_chev[0]\t" << TG_chev[0] << "\nTG_chev[1]\t" << TG_chev[1]   
+                << "\nTG_chev[2]\t" << TG_chev[2] << "\n";
       }
-      else {
-        u_perp[i_disp] = dw - u_para[2];
-        u_chev[i_disp] = B_unit[0]*dv-B_unit[1]*du;
-        TG_perp[i_disp] = dT_dz - TG_para[2];
-        TG_chev[i_disp]= B_unit[0]*dT_dy-B_unit[1]*dT_dx;
-      }
-    }
-    if (GD::verbose > 4) {
-      Print() << "\nBunit\t" << B_unit[0] << "\nBunit\t" << B_unit[1] 
-              << "\nBunit\t" << B_unit[2] << "\n";
-      Print() << "u_rel\t" << du << "\nu_rel\t" << dv << "\nu_rel\t" << dw << "\n";
-      Print() << "dot_B_unit_U\t" << dot_B_unit_U << "\n";
-      Print() << "dot_B_unit_TG\t" << dot_B_unit_TG << "\n";
-      Print() << "u_para[0]\t" << u_para[0] << "\nu_para\t" << u_para[1] 
-              << "\nu_para\t" << u_para[2] << "\n";
-      Print() << "u_perp[0]\t" << u_perp[0] << "\nu_perp\t" << u_perp[1] 
-              << "\nu_perp\t" << u_perp[2] << "\n";  
-      Print() << "u_chev[0]\t" << u_chev[0] << "\nu_chev[1]\t" << u_chev[1] 
-              << "\nu_chev[2]\t" << u_chev[2] << "\n";
-      Print() << "TG_para[0]\t" << TG_para[0] << "\nTG_para[1]\t" << TG_para[1] 
-              << "\nTG_para[2]\t" << TG_para[2] << "\n";
-      Print() << "TG_perp[0]\t" << TG_perp[0] << "\nTG_perp[1]\t" << TG_perp[1] 
-              << "\nTG_perp[2]\t" << TG_perp[2] << "\n";
-      Print() << "TG_chev[0]\t" << TG_chev[0] << "\nTG_chev[1]\t" << TG_chev[1]   
-              << "\nTG_chev[2]\t" << TG_chev[2] << "\n";
     }
     //---------------Braginskii Momentum source 
     Real alpha_0, alpha_1, alpha_2, beta_0, beta_1, beta_2, t_c_a;
@@ -471,15 +474,26 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
               << "\nt_c_a\t" << t_c_a << "\n";
     }
     Vector<Real> R_u(3), R_T(3);
+    if (GD::braginskii_anisotropic) {
     //frictional force
-    R_u[0] = -alpha_0*u_para[0] - alpha_1*u_perp[0] + alpha_2*u_chev[0];
-    R_u[1] = -alpha_0*u_para[1] - alpha_1*u_perp[1] + alpha_2*u_chev[1];
-    R_u[2] = -alpha_0*u_para[2] - alpha_1*u_perp[2] + alpha_2*u_chev[2];
-    //Thermal force
-    //Print() << "\nR_T set to zero\n";
-    R_T[0] = -beta_0*TG_para[0] - beta_1*TG_perp[0] - beta_2*TG_chev[0];
-    R_T[1] = -beta_0*TG_para[1] - beta_1*TG_perp[1] - beta_2*TG_chev[1];
-    R_T[2] = -beta_0*TG_para[2] - beta_1*TG_perp[2] - beta_2*TG_chev[2];
+      R_u[0] = -alpha_0*u_para[0] - alpha_1*u_perp[0] + alpha_2*u_chev[0];
+      R_u[1] = -alpha_0*u_para[1] - alpha_1*u_perp[1] + alpha_2*u_chev[1];
+      R_u[2] = -alpha_0*u_para[2] - alpha_1*u_perp[2] + alpha_2*u_chev[2];
+      //Thermal force
+      //Print() << "\nR_T set to zero\n";
+      R_T[0] = -beta_0*TG_para[0] - beta_1*TG_perp[0] - beta_2*TG_chev[0];
+      R_T[1] = -beta_0*TG_para[1] - beta_1*TG_perp[1] - beta_2*TG_chev[1];
+      R_T[2] = -beta_0*TG_para[2] - beta_1*TG_perp[2] - beta_2*TG_chev[2];
+    } else {
+      R_u[0] = -alpha_0*du;
+      R_u[1] = -alpha_0*dv;
+      R_u[2] = -alpha_0*dw;
+      //Thermal force
+      //Print() << "\nR_T set to zero\n";
+      R_T[0] = -beta_0*dT_dx;
+      R_T[1] = -beta_0*dT_dy;
+      R_T[2] = -beta_0*dT_dz;
+    }
     //Thermal equilibration
     Real Q_delta = 3*m_a/m_b*n_a/t_c_a*(T_a-T_b);
     Real Q_fric  = (R_u[0]+R_T[0])*du + (R_u[1]+R_T[1])*dv + (R_u[2]+R_T[2])*dw;
@@ -602,14 +616,20 @@ void BraginskiiSource::get_alpha_beta_coefficients(Real mass_e, Real T_e, Real c
   Real a_0 = 0.5129, a_0_p =1.837, a_1_p =6.416, a_0_pp =0.7796, a_1_pp =1.704;
 
   alpha_0 = mass_e*nd_e/t_c_e*a_0;
-  alpha_1 = mass_e*nd_e/t_c_e*( 1 - (a_1_p*x_coef*x_coef + a_0_p)/delta_coef);
-  alpha_2 = mass_e*nd_e/t_c_e*x_coef*(a_1_pp*x_coef*x_coef+a_0_pp)/delta_coef;
+
+  if (GD::braginskii_anisotropic) {    
+    alpha_1 = mass_e*nd_e/t_c_e*( 1 - (a_1_p*x_coef*x_coef + a_0_p)/delta_coef);
+    alpha_2 = mass_e*nd_e/t_c_e*x_coef*(a_1_pp*x_coef*x_coef+a_0_pp)/delta_coef;
+  } else { alpha_1 = 0; alpha_2 = 0;}
 
   Real b_0 = 0.711, b_0_pp = 3.053, b_0_p=2.681, b_1_p=5.101, b_1_pp=3./2.;
   
   beta_0 = nd_e*b_0;
+  if (GD::braginskii_anisotropic) {    
   beta_1 = nd_e*(b_1_p*x_coef*x_coef+b_0_p)/delta_coef;
   beta_2 = nd_e*x_coef*(b_1_pp*x_coef*x_coef+b_0_pp)/delta_coef;
+  } else { beta_1 = 0; beta_2 = 0; }
+
   if  (false && GD::verbose >= 4) {
     Print() << "1/tau_e\t" << 1/t_c_e << "\nomega_ce\t" << omega_ce 
         << "\nomega_p\t" << omega_p << "\nmass_e\t" << mass_e << "\nnd_e\t" << nd_e << "\n";

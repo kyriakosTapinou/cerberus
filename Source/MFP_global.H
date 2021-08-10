@@ -105,6 +105,7 @@ public:
 
     // Parameters
     static int srin_switch; //only used for braginskii source and fluxes to turn on or off srinivassan's collision switch
+    static int braginskii_anisotropic; //only used for braginskii source and fluxes to use isotropic or anisotropic braginskii formulation
     static int verbose;
     static int linear_solver_verbosity;
     static IntVect tile_size;

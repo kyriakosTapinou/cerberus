@@ -27,6 +27,10 @@ verbosity = 0
 linear_solver_verbosity = 0
 
 cfl = 0.0
+-- options for using the braginskii source terms and/or viscous affects
+srin_switch = 0 --don't use srinivassans switch i.e. 0 - don't set collision time scales to min of omega_p and omega_c if much smaller than both
+                --                                   1 - set collision time scales to min of omega_p and omega_c if much smaller than both
+braginskii_anisotropic = 0; -- 0 - use isotropic braginskii transport coefficients, 1 - use the anisotropic transport coefficients.
 
 -- refine around cutcells
 refine_cutcells = 0
@@ -184,6 +188,7 @@ Valid options for a hydro state are:
     reasonable results
     e.g. viscosity={Prandtl=0.72, mu0=1.716e-5, T0=273, n=2/3, type='PowerLaw'}           --> power law
     e.g. viscosity = {Prandtl=0.72, mu0=1.7894e-5, T0=273.11, S=110.563, type='Sutherland'} --> Sutherland
+    e.g. --> Braginskii classical transport viscosity DOESNT WORK
 
     optional 'cfl' variable scales the reported maximum wave speed due to viscosity
 
