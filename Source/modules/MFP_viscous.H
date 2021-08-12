@@ -173,7 +173,8 @@ public:
     NUM_ION_DIFF_COEFFS
   };
 
-  Real mu_0, T0, BT;
+  Real mu_0, T0, BT, forceViscosityValue;
+  bool forceViscosity;
   Real T_i,eta0,eta1,eta2,eta3,eta4,kappa1,kappa2,kappa3;
 
   int linked_electron, linked_em;
@@ -194,7 +195,7 @@ public:
   static bool valid_state(const int idx);
   virtual const std::string& get_tag() const override {return tag;}
   virtual const std::map<std::string, Real> get_refs() const override {
-      return {{"mu_0", mu_0},{"T0", T0}, {"BT",BT}};
+      return {{"cfl", cfl}, {"forceViscosity",forceViscosity},{"forceViscosityValue",forceViscosityValue} };
   }
   static bool registered;
   static std::string tag;
@@ -226,7 +227,9 @@ public:
     NUM_ELE_DIFF_COEFFS
   };
 
-  Real mu_0, T0, BT;
+  Real mu_0, T0, BT, forceViscosityValue;
+  bool forceViscosity;
+
   Real T_e,eta0,eta1,eta2,eta3,eta4,kappa1,kappa2,kappa3,beta1,beta2,beta3;
 
   int linked_ion, linked_em;
@@ -248,7 +251,7 @@ public:
   static bool valid_state(const int idx);
   virtual const std::string& get_tag() const override {return tag;}
   virtual const std::map<std::string, Real> get_refs() const override {
-      return {{"mu_0", mu_0},{"T0", T0}, {"BT",BT}};
+      return {{"cfl", cfl}, {"forceViscosity",forceViscosity},{"forceViscosityValue",forceViscosityValue} };
   }
   static bool registered;
   static std::string tag;

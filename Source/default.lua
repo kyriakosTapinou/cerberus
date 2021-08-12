@@ -188,7 +188,7 @@ Valid options for a hydro state are:
     reasonable results
     e.g. viscosity={Prandtl=0.72, mu0=1.716e-5, T0=273, n=2/3, type='PowerLaw'}           --> power law
     e.g. viscosity = {Prandtl=0.72, mu0=1.7894e-5, T0=273.11, S=110.563, type='Sutherland'} --> Sutherland
-    e.g. --> Braginskii classical transport viscosity DOESNT WORK
+    e.g. viscosity = {mu0=1.7894e-5, T0=273.11, BT=1, cfl=cfl_viscous, type='BraginskiiEle'},--> Braginskii classical transport viscosity DOESNT WORK
 
     optional 'cfl' variable scales the reported maximum wave speed due to viscosity
 
@@ -354,6 +354,9 @@ where anything in [] is something to be defined and can be so as follows:
   - UDF : user defined, supply a constant or function for any of the conserved variables in a 'value' list (like for initial conditions)
   - acceleration : bulk acceleration defined by a constant or a function that has access to location and time, i.e. {type='acceleration', x=func(), y=1, z=0}
   - current : current source defined by a constant or a function that has access to location and time, i.e. {type='current', x=func(), y=1, z=0}
+  - braginskii : braginskii source terms definig the exchanges between different species due to coulomb collisions, temperature gradients, and thermal equulibriation
+               : e.g. braginskii={'ions', 'electrons', 'field', type='braginskii', reconstruction='vanLeer',}
+
 
 [names_of_states] = any of the available named states, defined in the 'states' list
 

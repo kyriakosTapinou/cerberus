@@ -234,7 +234,7 @@ void State::set_viscosity()
     state_def["global_idx"] = global_idx;
 
     std::string visc = state_def["viscosity"]["type"].get_or<std::string>("");
-
+    Print() << "\nln 237 - " << visc ;
     viscous = vfact.Build(visc, state_def);
 
     if (!visc.empty() && !viscous)

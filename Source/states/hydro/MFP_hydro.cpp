@@ -2982,7 +2982,6 @@ void HydroState::IsotropicBraginskiiViscousTensorHeatFlux(int passed_idx,
             Strain[i_disp][j_disp] = - Strain[i_disp][j_disp] ; //make negtive for Li Livescue
         }
     }
-
     ViscStress[0][0] = faceCoefficients[iEta0]*Strain[0][0];
     
     ViscStress[0][1] = faceCoefficients[iEta0]*Strain[0][1];

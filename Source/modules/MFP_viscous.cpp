@@ -249,6 +249,9 @@ BraginskiiIon::BraginskiiIon(const int global_idx, const sol::table& def)
 
     idx = global_idx;
 
+    forceViscosity = def["forceViscosity"];
+    forceViscosityValue = def["forceViscosityValue"];
+    Print() << "\n====forceViscosity====\t" << forceViscosity << "\n====forceViscosityValue====\t" << forceViscosityValue ;
     cfl = def.get_or("cfl",1.0); 
     //Print() << "\nln 253 - cfl viscous ion: " << cfl << "\n"; 
 }
@@ -292,7 +295,6 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
                                    Real& eta1,Real& eta2,Real& eta3,Real& eta4,
                                    Real& kappa1,Real& kappa2,Real& kappa3, int& truncatedTau){
     BL_PROFILE("BraginskiiIon::get_ion_coeffs");
-
     truncatedTau = 0;
     Real mass_i,mass_e,charge_i,charge_e,T_e,nd_i,nd_e,alpha_e,alpha_i;
     State &istate = GD::get_state(idx);
@@ -364,7 +366,10 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
     delta_eta   = x_coef*x_coef*x_coef*x_coef + 4.030*x_coef*x_coef + 2.330;
     delta_eta2  = 16*x_coef*x_coef*x_coef*x_coef + 4*4.030*x_coef*x_coef + 2.330;
 
-    eta0 = 0.96*nd_i*T_i*t_collision_ion ;//* n0_ref;
+    //assign viscosity value 
+    if (forceViscosity) eta0 = forceViscosityValue;
+    else eta0 = 0.96*nd_i*T_i*t_collision_ion ;//* n0_ref;
+    //Print() << "Ion eta0:\t" << eta0 << "\n";
     if (GD::braginskii_anisotropic) {
       eta2 = nd_i*T_i*t_collision_ion*(6./5.*x_coef*x_coef+2.23)/delta_eta;
       eta1 = nd_i*T_i*t_collision_ion*(6./5.*(2*x_coef)*(2*x_coef)+2.23)/delta_eta2;
@@ -532,7 +537,10 @@ Real BraginskiiIon::get_max_speed(const Vector<Vector<amrex::Real>>&U) {
     delta_eta   = x_coef*x_coef*x_coef*x_coef + 4.030*x_coef*x_coef + 2.330;
     delta_eta2  = 16*x_coef*x_coef*x_coef*x_coef + 4*4.030*x_coef*x_coef + 2.330;
 
-    eta0 = 0.96*nd_i*T_i*t_collision_ion ;//* n0_ref;
+    //assign viscosity value 
+    if (forceViscosity) eta0 = forceViscosityValue;
+    else eta0 = 0.96*nd_i*T_i*t_collision_ion ;//* n0_ref;
+
     if (GD::braginskii_anisotropic) {
       eta2 = nd_i*T_i*t_collision_ion*(6./5.*x_coef*x_coef+2.23)/delta_eta;
       eta1 = nd_i*T_i*t_collision_ion*(6./5.*(2*x_coef)*(2*x_coef)+2.23)/delta_eta2;
@@ -681,6 +689,9 @@ BraginskiiEle::BraginskiiEle(const int global_idx, const sol::table& def)
 
     idx = global_idx;
 
+    forceViscosity = def["forceViscosity"];
+    forceViscosityValue = def["forceViscosityValue"];
+    Print() << "\n====forceViscosity====\t" << forceViscosity << "\n====forceViscosityValue====\t" << forceViscosityValue ;
     cfl = def.get_or("cfl",1.0);
     //Print() << "\nln 656 - cfl viscous ele: " << cfl << "\n";
 }
@@ -798,7 +809,9 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
     //Print() << "nd_e  = " << nd_e << "\tT_e = " << T_e << "\tt_collision_ele = " 
     //        << t_collision_ele << "\n";
 
-    eta0 = 0.733*nd_e *T_e * t_collision_ele;
+    if (forceViscosity) eta0 = forceViscosityValue;
+    else eta0 = 0.733*nd_e *T_e * t_collision_ele;
+    //Print() << "Ele eta0:\t" << eta0 << "\n";
     if (GD::braginskii_anisotropic) {
       eta2 = nd_e *T_e*t_collision_ele*(2.05*x_coef*x_coef+8.5)/delta_eta;
       eta1 = nd_e *T_e*t_collision_ele*(2.05*(2*x_coef)*(2*x_coef)+8.5)/delta_eta2;
@@ -966,7 +979,9 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
     delta_eta  = x_coef*x_coef*x_coef*x_coef+13.8*x_coef*x_coef + 11.6;
     delta_eta2 = 16*x_coef*x_coef*x_coef*x_coef+4*13.8*x_coef*x_coef + 11.6;
 
-    eta0 = 0.733*nd_e *T_e * t_collision_ele;
+    if (forceViscosity) eta0 = forceViscosityValue;
+    else eta0 = 0.733*nd_e *T_e * t_collision_ele;
+
     if (GD::braginskii_anisotropic) {
       eta2 = nd_e *T_e*t_collision_ele*(2.05*x_coef*x_coef+8.5)/delta_eta;
       eta1 = nd_e *T_e*t_collision_ele*(2.05*(2*x_coef)*(2*x_coef)+8.5)/delta_eta2;
