@@ -2207,6 +2207,7 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                 //--- retrive the viscous stress tensor and heat flux vector on this face
 
                 //TODO Print() << "Check changes to BRaginskiiViscousTensor... and calculation of xB, .. on interfaces are correct.";
+                //Print() << "braginskii_anisotropic\t" << GD::braginskii_anisotropic << "\n";
                 if (GD::braginskii_anisotropic) BraginskiiViscousTensorHeatFlux(passed_idx, ion_idx, electron_idx, em_idx, i, j, k, box, dxinv,
                                                 xB, yB, zB, u_rel, dTdx, dTdy, dTdz,
                                                 dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, dwdy, dwdz,
@@ -2457,6 +2458,7 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
                                                  Vector<Real>& ViscTens,
                                                  Vector<Real>& q_flux) const {
     BL_PROFILE("HydroState::BraginskiiViscousTensorHeatFlux");
+    //Print() << "braginskii anisotropic function\n";
     //Note all the properties used in here need to be for the interface, not just the cell i!!!
     if (GD::verbose > 4) {
       Print() << "dudx\t" << dudx << "\ndudy\t" << dudy << "\ndudz\t" << dudz 
@@ -2734,6 +2736,7 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
       //Populate the transformation matrix from cartesian normal to B unit
       // aligned cartesian - Li 2018
 
+      //Print() << "braginskii anisotropic matrix transforms executed\n";
       Trans[0][0]=-by_p; Trans[0][1]=-bx_p*bz_pp; Trans[0][2]=bx_pp;
   
       Trans[1][0]= bx_p; Trans[1][1]=-by_p*bz_pp; Trans[1][2] = by_pp;
@@ -2890,6 +2893,7 @@ void HydroState::IsotropicBraginskiiViscousTensorHeatFlux(int passed_idx,
     BL_PROFILE("HydroState::IsotropicBraginskiiViscousTensorHeatFlux");
     //Note all the properties used in here need to be for the interface, not just the cell i!!!
 
+    //Print() << "braginskii anisotropic function\n";
     //---Sorting out indexing and storage access
     const Dim3 lo = amrex::lbound(box);
     const Dim3 hi = amrex::ubound(box);
