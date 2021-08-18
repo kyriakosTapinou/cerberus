@@ -2463,19 +2463,6 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
               << "\ndvdx\t" << dvdx << "\ndvdy\t" << dvdy << "\ndvdz\t" << dvdz
               << "\ndwdx\t" << dwdx << "\ndwdy\t" << dwdy << "\ndwdz\t" << dwdz << "\n";
     }
-
-    //--- choose index extensions depending on the direction
-    /*
-    int x_hi=0, x_lo=0, y_hi=0, y_lo=0, z_hi=0, z_lo=0;
-    if (flux_dim == 0) {
-      x_hi = 1; x_lo = 0;
-     } else if (flux_dim == 1) {
-      y_hi = 1; y_lo = 0;
-     } else {
-      z_hi = 1; z_lo = 0;
-    }
-    */
-
     //---Sorting out indexing and storage access
     const Dim3 lo = amrex::lbound(box);
     const Dim3 hi = amrex::ubound(box);
@@ -2691,9 +2678,9 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
         Print() << "Test each of the B field conditions to try break the code";
     }
 
-      // Do we have a special case of B=0 or Bx=By=0 and Bz = B?
-    if (1) { //(B < GD::effective_zero) { // #####################Note for now we are hard coding for non-gyro viscosity.
-      if (GD::verbose >= 9) {
+    // Do we have a special case of B=0 or Bx=By=0 and Bz = B?
+    if (B < GD::effective_zero) { // B = 0
+      if (GD::verbose >= 2) {
         Print() << "\nHard coded non-hyro viscosity\n";
       }
 
@@ -2712,7 +2699,7 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
       ViscStress[2][2] = faceCoefficients[iEta0]*Strain[2][2];
 
     } else if ( (std::abs(xB) < GD::effective_zero) && (std::abs(yB) < GD::effective_zero) &&
-                    (std::abs(zB) > GD::effective_zero) ) {
+                    (std::abs(zB) > GD::effective_zero) ) { //B aligned with z direction
       ViscStress[0][0]=-1/2*faceCoefficients[iEta0]*
               (Strain[0][0] + Strain[1][1])
               -1/2*faceCoefficients[iEta1]*
