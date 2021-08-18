@@ -167,7 +167,7 @@ void GlobalData::read_config(const Vector<int> &is_periodic, const bool plot_out
     verbose = lua["verbosity"];
     srin_switch = lua["srin_switch"];
     braginskii_anisotropic = lua["braginskii_anisotropic"];
-
+    Print() << "==========\nsrin_switch:\t" << srin_switch << "\nbraginskii_anisotropic:\t" << braginskii_anisotropic << "==========\n" ;
     linear_solver_verbosity = lua["linear_solver_verbosity"];
 
     //
