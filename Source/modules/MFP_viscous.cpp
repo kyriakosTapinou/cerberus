@@ -335,7 +335,7 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
     omega_p  = std::sqrt(nd_i*charge_i*charge_i/mass_i/Debye/Debye) ;
 
     if (1/t_collision_ion < GD::effective_zero) {
-        if (false && GD::verbose > 1) {
+        if (true && GD::verbose > 1) {
             Print() << "Less than effective zero\t1/tau_i = " << 1/t_collision_ion << "\tomega_ci = " 
                     << omega_ci << "\tomega_p = " << omega_p << "\n"; 
         }
@@ -346,7 +346,7 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
     }
 
     if (GD::srin_switch && (1/t_collision_ion < omega_ci/10/2/3.14159) && (1/t_collision_ion < omega_p/10/2/3.14159)) {
-        if (GD::verbose >= 2) {
+        if (GD::verbose > 1) {
         //   Print() << "\nMFP_viscous.cpp ln 334 --- Ion collision frequency limited to minimum of plasma and cyclotron frequency\n";
             Print() << "1/tau_i = " << 1/t_collision_ion << "\tomega_ci = "  
                   << omega_ci << "\tomega_p = " << omega_p << "\n"; 
@@ -375,7 +375,7 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
       eta1 = nd_i*T_i*t_collision_ion*(6./5.*(2*x_coef)*(2*x_coef)+2.23)/delta_eta2;
       eta4 = nd_i*T_i*t_collision_ion*x_coef*(x_coef*x_coef + 2.38)/delta_eta;
       eta3 = nd_i*T_i*t_collision_ion*(2*x_coef)*((2*x_coef)*(2*x_coef) + 2.38)/delta_eta2;
-      if (x_coef < 1e-8 ) {
+      if ((x_coef < 1e-8 ) && (omega_ci > GD::effective_zero)) {
         eta2 = eta2/x_coef/x_coef;
         eta1 = eta1/x_coef/x_coef;
         eta4 = eta4/x_coef;
@@ -386,11 +386,6 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
       eta4 = 0;
       eta3 = 0; }
 
-    if (GD::verbose >= 9 ) {
-        Print() << "\nIon 5 dynamic viscosity coefficients\t" << eta0 <<"\t" << eta1 
-                <<"\t" << eta2 <<"\t" << eta3 <<"\t" << eta4 << "\n"; 
-    }
-    //
     if ((eta0<0) || (eta1<0) || (eta2<0) || (eta3<0) || (eta4<0)) {
         if (eta0<=0) {
           Print() << "\neta0 = " << eta0 << "\n";
@@ -420,7 +415,7 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
     } else {kappa2 = 0; kappa3 = 0; }
 
     //TODO remove after comparison to plasmapy
-    if (false && GD::verbose >= 1) {
+    if (true && GD::verbose > 1) {
         Print() << "\n\nIon viscous coefficients and thermal conductivity coefficients";
         Print() << "\nnd_i = " << nd_i << "\tT_i = " << T_i << "\tt_i = " << t_collision_ion ;
         Print() << "\neta0 = " << eta0 ;
@@ -546,7 +541,7 @@ Real BraginskiiIon::get_max_speed(const Vector<Vector<amrex::Real>>&U) {
       eta1 = nd_i*T_i*t_collision_ion*(6./5.*(2*x_coef)*(2*x_coef)+2.23)/delta_eta2;
       eta4 = nd_i*T_i*t_collision_ion*x_coef*(x_coef*x_coef + 2.38)/delta_eta;
       eta3 = nd_i*T_i*t_collision_ion*(2*x_coef)*((2*x_coef)*(2*x_coef) + 2.38)/delta_eta2;
-      if (x_coef < 1e-8 ) {
+      if ((x_coef < 1e-8 ) && (omega_ci > GD::effective_zero)) {
         eta2 = eta2/x_coef/x_coef;
         eta1 = eta1/x_coef/x_coef;
         eta4 = eta4/x_coef;
@@ -779,7 +774,7 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
     omega_p  = std::sqrt(nd_e*charge_e*charge_e/mass_e/Debye/Debye) ;
 
     if (1/t_collision_ele < GD::effective_zero) {
-        if (false and GD::verbose > 1) {
+        if (true and GD::verbose > 1) {
             Print() << "1/tau_e = " << 1/t_collision_ele << "\tomega_ce = "
                     << omega_ce << "\tomega_p = " << omega_p << "\n";
         }
@@ -789,7 +784,7 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
     }
 
     if (GD::srin_switch && (1/t_collision_ele < omega_ce/10/2/3.14159) && (1/t_collision_ele < omega_p/10/2/3.14159)) {
-        if (GD::verbose >= 2 ) { //TODO bebug the limiting function - just use a delta value for any potential divide by zeros
+        if (GD::verbose > 1 ) { //TODO bebug the limiting function - just use a delta value for any potential divide by zeros
             //Print() << "\nMFP_viscous.cpp ln 658 --- Electron collision frequency limited to minimum of plasma and cyclotron frequency\n";
             Print() << "1/tau_e = " << 1/t_collision_ele << "\tomega_ce = "
                   << omega_ce << "\tomega_p = " << omega_p << "\n";
@@ -817,7 +812,7 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
       eta1 = nd_e *T_e*t_collision_ele*(2.05*(2*x_coef)*(2*x_coef)+8.5)/delta_eta2;
       eta4 = -nd_e*T_e*t_collision_ele*x_coef*(x_coef*x_coef+7.91)/delta_eta;
       eta3 = -nd_e*T_e*t_collision_ele*(2*x_coef)*((2*x_coef)*(2*x_coef)+7.91)/delta_eta2;
-      if (x_coef < 1e-8 ) {
+      if ((x_coef < 1e-8 ) && (omega_ce > GD::effective_zero)) {
         eta2 = eta2/x_coef/x_coef;
         eta1 = eta1/x_coef/x_coef;
         eta4 = eta4/x_coef;
@@ -828,10 +823,6 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
       eta4 = 0;
       eta3 = 0; }
 
-    if (GD::verbose >= 9 ) {
-        Print() << "\nElectron 5 dynamic viscosity coefficients\t" <<  eta0 << "\t" 
-                <<  eta1 << "\t" <<  eta2 << "\t" <<  eta3 << "\t" <<  eta4 << "\n"; 
-    }
     //maybe benchmark to see if pow should be used idunnobruda
 
     //From Braginskii OG paper page 250 of paper in journal heading 4
@@ -849,7 +840,7 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
     } else {kappa2 = 0; kappa3 = 0;}
 
     //TODO remove after comparison to plasmapy
-    if (false && GD::verbose >= 1) {
+    if (true && GD::verbose > 1) {
         Print() << "\n\nElectron viscous coefficients and thermal conductivity coefficients";
         Print() << "\nnd_e = " << nd_e << "\tT_e = " << T_e << "\tt_e = " << t_collision_ele ;
         Print() << "\neta0 = " << eta0 ;
@@ -973,6 +964,7 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
 
     Real delta_kappa, delta_eta, delta_eta2,x_coef;// coefficients used exclusively in the braginskii
     x_coef = omega_ce*t_collision_ele;
+    
     // TODO fix up these table 2 page 251 BT
     Real delta_0=3.7703, delta_1=14.79;
     delta_kappa= x_coef*x_coef*x_coef*x_coef+delta_1*x_coef*x_coef + delta_0;
@@ -987,7 +979,7 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
       eta1 = nd_e *T_e*t_collision_ele*(2.05*(2*x_coef)*(2*x_coef)+8.5)/delta_eta2;
       eta4 = -nd_e*T_e*t_collision_ele*x_coef*(x_coef*x_coef+7.91)/delta_eta;
       eta3 = -nd_e*T_e*t_collision_ele*(2*x_coef)*((2*x_coef)*(2*x_coef)+7.91)/delta_eta2;
-      if (x_coef < 1e-8 ) {
+      if ((x_coef < 1e-8 ) && (omega_ce > GD::effective_zero)) {
         eta2 = eta2/x_coef/x_coef;
         eta1 = eta1/x_coef/x_coef;
         eta4 = eta4/x_coef;

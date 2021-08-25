@@ -525,7 +525,7 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
     ydot[offset_b.solver + +HydroState::ConsIdx::Zmom] -= R_u[2]+R_T[2];
     ydot[offset_b.solver + +HydroState::ConsIdx::Eden] += Q_delta + Q_fric;
 
-    if (true && GD::verbose > 1) {
+    if (true && GD::verbose > 2) {
         Print() << "\nQ_fric\t" << Q_fric << "\nQ_delta\t" << Q_delta << "\n";
         for (int i_disp = 0; i_disp < 3; i_disp ++) {
             Print() << "R_u[" << i_disp << "]\t" << R_u[i_disp] << "\n";
@@ -587,14 +587,14 @@ void BraginskiiSource::get_alpha_beta_coefficients(Real mass_e, Real T_e, Real c
   //Real omega_ce =  -charge_e*std::sqrt( Bx*Bx + By*By + Bz*Bz )/mass_e/2/pi_num/Larmor; 
   Real omega_ce = -charge_e * std::sqrt( Bx*Bx + By*By + Bz*Bz ) / mass_e / Larmor; 
   Real omega_p  = std::sqrt(nd_e*charge_e*charge_e/mass_e/Debye/Debye) ;
-  if (false && GD::verbose > 1) {
+  if (false && GD::verbose > 2) {
       Print() << "\tt_c_e:\t" << t_c_e << "\n" ;
   }
 
   if (1/t_c_e < GD::effective_zero) t_c_e = 1/GD::effective_zero;
 
   if (GD::srin_switch && (1/t_c_e < omega_ce/10/2/pi_num) && (1/t_c_e < omega_p/10/2/pi_num)) {
-      if  (GD::verbose >= 2) {
+      if  (GD::verbose > 2) {
       Print() << "1/tau_e = " << 1/t_c_e << "\tomega_ce = " << omega_ce 
             << "\tomega_p = " << omega_p << "\n";
       }
@@ -602,7 +602,7 @@ void BraginskiiSource::get_alpha_beta_coefficients(Real mass_e, Real T_e, Real c
       t_c_e = 1/std::min(omega_ce/2/pi_num, omega_p/2/pi_num) ;
       //t_c_e = 1/( 1/t_c_e + GD::effective_zero);
 
-      if  (GD::verbose > 1) Print() << "1/tau_e correction: " << 1/t_c_e;
+      if  (GD::verbose > 2) Print() << "1/tau_e correction: " << 1/t_c_e;
   }
   if (false && GD::verbose > 1) Print() << "\t" << t_c_e << "\n";
  
@@ -635,7 +635,7 @@ void BraginskiiSource::get_alpha_beta_coefficients(Real mass_e, Real T_e, Real c
         << "\nomega_p\t" << omega_p << "\nmass_e\t" << mass_e << "\nnd_e\t" << nd_e << "\n";
   }
   //TODO remove after comparison with plasmapy braginskii
-  if (false && GD::verbose >= 1) {
+  if (false && GD::verbose >= 2) {
       Print() << "\n\nResistivity\nrhor_para\t" <<1/(nd_e*nd_e*charge_e*charge_e/alpha_0);
       Print() << "\nrhor_perp\t" << 1/(nd_e*nd_e*charge_e*charge_e/alpha_1);
       Print() << "\nrhor_chev\t" << 1/(nd_e*nd_e*charge_e*charge_e/alpha_2);

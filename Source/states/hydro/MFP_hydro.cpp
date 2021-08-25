@@ -1139,7 +1139,7 @@ void HydroState::calc_viscous_fluxes(const Box& box,
                                             dx);
                 break;
             case Viscous::Ion :
-                if (GD::verbose > 1) Print() << "\nIon viscous flux routine\n" ;
+                if (GD::verbose > 2) Print() << "\nIon viscous flux routine\n" ;
                 calc_ion_viscous_fluxes(box,
                                         fluxes,
                                         pbox,
@@ -1151,7 +1151,7 @@ void HydroState::calc_viscous_fluxes(const Box& box,
 
                 break;
             case Viscous::Electron :
-                if (GD::verbose > 1) Print() << "\nElectron viscous flux routine\n" ;
+                if (GD::verbose > 2) Print() << "\nElectron viscous flux routine\n" ;
                 calc_electron_viscous_fluxes(box,
                                              fluxes,
                                              pbox,
@@ -2128,7 +2128,7 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                     faceCoefficients[iBeta3] = 0.5*(d4(i,j,k,iBeta3)+d4(i-1,j,k,iBeta3));
                 }
                 //TODO remove this shit 
-                if (false && GD::verbose >= 1 ) Print() << "\ni, j, k\t" << i << " " << j << "\n";
+                if (false && GD::verbose >= 3 ) Print() << "\ni, j, k\t" << i << " " << j << "\n";
                 //TODO Print() << "\nKappa1 coefficient\ti, j, k\t" << i << " " << j << " " << k << " "  << d4(i,j,k,iKappa1) << "\tj\t" << d4(i-1,j,k,iKappa1) << "\n";
                 faceCoefficients[iKappa1] = 0.5*(d4(i,j,k,iKappa1)+d4(i-1,j,k,iKappa1));
                 faceCoefficients[iKappa2] = 0.5*(d4(i,j,k,iKappa2)+d4(i-1,j,k,iKappa2));
@@ -2140,7 +2140,7 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                 faceCoefficients[iEta3] = 0.5*(d4(i,j,k,iEta3)+d4(i-1,j,k,iEta3));
                 faceCoefficients[iEta4] = 0.5*(d4(i,j,k,iEta4)+d4(i-1,j,k,iEta4));
 
-                if (false && GD::verbose >= 4 ) {
+                if (false && GD::verbose >= 3 ) {
                   if (passed_idx == ion_idx) {
                         Print() << "\nIon coefficients - cell:\t" << i << "\t" << j 
                                 << "\t" << k << "\n";;
@@ -2170,7 +2170,7 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                 dTdx = (d4(i,j,k,iTemp) - d4(i-1,j,k,iTemp))*dxinv[0];
 
                 dudx = (p4(i,j,k,Xvel) - p4(i-1,j,k,Xvel))*dxinv[0];
-                if (GD::verbose > 4) {
+                if (GD::verbose > 2) {
                   Print() << "u_i\t" << p4(i,j,k,Xvel) << "\nu_i-1\t" << p4(i-1,j,k,Xvel) << "\n";
                 }
                 dvdx = (p4(i,j,k,Yvel) - p4(i-1,j,k,Yvel))*dxinv[0];
@@ -2199,7 +2199,7 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                 dvdz = (p4(i,j,k+1,Yvel)+p4(i,j-1,k+1,Yvel)-p4(i,j,k-1,Yvel)-p4(i,j-1,k-1,Yvel))*(0.25*dxinv[2]);
 #endif
                 divu = dudx + dvdy + dwdz;
-                if (GD::verbose>4) {
+                if (GD::verbose>2) {
                   Print() << "divu\t" << divu << "\n";
                 }
                 ///TODO hacks because of transform which needs to be turned into algebra...
@@ -2217,8 +2217,8 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                                                 dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, dwdy, dwdz,
                                                 faceCoefficients, ViscTens, q_flux);
 
-                if (true && GD::verbose > 1) Print() << "fluxX\ti, j, k: " << i << " " << j << " " << k << "\n";
-                if (false && GD::verbose >1) {
+                if (true && GD::verbose > 2) Print() << "fluxX\ti, j, k: " << i << " " << j << " " << k << "\n";
+                if (true && GD::verbose > 2) {
                   //Print()<<"Check sign tensor product of viscous stress tensor and velocity";
                   Print() << "i, j, k: " << i << " " << j << " " << k << "\nfluxX Xmom\t" << ViscTens[0] 
                           << "\tfluxX Ymom\t" <<  ViscTens[3]
@@ -2328,8 +2328,8 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                                                 dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, dwdy, dwdz,
                                                 faceCoefficients, ViscTens, q_flux);
 
-                if (true && GD::verbose > 1) Print() << "fluxY\ti, j, k: " << i << " " << j << " " << k << "\n";
-                if (false && GD::verbose >1) {
+                if (true && GD::verbose > 2) Print() << "fluxY\ti, j, k: " << i << " " << j << " " << k << "\n";
+                if (true && GD::verbose >2) {
                   //Print()<<"Check sign tensor product of viscous stress tensor and velocity";
                   Print() << "i, j, k: " << i << " " << j << " " << k << "\nfluxY Xmom\t" << ViscTens[0] 
                           << "\tfluxY Ymom\t" <<  ViscTens[3]
@@ -2341,9 +2341,7 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                           << "\tfluxX Eden q_flux\t" 
                           << q_flux[1] << "\n";
                 }
-                if (GD::verbose >4) {
-                  Print() << "Adding viscous terms to flux array";
-                }
+
                 fluxY(i,j,k,Xmom) += ViscTens[3];//tauxy;
                 fluxY(i,j,k,Ymom) += ViscTens[1];//tauyy;
                 fluxY(i,j,k,Zmom) += ViscTens[4];//tauyz;
@@ -2613,7 +2611,7 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
         q_flux[2] = faceCoefficients[iBeta1]*u_para[2] + faceCoefficients[iBeta2]*u_perp[2] + faceCoefficients[iBeta3]*u_chev[2]
                    -faceCoefficients[iKappa1]*TG_para[2] - faceCoefficients[iKappa2]*TG_perp[2] - faceCoefficients[iKappa3]*TG_chev[2];
 
-        if (true && GD::verbose > 1) {
+        if (true && GD::verbose > 2) {
             Print() << "ele kappa[i]\t" << faceCoefficients[iKappa1] << "\t" << faceCoefficients[iKappa2] << "\t" << faceCoefficients[iKappa3] << "\n";
             Print() << "\tTG_[0]\t" << TG_para[0] << "\t" << TG_perp[0] << "\t" << TG_chev[0] << "\n";
 
@@ -2639,7 +2637,7 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
 //#if AMREX_SPACEDIM == 3
         q_flux[2] = -faceCoefficients[iKappa1]*TG_para[2] - faceCoefficients[iKappa2]*TG_perp[2] + faceCoefficients[iKappa3]*TG_chev[2];
 
-        if (true && GD::verbose > 1) {
+        if (true && GD::verbose > 2) {
             Print() << "ion kappa[i]\t" << faceCoefficients[iKappa1] << "\t" << faceCoefficients[iKappa2] << "\t" << faceCoefficients[iKappa3] << "\n";
             Print() << "\tTG_[0]\t" << TG_para[0] << "\t" << TG_perp[0] << "\t" << TG_chev[0] << "\n";
             Print() << "\tTG_[1]\t" << TG_para[1] << "\t" << TG_perp[1] << "\t" << TG_chev[1] << "\n";
@@ -2669,10 +2667,6 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
         for (j_disp=0; j_disp<3; ++j_disp) {
             WorkingMatrix[i_disp][j_disp] = 0.;
             StrainTrans[i_disp][j_disp] = 0.;
-
-            if (GD::verbose > 1) Print() << "Livescue on ";
-                  
-            Strain[i_disp][j_disp] = - Strain[i_disp][j_disp] ; //make negtive for Li Livescue
         }
     }
 
@@ -2682,23 +2676,23 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
 
     // Do we have a special case of B=0 or Bx=By=0 and Bz = B?
     if (B < GD::effective_zero) { // B = 0
-      if (GD::verbose >= 2) {
+      if (GD::verbose > 2) {
         Print() << "\nHard coded non-hyro viscosity\n";
       }
 
-      ViscStress[0][0] = faceCoefficients[iEta0]*Strain[0][0];
+      ViscStress[0][0] = -faceCoefficients[iEta0]*Strain[0][0];
       
-      ViscStress[0][1] = faceCoefficients[iEta0]*Strain[0][1];
+      ViscStress[0][1] = -faceCoefficients[iEta0]*Strain[0][1];
       ViscStress[1][0] = ViscStress[0][1];
   
-      ViscStress[0][2] = faceCoefficients[iEta0]*Strain[0][2];
+      ViscStress[0][2] = -faceCoefficients[iEta0]*Strain[0][2];
       ViscStress[2][0] = ViscStress[0][2];
   
-      ViscStress[1][1] = faceCoefficients[iEta0]*Strain[1][1];
-      ViscStress[1][2] = faceCoefficients[iEta0]*Strain[1][2];
+      ViscStress[1][1] = -faceCoefficients[iEta0]*Strain[1][1];
+      ViscStress[1][2] = -faceCoefficients[iEta0]*Strain[1][2];
       ViscStress[2][1] = ViscStress[1][2];
   
-      ViscStress[2][2] = faceCoefficients[iEta0]*Strain[2][2];
+      ViscStress[2][2] = -faceCoefficients[iEta0]*Strain[2][2];
 
     } else if ( (std::abs(xB) < GD::effective_zero) && (std::abs(yB) < GD::effective_zero) &&
                     (std::abs(zB) > GD::effective_zero) ) { //B aligned with z direction
@@ -2775,7 +2769,6 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
               -1/2*faceCoefficients[iEta1]*
               (StrainTrans[0][0] - StrainTrans[1][1])
               -faceCoefficients[iEta3]*(StrainTrans[0][1]);
-      //check the removal of the negative sign before the second bracket in ViscStressTrans00 was not a mistake
       ViscStressTrans[0][1]=-faceCoefficients[iEta1]*StrainTrans[0][1]
               +1/2*faceCoefficients[iEta3]*
               (StrainTrans[0][0] - StrainTrans[1][1]);
@@ -2836,7 +2829,7 @@ void HydroState::BraginskiiViscousTensorHeatFlux(int passed_idx,
     ViscTens[4] = ViscStress[1][2];
     ViscTens[5] = ViscStress[0][2];
 
-    if (true && GD::verbose >= 1) {
+    if (true && GD::verbose >= 3) {
     /*
     Print() << "Bunit\t" << B_unit[0] << "\nBunit\t" << B_unit[1] << "\nBunit\t" << B_unit[2] << "\n";
 
@@ -2969,7 +2962,7 @@ void HydroState::IsotropicBraginskiiViscousTensorHeatFlux(int passed_idx,
 
     for (i_disp=0; i_disp<3; ++i_disp) { // set to zero
         for (j_disp=0; j_disp<3; ++j_disp) {
-            if (GD::verbose > 1) Print() << "Livescue on ";
+            if (GD::verbose > 2) Print() << "Livescue on ";
             Strain[i_disp][j_disp] = - Strain[i_disp][j_disp] ; //make negtive for Li Livescue
         }
     }
