@@ -177,6 +177,8 @@ int Plasma5::fun_rhs(Real x, Real y, Real z, Real t, Vector<Real> &y0, Vector<Re
         ydot[idx.solver + +HydroState::ConsIdx::Ymom] += (rho*r/Larmor)*(lightspeed*Ey + w*Bx - u*Bz);
         ydot[idx.solver + +HydroState::ConsIdx::Zmom] += (rho*r/Larmor)*(lightspeed*Ez + u*By - v*Bx);
         ydot[idx.solver + +HydroState::ConsIdx::Eden]  += (rho*r*lightspeed)/Larmor*(u*Ex + v*Ey + w*Ez);
+
+        if (GD::viewFluxSrcContributions == 1) Print() << "\tz-mom (q=" << q << ")\t" << (rho*r/Larmor)*(lightspeed*Ez + u*By - v*Bx) ;//TODO remove after debug 
     }
 
     // electric field and divergence constraint sources

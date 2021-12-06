@@ -9,7 +9,7 @@ import os, shutil
 from multiprocessing import Pool
 import subprocess, shlex
 from PIL import Image, ImageFont, ImageDraw
-
+import pdb 
 #==============================================================================
 #
 #==============================================================================

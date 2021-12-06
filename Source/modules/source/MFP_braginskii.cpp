@@ -525,6 +525,8 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
     ydot[offset_b.solver + +HydroState::ConsIdx::Zmom] -= R_u[2]+R_T[2];
     ydot[offset_b.solver + +HydroState::ConsIdx::Eden] += Q_delta + Q_fric;
 
+    if (GD::viewFluxSrcContributions == 1) Print() << "\tElectron\t" << R_u[2]+R_T[2] << "\tIon:\t" << -R_u[2]-R_T[2]; 
+
     if (true && GD::verbose > 2) {
         Print() << "\nQ_fric\t" << Q_fric << "\nQ_delta\t" << Q_delta << "\n";
         for (int i_disp = 0; i_disp < 3; i_disp ++) {

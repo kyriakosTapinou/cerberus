@@ -251,9 +251,8 @@ BraginskiiIon::BraginskiiIon(const int global_idx, const sol::table& def)
 
     forceViscosity = def["forceViscosity"];
     forceViscosityValue = def["forceViscosityValue"];
-    Print() << "\n====forceViscosity====\t" << forceViscosity << "\n====forceViscosityValue====\t" << forceViscosityValue ;
+    if (forceViscosity) Print() << "====WARNING - BraginskiiIon forceViscosity active\n";
     cfl = def.get_or("cfl",1.0); 
-    //Print() << "\nln 253 - cfl viscous ion: " << cfl << "\n"; 
 }
 
 void BraginskiiIon::update_linked_states()
@@ -417,7 +416,9 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
     //TODO remove after comparison to plasmapy
     if (true && GD::verbose > 1) {
         Print() << "\n\nIon viscous coefficients and thermal conductivity coefficients";
-        Print() << "\nnd_i = " << nd_i << "\tT_i = " << T_i << "\tt_i = " << t_collision_ion ;
+        Print() << "\nnd_i = " << nd_i << "\tT_i = " << T_i << "\tp_lambda = " << p_lambda 
+                << "\tmass_i = " << mass_i << "\talpha_i = " << alpha_i 
+                <<  "\tt_i = " << t_collision_ion ;
         Print() << "\neta0 = " << eta0 ;
         Print() << "\neta1 = " << eta1 ;
         Print() << "\neta2 = " << eta2 ;
@@ -431,14 +432,14 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
     }
 
     if (kappa1 < kappa2) {
-        if (GD::verbose >= 4 ) {
+        if (GD::verbose > 1) {
             Print() << "\nmfp_viscous.cpp ln: 401 - ion kappa2 exceed kappp1\n";
         }
         //Print() << "\nmfp_viscous.cpp ln: 285 - Braginski Ion coefficients are non-physical\n";
         kappa2 = kappa1;
     }
     if (kappa1 < kappa3) {
-        if (GD::verbose >= 4 ) {
+        if (GD::verbose > 1) {
             Print() << "\nmfp_viscous.cpp ln: 404 - ion kappa3 exceed kappp1\n";
         }
         kappa3 = kappa1;
@@ -686,6 +687,7 @@ BraginskiiEle::BraginskiiEle(const int global_idx, const sol::table& def)
 
     forceViscosity = def["forceViscosity"];
     forceViscosityValue = def["forceViscosityValue"];
+    if (forceViscosity) Print() << "====WARNING - BraginskiiEle forceViscosity active\n";
     Print() << "\n====forceViscosity====\t" << forceViscosity << "\n====forceViscosityValue====\t" << forceViscosityValue ;
     cfl = def.get_or("cfl",1.0);
     //Print() << "\nln 656 - cfl viscous ele: " << cfl << "\n";
@@ -853,19 +855,27 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
 
     if ((kappa1<0.) || (kappa2<0.) || (kappa3 < 0.)) {
         //amrex::Abort("mfp_viscous.cpp ln: 673 - Braginski Ion coefficients are non-physical");
-        Print() << "\nmfp_viscous.cpp ln: 673 - Braginski Ion coefficients are non-physical\n";
-        Print() << "\n" << kappa1 << "\n" << kappa2 << "\n" << kappa3 << "\nomega_ce = " << omega_ce;
+         if (GD::verbose >1) {   
+          Print() << "\nmfp_viscous.cpp ln: 859 - Braginski ele coefficients are non-physical\n";
+          Print() << "\n" << kappa1 << "\n" << kappa2 << "\n" << kappa3 << "\nomega_ce = " 
+                  << omega_ce;
+        }
+        if (kappa1 < 0) kappa1 = 0.;
+        if (kappa2 < 0) kappa2 = 0.;
+        if (kappa3 < 0) kappa3 = 0.;
     }
 
     if (kappa1 < kappa2) {
         if (GD::verbose >= 4) {
-            Print() << "mfp_viscous.cpp ln: 688 - electron kappa2 exceed kappp1";
+            Print() << "\nmfp_viscous.cpp ln: 688 - electron kappa2 exceed kappp1: " << kappa1 
+                    << "\tkappa2: ", kappa2, "\n";
         }
         kappa2 = kappa1;
     }
     if (kappa1 < kappa3) {
         if (GD::verbose >= 4) {
-            Print() << "mfp_viscous.cpp ln: 694 - electron kappa3 exceed kappp1";
+            Print() << "\nmfp_viscous.cpp ln: 694 - electron kappa3 exceed kappp1" << kappa1 
+                    << "\tkappa3: ", kappa3, "\n";
         }
         kappa3 = kappa1;
     }
@@ -903,7 +913,7 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
     Real mass_i,mass_e,charge_i,charge_e,T_e,T_i,nd_i,nd_e,alpha_i,alpha_e;
 
 
-    //Real eta0, eta1, eta2, eta3, eta4, kappa1, kappa2, kappa3, beta1, beta2, beta3;
+    Real eta0, eta1, eta2, eta3, eta4, kappa1, kappa2, kappa3, beta1, beta2, beta3;
     //Extract and assign parameters from Q_i and Q_e
 
     //--- electron state and properties required for calcs -------Note move this
@@ -989,7 +999,14 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
       eta1 = 0;
       eta4 = 0;
       eta3 = 0; }
-
+    /*
+    Print() << "debug ln 992 - eta0 etc.\n";
+    Print() << "\n" + std::to_string(eta0) + "\n";
+    Print() << "\n" + std::to_string(eta1) + "\n";
+    Print() << "\n" + std::to_string(eta2) + "\n";
+    Print() << "\n" + std::to_string(eta3) + "\n";
+    Print() << "\n" + std::to_string(eta4) + "\n";
+    */
     //Srinivasan recomendation
     if (std::abs(eta0) < std::abs(eta1)) {
         Print() << "\nelectron viscous coefficient eta1 greater than eta0\n";
@@ -1019,23 +1036,34 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
     if (GD::braginskii_anisotropic) {
       kappa2=(BT_gamma_1_p*x_coef*x_coef+BT_gamma_0_p)/delta_kappa*nd_e*T_e*t_collision_ele/mass_e;
       kappa3=(BT_gamma_1_pp*x_coef*x_coef+BT_gamma_0_pp)*x_coef*nd_e*T_e*t_collision_ele
-           /mass_e/delta_kappa;}
+           /mass_e/delta_kappa;
+    } else {kappa2 = 0; kappa3 = 0;}
+
+    
 
     if ((kappa1<0.) || (kappa2<0.) || (kappa3 < 0.)) {
         //amrex::Abort("mfp_viscous.cpp ln: 673 - Braginski Ion coefficients are non-physical");
-        Print() << "\nmfp_viscous.cpp ln: 673 - Braginski Ion coefficients are non-physical\n";
-        Print() << "\n" << kappa1 << "\n" << kappa2 << "\n" << kappa3 << "\nomega_ce = " << omega_ce;
+         if (GD::verbose > 1) {   
+          Print() << "\nmfp_viscous.cpp ln: 1035 - Braginski Electron kappa are non-physical\n";
+          Print() << "\n" << kappa1 << "\n" << kappa2 << "\n" << kappa3 << "\nomega_ce = " 
+                  << omega_ce;
+        }
+        if (kappa1 < 0) kappa1 = 0.;
+        if (kappa2 < 0) kappa2 = 0.;
+        if (kappa3 < 0) kappa3 = 0.;
     }
 
     if (kappa1 < kappa2) {
-        if (GD::verbose >= 4) {
-            Print() << "mfp_viscous.cpp ln: 688 - electron kappa2 exceed kappp1";
+        if (GD::verbose > 1) {
+            Print() << "\nmfp_viscous.cpp ln: 1055 - electron kappa2 exceed kappp1: " << kappa1 
+                    << "\tkappa2: ", kappa2, "\n";
         }
         kappa2 = kappa1;
     }
     if (kappa1 < kappa3) {
-        if (GD::verbose >= 4) {
-            Print() << "mfp_viscous.cpp ln: 694 - electron kappa3 exceed kappp1";
+        if (GD::verbose > 1) {
+            Print() << "\nmfp_viscous.cpp ln: 1062 - electron kappa3 exceed kappp1: " << kappa1 
+                    << "\tkappa3: ", kappa3, "\n";
         }
         kappa3 = kappa1;
     }

@@ -6,6 +6,7 @@
 #include <AMReX_EB2.H>
 #endif
 
+using GD = GlobalData ;
 // NOTE: face source term function expects conserved quantities but the reconstructed
 // face values are primitives!!
 void MFP::calc_face_source (const Box& box,
@@ -172,16 +173,17 @@ void MFP::calc_cell_source (const Box& box,
     // calculate the source terms
     for (auto &ode_ptr : gd.ode_source_terms) {
         ODESystem& ode = *ode_ptr;
+        if (GD::viewFluxSrcContributions == 1) Print() << "\n\nNew source group\t" << ode.n_sources ;
 
         y0.resize(ode.n_components);
         yout.resize(ode.n_components);
 
         // calculate any slope information required by the source term
         std::map<int,Vector<FArrayBox>> slopes;
-
         for (int solver_idx = 0; solver_idx < ode.n_sources; ++solver_idx) {
             const auto &src = ode.sources[solver_idx];
             const int n_slopes = src->num_slopes();
+            if (GD::viewFluxSrcContributions == 1) Print() << "\n  src tag\t" << src->get_tag() ;
             if (n_slopes <= 0) continue;
 
             Vector<FArrayBox>& slope = slopes[solver_idx];
@@ -203,6 +205,7 @@ void MFP::calc_cell_source (const Box& box,
         //}
 
         // go through cell-by-cell and calculate the contribution to the source vector
+        
         for     (int k = lo.z; k <= hi.z; ++k) {
             z = prob_lo[2] + (k + 0.5)*dx[2];
             for   (int j = lo.y; j <= hi.y; ++j) {
@@ -210,7 +213,7 @@ void MFP::calc_cell_source (const Box& box,
                 AMREX_PRAGMA_SIMD
                         for (int i = lo.x; i <= hi.x; ++i) {
                     x = prob_lo[0] + (i + 0.5)*dx[0];
-                    //Print() << "\ni, j , k" << i << "\t" << j << "\t" << k ;
+                    if (GD::viewFluxSrcContributions == 1 ) Print() << "\n  i, j, k\t" << i << "\t" << j << "\t" << k ;
 #ifdef AMREX_USE_EB
                     // inform the source if it is holding invalid data
                     for (int local_idx = 0; local_idx < ode.n_states; ++local_idx) {
@@ -250,7 +253,6 @@ void MFP::calc_cell_source (const Box& box,
                     //
                     // do the computation
                     // loads the final value into yout (yout = y0 + dt*src)
-
                     int err = ode.solver->solve(x, y, z, time, time+dt, 0);
                     if (err != 0) {
                         amrex::Abort("Failed integration: " + num2str(err));
@@ -258,10 +260,12 @@ void MFP::calc_cell_source (const Box& box,
 
                     // unpack y1
                     cnt = 0;
-                    for (int local_idx = 0; local_idx < ode.n_states; ++local_idx) {
 
+                    for (int local_idx = 0; local_idx < ode.n_states; ++local_idx) {
                         const int global_idx = ode.local2global_index[local_idx]; // what the source term is operating on
                         n = src_dat[global_idx]->nComp(); // how many elements in the source term
+
+                        if ((false and GD::viewFluxSrcContributions == 1)) Print() << "\n\tState\t" << local_idx ; 
 
                         if (ode.get_solver_state_valid(local_idx)) {
                             Array4<Real> const& d4 = dst_dat[global_idx]->array();
@@ -269,6 +273,8 @@ void MFP::calc_cell_source (const Box& box,
                             for (int h=0; h<n; ++h) {
                                 d4(i,j,k,h) += yout[cnt] - s4(i,j,k,h); // dt*src = yout - y0
                                 //                            d4(i,j,k,h) = yout[cnt] - s4(i,j,k,h); // output the source for visual debugging
+                                if (false and (GD::viewFluxSrcContributions == 1)) Print() 
+                                << "\n\t\tprop\t" << h << "\taddition\t" << yout[cnt] - s4(i,j,k,h);
                                 cnt++;
                             }
                         } else {
@@ -289,6 +295,8 @@ void MFP::calc_cell_source (const Box& box,
         ode.solver->clear();
 
     }
+  
+    if (GD::viewFluxSrcContributions == 1) Print() << "\n" ;//TODO remove after debug 
 }
 
 void MFP::apply_cell_sources(const Real time,

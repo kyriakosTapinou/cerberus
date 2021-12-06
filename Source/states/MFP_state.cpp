@@ -234,7 +234,6 @@ void State::set_viscosity()
     state_def["global_idx"] = global_idx;
 
     std::string visc = state_def["viscosity"]["type"].get_or<std::string>("");
-    Print() << "\nln 237 - " << visc ;
     viscous = vfact.Build(visc, state_def);
 
     if (!visc.empty() && !viscous)
@@ -1561,11 +1560,12 @@ void State::calc_divergence(const Box& box,
     }
 
     for (int n=0; n<N; ++n) {
+        if (GD::viewFluxSrcContributions == 1) Print() << "\n\tprop:\t" << n ;
         for (int k = lo.z; k <= hi.z; ++k) {
             for (int j = lo.y; j <= hi.y; ++j) {
                 AMREX_PRAGMA_SIMD
                         for (int i = lo.x; i <= hi.x; ++i) {
-
+                    if (GD::viewFluxSrcContributions == 1) Print() <<"\n\t\ti, j, k:\t"<< i << " " << j << " " << k ;
                     // cycle over dimensions
                     for (int d=0; d<AMREX_SPACEDIM; ++d) {
                         index[d] = 1;
@@ -1577,7 +1577,8 @@ void State::calc_divergence(const Box& box,
 
                         du4(i,j,k,n) += dxinv*(flux_lo - flux_hi);
 
-
+                        if (GD::viewFluxSrcContributions == 1) Print() << "\td:\t" << d << "\tFlux addition:\t" 
+                                << dxinv*(flux_lo - flux_hi) ;
                         index[d] = 0;
                     }
                 }

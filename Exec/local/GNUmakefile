@@ -2,9 +2,9 @@ AMREX_HOME := ../../amrex
 TOP := ../../
 COMP := GNU
 
-DIM = 1
+DIM = 2
 
-TINY_PROFILE = FALSE
+TINY_PROFILE = True 
 PROFILE = FALSE
 DEBUG = FALSE
 VERBOSE = TRUE

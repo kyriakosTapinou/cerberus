@@ -107,11 +107,12 @@ void HydroState::init_from_lua()
 
     BoundaryState &bs = boundary_conditions;
     bs.phys_fill_bc.resize(+HydroState::PrimIdx::NUM);
-
+    
     for (int ax = 0; ax < AMREX_SPACEDIM; ++ax) {
         for (int lh=0; lh<2; ++lh) {
 
             std::string side_bc = state_def["bc"][dir_name[ax]][side_name[lh]]["fill_hydro_bc"].get_or<std::string>("outflow");
+
             int i_side_bc = bc_names.at(side_bc);
 
             // get any custom values/functions
@@ -2322,11 +2323,21 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                 //tauxy = muf*(dudy+dvdx);
                 //tauyz = muf*(dwdy+dvdz);
 
-
+                if (GD::braginskii_anisotropic) BraginskiiViscousTensorHeatFlux(passed_idx, ion_idx, electron_idx, em_idx, i, j, k, box, dxinv,
+                                                xB, yB, zB, u_rel, dTdx, dTdy, dTdz,
+                                                dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, dwdy, dwdz,
+                                                faceCoefficients, ViscTens, q_flux);
+                else IsotropicBraginskiiViscousTensorHeatFlux(passed_idx, ion_idx, electron_idx, em_idx, i, j, k, box, dxinv,
+                                                xB, yB, zB, u_rel, dTdx, dTdy, dTdz,
+                                                dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, dwdy, dwdz,
+                                                faceCoefficients, ViscTens, q_flux);
+                /*
+                //TODO Check the if statement above is correct 
                 BraginskiiViscousTensorHeatFlux(passed_idx, ion_idx, electron_idx, em_idx, i, j, k, box, dxinv,
                                                 xB, yB, zB, u_rel, dTdx, dTdy, dTdz,
                                                 dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, dwdy, dwdz,
                                                 faceCoefficients, ViscTens, q_flux);
+                */
 
                 if (true && GD::verbose > 2) Print() << "fluxY\ti, j, k: " << i << " " << j << " " << k << "\n";
                 if (true && GD::verbose >2) {
@@ -2410,11 +2421,22 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                 dudy = (p4(i,j+1,k,Xvel)+p4(i,j+1,k-1,Xvel)-p4(i,j-1,k,Xvel)-p4(i,j-1,k-1,Xvel))*(0.25*dxinv[1]);
 
                 //--- retrive the viscous stress tensor and heat flux vector on this face
+                if (GD::braginskii_anisotropic) BraginskiiViscousTensorHeatFlux(passed_idx, ion_idx, electron_idx, em_idx, i, j, k, box, dxinv,
+                                                xB, yB, zB, u_rel, dTdx, dTdy, dTdz,
+                                                dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, dwdy, dwdz,
+                                                faceCoefficients, ViscTens, q_flux);
+                else IsotropicBraginskiiViscousTensorHeatFlux(passed_idx, ion_idx, electron_idx, em_idx, i, j, k, box, dxinv,
+                                                xB, yB, zB, u_rel, dTdx, dTdy, dTdz,
+                                                dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, dwdy, dwdz,
+                                                faceCoefficients, ViscTens, q_flux);
+                /*
+                //TODO Check the if statement above is correct 
+
                 BraginskiiViscousTensorHeatFlux(passed_idx, ion_idx, electron_idx, em_idx, i, j, k, box, dxinv,
                                                 xB, yB, zB, u_rel, dTdx, dTdy, dTdz,
                                                 dudx, dudy, dudz, dvdx, dvdy, dvdz,
                                                 dwdx, dwdy, dwdz, faceCoefficients, ViscTens, q_flux);
-
+                */
                 if (GD::verbose >4) {
                   Print() << "Adding viscous terms to flux array";
                 }

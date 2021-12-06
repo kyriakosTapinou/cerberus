@@ -646,7 +646,7 @@ def make_all(Q):
 
     print("getting particle trajectories...")
     get_streaklines(Q)
-
+    
     for q in Q:
         print(q["files_dir"])
         make_frames(q)

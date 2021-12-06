@@ -6,6 +6,7 @@
 #include <AMReX_MultiCutFab.H>
 #endif
 
+using GD = GlobalData;
 using namespace amrex;
 
 #ifdef PYTHON
@@ -14,6 +15,7 @@ using namespace amrex;
 namespace plt = matplotlibcpp;
 #endif
 
+#include "MFP_diagnostics.H"
 
 void MFP::apply_cell_transport(Real time, Real dt)
 {
@@ -65,27 +67,6 @@ void MFP::apply_cell_transport(Real time, Real dt)
         EB2::IndexSpace::push(const_cast<EB2::IndexSpace*>(istate.eb2_index));
 #endif
         FillPatch(*this, local_new[idx], ng, time, idx, 0, ns);
-        //TODO 
-        /*
-        if (istate.get_type() != +StateType::isField) {
-            std::string plotOutputName;
-            if (istate.get_charge( 0.) < 0.) {
-                plotOutputName= " electron";
-            } else {
-                plotOutputName = " ion";
-            }
-            Print() << "\ncumTime:\t" << parent->cumTime();
-            if (parent->cumTime() > 0.00408) {
-                Print() << "\nDebug in MFP_transport.cpp --- before flux update\n"; 
-              //plot_FAB_2d(local_new[idx], 0, ng, "cons density" + plotOutputName, false, true);
-              //plot_FAB_2d(local_new[idx], 4, ng, "cons eden" + plotOutputName, false, true);
-                plot_FAB_1d(local_new[idx], 0, ng, "cons density" + plotOutputName, false, true);
-                plot_FAB_1d(local_new[idx], 4, ng, "cons eden" + plotOutputName, false, true);
-
-                //plot_FAB_2d(flag, "flag", true);
-            }
-        }
-        */
 
         if (istate.reflux && level < parent->finestLevel()) {
             MFP& fine_level = getLevel(level + 1);
@@ -145,7 +126,6 @@ void MFP::apply_cell_transport(Real time, Real dt)
         // ==========================================================================
         // 1. iterate over all states to set-up the data required for flux calculation
         for (int idx=0; idx<gd.num_solve_state; ++idx) {
-
             State &istate = gd.get_state(idx);
 
             // get a pointer to the conserved quantities
@@ -188,6 +168,7 @@ void MFP::apply_cell_transport(Real time, Real dt)
             // 1.1 Calculate primitive values within each cell
 
             FArrayBox& cons = local_new[idx][mfi];
+
             FArrayBox& prim = primitives[idx];
 
             prim.resize(pbox, np);
@@ -211,6 +192,28 @@ void MFP::apply_cell_transport(Real time, Real dt)
                                     EB_OPTIONAL(vfrac,)
                                     time);
 
+            //----------------------------------------Debug diagnostics
+            //TODO 
+            /*
+            if (false) //(parent->cumTime() >= 55.) 
+            {
+              std::string plotOutputName;
+              if (istate.get_charge( 0.) < 0.) {
+                  plotOutputName= "Prim: electron";
+              } else if (istate.get_charge( 0.) > 0.) {
+                  plotOutputName = "Prim: ion";
+              } else {
+                  plotOutputName = "Prim: field";
+              }
+      
+              Print() << "\n\tcumTime:\t" << parent->cumTime();
+              plot_FAB_1d(prim,  plotOutputName, true);
+            }
+            */
+            //plot_FAB_2d(local_new[idx], 0, ng, "cons density" + plotOutputName, false, true);
+            //plot_FAB_2d(local_new[idx], 4, ng, "cons eden" + plotOutputName, false, true);
+            //TODO 
+            //----------------------------------------Debug diagnostics
 
 
             // =======================================
@@ -453,7 +456,6 @@ void MFP::apply_cell_transport(Real time, Real dt)
 
             FArrayBox& dU = update[idx][mfi];
 
-
 #ifdef AMREX_USE_EB
 
             Array<const FArrayBox*,AMREX_SPACEDIM> afrac, fcent;
@@ -549,7 +551,7 @@ void MFP::apply_cell_transport(Real time, Real dt)
 
 #endif
                 // calculate divergence
-
+                if (GD::viewFluxSrcContributions == 1 ) Print() << "\nState:\t" << idx ;
                 istate.calc_divergence(box,
                                        fluxes[idx],
                                        dU,

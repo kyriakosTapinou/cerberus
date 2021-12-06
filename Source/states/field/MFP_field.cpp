@@ -92,10 +92,7 @@ void FieldState::init_from_lua()
     bs.phys_fill_bc.resize(+FieldState::PrimIdx::NUM);
 
     for (int ax = 0; ax < AMREX_SPACEDIM; ++ax) {
-
-
         for (int lh=0; lh<2; ++lh) {
-
 #ifdef AMREX_USE_EB
         bool is_symmetry = false;
 #endif
@@ -103,6 +100,7 @@ void FieldState::init_from_lua()
 
                 // get the base boundary condition for cell centered values
                 std::string side_bc = state_def["bc"][dir_name[ax]][side_name[lh]][bc.first].get_or<std::string>("outflow");
+
                 int i_side_bc = bc_names.at(side_bc);
 #ifdef AMREX_USE_EB
                 if (i_side_bc == PhysBCType::symmetry || i_side_bc == 4) is_symmetry = true;

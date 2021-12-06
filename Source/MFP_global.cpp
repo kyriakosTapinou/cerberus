@@ -57,6 +57,8 @@ int GlobalData::particle_verbose = 0;
 
 int GlobalData::srin_switch = 0;
 int GlobalData::braginskii_anisotropic = 0; //default to isotropic
+Real GlobalData::viewFluxSrcContributions = 0; // print flux and source contributions for debug 
+
 //int GlobalData::do_tracer_particles = 0;
 //int GlobalData::particle_verbose = 0;
 //std::string GlobalData::particle_init_file;
@@ -167,7 +169,11 @@ void GlobalData::read_config(const Vector<int> &is_periodic, const bool plot_out
     verbose = lua["verbosity"];
     srin_switch = lua["srin_switch"];
     braginskii_anisotropic = lua["braginskii_anisotropic"];
-    Print() << "==========\nsrin_switch:\t" << srin_switch << "\nbraginskii_anisotropic:\t" << braginskii_anisotropic << "==========\n" ;
+    if (srin_switch>0) Print() << "====WARNING - srin_switch active\n";
+    if (braginskii_anisotropic > 0) Print() << "====WARNING - braginskii_anisotropic active\n";
+
+    viewFluxSrcContributions = lua["viewFluxSrcContributions"]; // print flux and source  
+
     linear_solver_verbosity = lua["linear_solver_verbosity"];
 
     //
