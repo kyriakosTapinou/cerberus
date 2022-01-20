@@ -251,6 +251,9 @@ BraginskiiIon::BraginskiiIon(const int global_idx, const sol::table& def)
 
     forceViscosity = def["forceViscosity"];
     forceViscosityValue = def["forceViscosityValue"];
+    //Debye_visc = def["Debye"]
+    //Larmor_visc = def["Larmor"]
+    //Print() << "\nBraginskiiIon - Reference Debye:\t", Debye_visc
     if (forceViscosity) Print() << "====WARNING - BraginskiiIon forceViscosity active\n";
     cfl = def.get_or("cfl",1.0); 
 }

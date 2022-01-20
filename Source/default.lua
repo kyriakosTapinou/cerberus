@@ -31,6 +31,7 @@ cfl = 0.0
 srin_switch = 0 --don't use srinivassans switch i.e. 0 - don't set collision time scales to min of omega_p and omega_c if much smaller than both
                 --                                   1 - set collision time scales to min of omega_p and omega_c if much smaller than both
 braginskii_anisotropic = 0; -- 0 - use isotropic braginskii transport coefficients, 1 - use the anisotropic transport coefficients.
+viewFluxSrcContributions = 0 -- print outs of flux contrubtiosn for debugging
 
 -- refine around cutcells
 refine_cutcells = 0
@@ -188,7 +189,9 @@ Valid options for a hydro state are:
     reasonable results
     e.g. viscosity={Prandtl=0.72, mu0=1.716e-5, T0=273, n=2/3, type='PowerLaw'}           --> power law
     e.g. viscosity = {Prandtl=0.72, mu0=1.7894e-5, T0=273.11, S=110.563, type='Sutherland'} --> Sutherland
-    e.g. viscosity = {mu0=1.7894e-5, T0=273.11, BT=1, cfl=cfl_viscous, type='BraginskiiEle'},--> Braginskii classical transport viscosity DOESNT WORK
+    e.g. viscosity = {cfl=1.0, type='BraginskiiIon', forceViscosity=false, forceViscosityValue=0.}
+    e.g. viscosity = {cfl=1.0, type='BraginskiiEle', forceViscosity=true, forceViscosityValue=0.1}
+    --> Braginskii classical transport viscosity 
 
     optional 'cfl' variable scales the reported maximum wave speed due to viscosity
 
@@ -349,12 +352,13 @@ where anything in [] is something to be defined and can be so as follows:
 [type_of_source] = the type of source, options are:
   - plasma5 : enables interaction between ions, electrons, and em fields according to the five-moment plasma model
   - damp_divergence : implements damping of the hyperbolic/parabolic divergence cleaning, can/should be used in conjunction with hydro_em
-  - collisions : introduces collisions between fluid species (may require hydro_ccs to be defined for any neutral fluid also)
+  - collisions : introduces collisions between fluid species (may require hydro_ccs to be defined for any neutral fluid also). Check the correction for electrons added by Kyri is in the main line release (should be included in the braginskii push). 
+  - braginskii:   e.g. braginskii={'ions', 'electrons', 'field', type='braginskii', reconstruction='centre',}
   - two_pressure : two-pressure relaxation
   - UDF : user defined, supply a constant or function for any of the conserved variables in a 'value' list (like for initial conditions)
   - acceleration : bulk acceleration defined by a constant or a function that has access to location and time, i.e. {type='acceleration', x=func(), y=1, z=0}
   - current : current source defined by a constant or a function that has access to location and time, i.e. {type='current', x=func(), y=1, z=0}
-  - braginskii : braginskii source terms definig the exchanges between different species due to coulomb collisions, temperature gradients, and thermal equulibriation
+  - braginskii : Braginskii classical transport for interaction between species. Braginskii source terms definig the exchanges between different species due to coulomb collisions, temperature gradients, and thermal equulibriation. It is similar (though different to the collisions ''collisons'' source term above except the braginskii source term is not generalised to 'n' species colission, it is only for collisons between one ion and one electron.
                : e.g. braginskii={'ions', 'electrons', 'field', type='braginskii', reconstruction='vanLeer',}
 
 

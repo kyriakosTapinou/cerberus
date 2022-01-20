@@ -635,6 +635,7 @@ def make_all(Q):
         else:
             get_data(q)
             shelf = shelve.open(name)
+            
             shelf.update(q)
             shelf.close()
             print(" --> shelved")

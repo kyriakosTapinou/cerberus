@@ -156,7 +156,7 @@ void MFP::init_data(const Box& box,
                     const std::string& prim_name = prim_names[icomp];
                     const auto& f = istate.functions[prim_name];
 
-                    Q[icomp] = f(x, y, z);
+                    Q[icomp] = f(x, y, z); // would have to change this to accept a map (cpp dict) with the relevant informaiton, dx dy in the use case I am looking at 
 
                 }
 
