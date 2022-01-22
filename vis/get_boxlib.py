@@ -454,6 +454,15 @@ def get_time(name):
     data = parse_header(name)
     return data["time"]
 
+def sortPltChk(inputString):
+  if 'plt' in inputString and 'chk' in inputString:
+    print("\nError in get_box_lib sortPltChk function\n")
+    return inputString
+  if 'plt' in inputString: splitOn = 'plt'
+  elif 'chk' in inputString: splitOn = 'chk'
+
+  return int(inputString.split(splitOn)[1])
+
 def get_files(folder, include=[], exclude=[], times=[], tol=1e-2, get_all=False):
     files = listdir_fullpath(folder)
     names = []
@@ -471,7 +480,7 @@ def get_files(folder, include=[], exclude=[], times=[], tol=1e-2, get_all=False)
         if accept:
             names.append(name)
 
-    names = sorted(names)
+    names = sorted(names, key=sortPltChk)
 
     if get_all or (times == []):
         return names

@@ -251,10 +251,10 @@ BraginskiiIon::BraginskiiIon(const int global_idx, const sol::table& def)
 
     forceViscosity = def["forceViscosity"];
     forceViscosityValue = def["forceViscosityValue"];
-    //Debye_visc = def["Debye"]
-    //Larmor_visc = def["Larmor"]
-    //Print() << "\nBraginskiiIon - Reference Debye:\t", Debye_visc
-    if (forceViscosity) Print() << "====WARNING - BraginskiiIon forceViscosity active\n";
+    Debye = def["DebyeReference"];
+    Larmor = def["LarmorReference"];
+    Print() << "\nMFP_viscous.cpp BraginskiiIon - Reference Debye:\t" << Debye << " Larmor:\t" << Larmor ;
+    if (forceViscosity) Print() << "\n====WARNING - BraginskiiIon forceViscosity active\n";
     cfl = def.get_or("cfl",1.0); 
 }
 
@@ -323,7 +323,7 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
     // absence of the boltzmann constant due to usage of nondimensional variables.
     // Note that here charge_i = e^4*Z^4
 
-    Real Debye = GD::Debye, Larmor = GD::Larmor;
+    //Real Debye = GD::Debye, Larmor = GD::Larmor;
 
     Real x_ref=GD::x_ref, n0_ref=GD::n0, m_ref=GD::m_ref, rho_ref=GD::rho_ref,
             T_ref=GD::T_ref, u_ref=GD::u_ref;
@@ -500,7 +500,8 @@ Real BraginskiiIon::get_max_speed(const Vector<Vector<amrex::Real>>&U) {
     // absence of the boltzmann constant due to usage of nondimensional variables.
     // Note that here charge_i = e^4*Z^4
 
-    Real Debye = GD::Debye, Larmor = GD::Larmor, x_ref=GD::x_ref, n0_ref=GD::n0,
+    //Real Debye = GD::Debye, Larmor = GD::Larmor;
+    Real x_ref=GD::x_ref, n0_ref=GD::n0,
             m_ref=GD::m_ref, rho_ref=GD::rho_ref, T_ref=GD::T_ref, u_ref=GD::u_ref;
 
     Real t_ref = x_ref/u_ref;
@@ -690,7 +691,10 @@ BraginskiiEle::BraginskiiEle(const int global_idx, const sol::table& def)
 
     forceViscosity = def["forceViscosity"];
     forceViscosityValue = def["forceViscosityValue"];
-    if (forceViscosity) Print() << "====WARNING - BraginskiiEle forceViscosity active\n";
+    Debye = def["DebyeReference"];
+    Larmor = def["LarmorReference"];
+    Print() << "\nMFP_viscous.cpp BraginskiiEle - Reference Debye:\t" << Debye << " Larmor:\t" << Larmor ;
+    if (forceViscosity) Print() << "\n====WARNING - BraginskiiEle forceViscosity active\n";
     Print() << "\n====forceViscosity====\t" << forceViscosity << "\n====forceViscosityValue====\t" << forceViscosityValue ;
     cfl = def.get_or("cfl",1.0);
     //Print() << "\nln 656 - cfl viscous ele: " << cfl << "\n";
@@ -762,7 +766,8 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
     Real t_collision_ele, lambda_e, p_lambda, omega_ce, omega_p;
     p_lambda = get_coulomb_logarithm(T_i,T_e,nd_e);
 
-    Real Debye = GD::Debye, Larmor = GD::Larmor, x_ref=GD::x_ref, n0_ref=GD::n0,
+    //Real Debye = GD::Debye, Larmor = GD::Larmor;
+    Real x_ref=GD::x_ref, n0_ref=GD::n0,
             m_ref=GD::m_ref, rho_ref=GD::rho_ref, T_ref=GD::T_ref, u_ref=GD::u_ref;
     Real t_ref = x_ref/u_ref;
 
@@ -945,7 +950,8 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
     p_lambda = get_coulomb_logarithm(T_i,T_e,nd_e);
 
     //collision time nondimensional
-    Real Debye = GD::Debye, Larmor = GD::Larmor, x_ref=GD::x_ref, n0_ref=GD::n0,
+    //Real Debye = GD::Debye, Larmor = GD::Larmor;
+    Real x_ref=GD::x_ref, n0_ref=GD::n0,
             m_ref=GD::m_ref, rho_ref=GD::rho_ref, T_ref=GD::T_ref, u_ref=GD::u_ref;
     Real t_ref = x_ref/u_ref;
 

@@ -173,7 +173,7 @@ public:
     NUM_ION_DIFF_COEFFS
   };
 
-  Real mu_0, T0, BT, forceViscosityValue;
+  Real mu_0, T0, BT, forceViscosityValue, Debye, Larmor;
   bool forceViscosity;
   Real T_i,eta0,eta1,eta2,eta3,eta4,kappa1,kappa2,kappa3;
 
@@ -227,7 +227,7 @@ public:
     NUM_ELE_DIFF_COEFFS
   };
 
-  Real mu_0, T0, BT, forceViscosityValue;
+  Real mu_0, T0, BT, forceViscosityValue, Debye, Larmor;
   bool forceViscosity;
 
   Real T_e,eta0,eta1,eta2,eta3,eta4,kappa1,kappa2,kappa3,beta1,beta2,beta3;

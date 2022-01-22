@@ -12,6 +12,9 @@ BraginskiiSource::BraginskiiSource(){}
 BraginskiiSource::BraginskiiSource(const sol::table& def) 
 {
     name = def.get<std::string>("name"); 
+    Debye = def["DebyeReference"]; //reference valuesfor the braginskii source specifically, not the simulation
+    Larmor = def["LarmorReference"];
+    Print() << "\n\n====Warning Debug ln 17 MFP_braginskii.cpp - reference Debye and Larmor source term:\t" << Debye << "\t" << Larmor ; 
 
     if (!BraginskiiSource::valid_solver(def["solver"])) {
         Abort("Error: Source '"+name+"' needs a different solver");
@@ -464,7 +467,7 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
     Real alpha_0, alpha_1, alpha_2, beta_0, beta_1, beta_2, t_c_a;
     Real p_lambda = get_coulomb_logarithm(T_b,T_a,n_a);
 
-    get_alpha_beta_coefficients(m_a, T_a, q_a, q_b, n_a, n_b, alpha_0, alpha_1, alpha_2, 
+    get_alpha_beta_coefficients(Debye, Larmor, m_a, T_a, q_a, q_b, n_a, n_b, alpha_0, alpha_1, alpha_2, 
                                 beta_0, beta_1, beta_2, t_c_a, p_lambda, xB, yB, zB); 
 
 
@@ -498,8 +501,8 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
     Real Q_delta = 3*m_a/m_b*n_a/t_c_a*(T_a-T_b);
     Real Q_fric  = (R_u[0]+R_T[0])*du + (R_u[1]+R_T[1])*dv + (R_u[2]+R_T[2])*dw;
 
-    Real Debye = GD::Debye;
-    Real L = GD::Larmor;
+    //Real Debye = GD::Debye; now using the source terms own reference Debye and Larmor
+    //Real L = GD::Larmor;
 
     /*
     Real x_ref=GD::x_ref, n_ref=GD::n_ref, m_ref=GD::m_ref, rho_ref=GD::rho_ref, 
@@ -558,15 +561,17 @@ int BraginskiiSource::fun_jac(Real x, Real y, Real z, Real t, Vector<Real> &y0, 
     return 0;
 }
 
-void BraginskiiSource::get_alpha_beta_coefficients(Real mass_e, Real T_e, Real charge_e, 
+void BraginskiiSource::get_alpha_beta_coefficients(Real Debye, Real Larmor, Real mass_e, Real T_e, Real charge_e, 
                         Real charge_i, Real nd_e, Real nd_i, Real& alpha_0, Real& alpha_1, 
                         Real& alpha_2, 
                         Real& beta_0, Real& beta_1, Real& beta_2, Real& t_c_e, Real p_lambda, 
                         Real Bx, Real By, Real Bz) {
 
   //collision time nondimensional
-  Real Debye = GD::Debye, Larmor = GD::Larmor, x_ref=GD::x_ref, n0_ref=GD::n0, 
-  m_ref=GD::m_ref, rho_ref=GD::rho_ref, T_ref=GD::T_ref, u_ref=GD::u_ref;
+  //Real Debye = GD::Debye, Larmor = GD::Larmor; //now using the ource terms own reference value, not the sim
+  Real x_ref=GD::x_ref, n0_ref=GD::n0, m_ref=GD::m_ref, rho_ref=GD::rho_ref, 
+    T_ref=GD::T_ref, u_ref=GD::u_ref;
+
   Real t_ref = x_ref/u_ref;
   Real pi_num = 3.14159265358979323846;
   if (T_e < 0.) {
@@ -685,7 +690,7 @@ Real BraginskiiSource::get_max_freq(Vector<Real> &y) const
     Real rho, alpha;
     Real omega_p, omega_c;
 
-    Real D2 = GD::Debye*GD::Debye;
+    Real D2 = GD::Debye*GD::Debye; // should this be the simulation D2 and L for the reference parameters + cdim, or should t be from the source terms own D2 and L
     Real L = GD::Larmor;
 
     Real f = 0;

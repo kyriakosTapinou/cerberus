@@ -521,7 +521,6 @@ void GlobalData::update_ref()
     m_ref = lua["ref_mass"];
     T_ref = lua["ref_temp"];
     Real c_ref = lua["ref_lightspeed"].get_or(299792458.0);
-
     Real c = lua["lightspeed"];
     beta = lua["beta"];
     skin_depth = lua["skin_depth"];

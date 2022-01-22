@@ -189,8 +189,8 @@ Valid options for a hydro state are:
     reasonable results
     e.g. viscosity={Prandtl=0.72, mu0=1.716e-5, T0=273, n=2/3, type='PowerLaw'}           --> power law
     e.g. viscosity = {Prandtl=0.72, mu0=1.7894e-5, T0=273.11, S=110.563, type='Sutherland'} --> Sutherland
-    e.g. viscosity = {cfl=1.0, type='BraginskiiIon', forceViscosity=false, forceViscosityValue=0.}
-    e.g. viscosity = {cfl=1.0, type='BraginskiiEle', forceViscosity=true, forceViscosityValue=0.1}
+    e.g. viscosity = {cfl=1.0, type='BraginskiiIon', forceViscosity=false, forceViscosityValue=0., DebyeReference=1., LarmorReference=1.}
+    e.g. viscosity = {cfl=1.0, type='BraginskiiEle', forceViscosity=true, forceViscosityValue=0.1, DebyeReference=1., LarmorReference=1.}
     --> Braginskii classical transport viscosity 
 
     optional 'cfl' variable scales the reported maximum wave speed due to viscosity
@@ -353,7 +353,7 @@ where anything in [] is something to be defined and can be so as follows:
   - plasma5 : enables interaction between ions, electrons, and em fields according to the five-moment plasma model
   - damp_divergence : implements damping of the hyperbolic/parabolic divergence cleaning, can/should be used in conjunction with hydro_em
   - collisions : introduces collisions between fluid species (may require hydro_ccs to be defined for any neutral fluid also). Check the correction for electrons added by Kyri is in the main line release (should be included in the braginskii push). 
-  - braginskii:   e.g. braginskii={'ions', 'electrons', 'field', type='braginskii', reconstruction='centre',}
+  - braginskii:   e.g. braginskii={'ions', 'electrons', 'field', type='braginskii', reconstruction='centre', DebyeReference=1., LarmorReference=1.}
   - two_pressure : two-pressure relaxation
   - UDF : user defined, supply a constant or function for any of the conserved variables in a 'value' list (like for initial conditions)
   - acceleration : bulk acceleration defined by a constant or a function that has access to location and time, i.e. {type='acceleration', x=func(), y=1, z=0}
