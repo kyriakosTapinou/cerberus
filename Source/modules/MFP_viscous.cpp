@@ -377,7 +377,7 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
       eta1 = nd_i*T_i*t_collision_ion*(6./5.*(2*x_coef)*(2*x_coef)+2.23)/delta_eta2;
       eta4 = nd_i*T_i*t_collision_ion*x_coef*(x_coef*x_coef + 2.38)/delta_eta;
       eta3 = nd_i*T_i*t_collision_ion*(2*x_coef)*((2*x_coef)*(2*x_coef) + 2.38)/delta_eta2;
-      if ((x_coef < 1e-8 ) && (omega_ci > GD::effective_zero)) {
+      if ((GD::braginskii_hall_correction) && (GD::braginskii_hall_correction) && (x_coef < 1e-8 ) && (omega_ci > GD::effective_zero)) {
         eta2 = eta2/x_coef/x_coef;
         eta1 = eta1/x_coef/x_coef;
         eta4 = eta4/x_coef;
@@ -546,7 +546,7 @@ Real BraginskiiIon::get_max_speed(const Vector<Vector<amrex::Real>>&U) {
       eta1 = nd_i*T_i*t_collision_ion*(6./5.*(2*x_coef)*(2*x_coef)+2.23)/delta_eta2;
       eta4 = nd_i*T_i*t_collision_ion*x_coef*(x_coef*x_coef + 2.38)/delta_eta;
       eta3 = nd_i*T_i*t_collision_ion*(2*x_coef)*((2*x_coef)*(2*x_coef) + 2.38)/delta_eta2;
-      if ((x_coef < 1e-8 ) && (omega_ci > GD::effective_zero)) {
+      if ((GD::braginskii_hall_correction) && (x_coef < 1e-8 ) && (omega_ci > GD::effective_zero)) {
         eta2 = eta2/x_coef/x_coef;
         eta1 = eta1/x_coef/x_coef;
         eta4 = eta4/x_coef;
@@ -567,26 +567,32 @@ Real BraginskiiIon::get_max_speed(const Vector<Vector<amrex::Real>>&U) {
         Print() << "\nmfp_viscous.cpp ln: 347 - Braginski Ion coefficients are non-physical\n";
     }
 
-    //Srinivasan recomendatiosn
-    
-    if (std::abs(eta0) < std::abs(eta1)) {
-        Print() << "\nion viscous coefficient eta1 greater than eta0\n";
-        Print() << "\n" + std::to_string(eta0) + "\n";
-        Print() << "\n" + std::to_string(eta1) + "\n";
-    } else if (std::abs(eta0) < std::abs(eta2)) {
-        Print() << "\nion viscous coefficient eta2 greater than eta0\n";
-        Print() << "\n" + std::to_string(eta0) + "\n";
-        Print() << "\n" + std::to_string(eta2) + "\n";
-    } else if (std::abs(eta0) < std::abs(eta3)) {
-        Print() << "\nion viscous coefficient eta3 greater than eta0\n";
-        Print() << "\n" + std::to_string(eta0) + "\n";
-        Print() << "\n" + std::to_string(eta3) + "\n";
-    } else if (std::abs(eta0) < std::abs(eta4)) {
-        Print() << "\nion viscous coefficient eta4 greater than eta0\n";
-        Print() << "\n" + std::to_string(eta0) + "\n";
-        Print() << "\n" + std::to_string(eta4) + "\n";
+    if (false) {
+      Print() << "debug ln 571 - delta_kappa " << delta_kappa << "\tdelta_eta "<< delta_eta <<  "\neta0 etc.\t" << "\t" + std::to_string(eta0) + "\t" 
+              << "\t" + std::to_string(eta1) + "\t" << "\t" + std::to_string(eta2) + "\t" << "\t" + std::to_string(eta3) + "\t" << "\t" + std::to_string(eta4) + "\n";
     }
-    
+
+    //Srinivasan recomendatiosn
+    //*
+    if (GD::braginskii_anisotropic) {
+      if (std::abs(eta0) < std::abs(eta1)) {
+          Print() << "\nion viscous coefficient eta1 greater than eta0";
+          Print() << "\t" + std::to_string(eta0) << "\t" + std::to_string(eta1) + "\t" << (6./5.*(2*x_coef)*(2*x_coef)+2.23)/delta_eta2;
+      } 
+      if (std::abs(eta0) < std::abs(eta2)) {
+          Print() << "\nion viscous coefficient eta2 greater than eta0";
+          Print() << "\t" + std::to_string(eta0) << "\t" + std::to_string(eta2) + "\t" << (6./5.*x_coef*x_coef+2.23)/delta_eta;
+      }
+      if (std::abs(eta0) < std::abs(eta3)) {
+          Print() << "\nion viscous coefficient eta3 greater than eta0";
+          Print() << "\t" + std::to_string(eta0) << "\t" + std::to_string(eta3) + "\t" + std::to_string((2*x_coef)*((2*x_coef)*(2*x_coef) + 2.38)/delta_eta2) + "\n";
+      }
+      if (std::abs(eta0) < std::abs(eta4)) {
+          Print() << "\nion viscous coefficient eta4 greater than eta0";
+          Print() << "\t" + std::to_string(eta0) <<  "\t" + std::to_string(eta4) + "\t" + std::to_string(x_coef*(x_coef*x_coef + 2.38)/delta_eta) + "\n";
+      }
+    }
+    //*/
     //From Braginskii OG paper page 250 of paper in journal heading 4
     // Kinetics of a simple plasma (Quantitative Analyis)
     // TODO Add in flexibility for different atomic numbers of the ion species used,
@@ -822,7 +828,7 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
       eta1 = nd_e *T_e*t_collision_ele*(2.05*(2*x_coef)*(2*x_coef)+8.5)/delta_eta2;
       eta4 = -nd_e*T_e*t_collision_ele*x_coef*(x_coef*x_coef+7.91)/delta_eta;
       eta3 = -nd_e*T_e*t_collision_ele*(2*x_coef)*((2*x_coef)*(2*x_coef)+7.91)/delta_eta2;
-      if ((x_coef < 1e-8 ) && (omega_ce > GD::effective_zero)) {
+      if ((GD::braginskii_hall_correction) && (x_coef < 1e-8 ) && (omega_ce > GD::effective_zero)) {
         eta2 = eta2/x_coef/x_coef;
         eta1 = eta1/x_coef/x_coef;
         eta4 = eta4/x_coef;
@@ -998,7 +1004,7 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
       eta1 = nd_e *T_e*t_collision_ele*(2.05*(2*x_coef)*(2*x_coef)+8.5)/delta_eta2;
       eta4 = -nd_e*T_e*t_collision_ele*x_coef*(x_coef*x_coef+7.91)/delta_eta;
       eta3 = -nd_e*T_e*t_collision_ele*(2*x_coef)*((2*x_coef)*(2*x_coef)+7.91)/delta_eta2;
-      if ((x_coef < 1e-8 ) && (omega_ce > GD::effective_zero)) {
+      if ((GD::braginskii_hall_correction) && (x_coef < 1e-8 ) && (omega_ce > GD::effective_zero)) {
         eta2 = eta2/x_coef/x_coef;
         eta1 = eta1/x_coef/x_coef;
         eta4 = eta4/x_coef;
@@ -1008,32 +1014,35 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
       eta1 = 0;
       eta4 = 0;
       eta3 = 0; }
-    /*
-    Print() << "debug ln 992 - eta0 etc.\n";
-    Print() << "\n" + std::to_string(eta0) + "\n";
-    Print() << "\n" + std::to_string(eta1) + "\n";
-    Print() << "\n" + std::to_string(eta2) + "\n";
-    Print() << "\n" + std::to_string(eta3) + "\n";
-    Print() << "\n" + std::to_string(eta4) + "\n";
-    */
-    //Srinivasan recomendation
-    if (std::abs(eta0) < std::abs(eta1)) {
-        Print() << "\nelectron viscous coefficient eta1 greater than eta0\n";
-        Print() << "\n" + std::to_string(eta0) + "\n";
-        Print() << "\n" + std::to_string(eta1) + "\n";
-    } else if (std::abs(eta0) < std::abs(eta2)) {
-        Print() << "\nelectron viscous coefficient eta2 greater than eta0\n";
-        Print() << "\n" + std::to_string(eta0) + "\n";
-        Print() << "\n" + std::to_string(eta2) + "\n";
-    } else if (std::abs(eta0) < std::abs(eta3)) {
-        Print() << "\nelectron viscous coefficient eta3 greater than eta0\n";
-        Print() << "\n" + std::to_string(eta0) + "\n";
-        Print() << "\n" + std::to_string(eta3) + "\n";
-    } else if (std::abs(eta0) < std::abs(eta4)) {
-        Print() << "\nelectron viscous coefficient eta4 greater than eta0\n";
-        Print() << "\n" + std::to_string(eta0) + "\n";
-        Print() << "\n" + std::to_string(eta4) + "\n";
+
+    if (false) {    
+      Print() << "debug ln 1012 - delta_kappa " << delta_kappa << "\tdelta_eta "<< delta_eta <<  "\neta0 etc.\t" 
+       << "\t" + std::to_string(eta0) + "\t" << "\t" + std::to_string(eta1) + "\t" << "\t" + std::to_string(eta2) + "\t"
+       << "\t" + std::to_string(eta3) + "\t" << "\t" + std::to_string(eta4) + "\n";
     }
+    
+    //Srinivasan recomendation
+    //*
+    if (GD::braginskii_anisotropic) {
+      if (std::abs(eta0) < std::abs(eta1)) {
+          Print() << "\nelectron viscous coefficient eta1 greater than eta0";
+          Print() << "\teta0 " << eta0 <<  "\teta1 " << eta1 << "\teta0 " << nd_e *T_e*t_collision_ele << "\tfact" << (2.05*(2*x_coef)*(2*x_coef)+8.5)/delta_eta2;
+      }
+      if (std::abs(eta0) < std::abs(eta2)) {
+          Print() << "\nelectron viscous coefficient eta2 greater than eta0";
+          Print() << "\t" + std::to_string(eta0) + "\t" + std::to_string(eta2) + "\t" << (2.05*x_coef*x_coef+8.5)/delta_eta;
+      }
+      if (std::abs(eta0) < std::abs(eta3)) {
+          Print() << "\nelectron viscous coefficient eta3 greater than eta0";
+          Print() << "\t" + std::to_string(eta0) + "\t" + std::to_string(eta3) + "\t" +  std::to_string((2*x_coef)*((2*x_coef)*(2*x_coef)+7.91)/delta_eta2);
+      } 
+      if (std::abs(eta0) < std::abs(eta4)) {
+          Print() << "\nelectron viscous coefficient eta4 greater than eta0";
+          Print() << "\t" + std::to_string(eta0) + "\t" + std::to_string(eta4) +  "\t" + std::to_string(x_coef*(x_coef*x_coef+7.91)/delta_eta);
+      }
+    }
+    //
+
     //From Braginskii OG paper page 250 of paper in journal heading 4
     // Kinetics of a simple plasma (Quantitative Analyis)
     //TODO change coefficient values for different Z values

@@ -19,6 +19,7 @@ from multiprocessing import Pool
 import subprocess, shlex
 import numpy as np
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import matplotlib.gridspec as gridspec
 from matplotlib.ticker import FixedFormatter
 import matplotlib.patches as patches
 from matplotlib.collections import PatchCollection

@@ -32,6 +32,7 @@ srin_switch = 0 --don't use srinivassans switch i.e. 0 - don't set collision tim
                 --                                   1 - set collision time scales to min of omega_p and omega_c if much smaller than both
 braginskii_anisotropic = 0; -- 0 - use isotropic braginskii transport coefficients, 1 - use the anisotropic transport coefficients.
 viewFluxSrcContributions = 0 -- print outs of flux contrubtiosn for debugging
+braginskii_hall_correction = 0 -- adjust the braginskii coefficients according to the hall parameter value --- see plasmapy documantation and Morse - Nuclear fusion transport
 
 -- refine around cutcells
 refine_cutcells = 0
