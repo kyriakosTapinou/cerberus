@@ -2302,6 +2302,9 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                 dvdy = (p4(i,j,k,Yvel)-p4(i,j-1,k,Yvel))*dxinv[1];
                 dwdy = (p4(i,j,k,Zvel)-p4(i,j-1,k,Zvel))*dxinv[1];
 
+                //TODO check the correction to the anisotropic results 
+
+                dTdx = (d4(i+1,j,k,iTemp)+d4(i+1,j-1,k,iTemp)-d4(i-1,j,k,iTemp)-d4(i-1,j-1,k,iTemp))*(0.25*dxinv[0]);
                 dudx = (p4(i+1,j,k,Xvel)+p4(i+1,j-1,k,Xvel)-p4(i-1,j,k,Xvel)-p4(i-1,j-1,k,Xvel))*(0.25*dxinv[0]);
                 dvdx = (p4(i+1,j,k,Yvel)+p4(i+1,j-1,k,Yvel)-p4(i-1,j,k,Yvel)-p4(i-1,j-1,k,Yvel))*(0.25*dxinv[0]);
                 //--- retrive the viscous stress tensor and heat flux vector on this face
@@ -2309,6 +2312,7 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                 dwdx = (p4(i+1,j,k,Zvel)+p4(i+1,j-1,k,Zvel)-p4(i-1,j,k,Zvel)-p4(i-1,j-1,k,Zvel))*(0.25*dxinv[0]);
 
 #if AMREX_SPACEDIM == 3
+                dTdz = (d4(i,j,k+1,iTemp)+d4(i,j-1,k+1,iTemp)-d4(i,j,k-1,iTemp)-d4(i,j-1,k-1,iTemp))*(0.25*dxinv[2]);
                 dvdz = (p4(i,j,k+1,Yvel)+p4(i,j-1,k+1,Yvel)-p4(i,j,k-1,Yvel)-p4(i,j-1,k-1,Yvel))*(0.25*dxinv[2]);
                 dwdz = (p4(i,j,k+1,Zvel)+p4(i,j-1,k+1,Zvel)-p4(i,j,k-1,Zvel)-p4(i,j-1,k-1,Zvel))*(0.25*dxinv[2]);
 
@@ -2406,6 +2410,7 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                 dvdz = (p4(i,j,k,Yvel)-p4(i,j,k-1,Yvel))*dxinv[2];
                 dwdz = (p4(i,j,k,Zvel)-p4(i,j,k-1,Zvel))*dxinv[2];
 
+                dTdx = (d4(i+1,j,k,iTemp)+d4(i+1,j,k-1,iTemp)-d4(i-1,j,k,iTemp)-d4(i-1,j,k-1,iTemp))*(0.25*dxinv[0]);
                 dudx = (p4(i+1,j,k,Xvel)+p4(i+1,j,k-1,Xvel)-p4(i-1,j,k,Xvel)-p4(i-1,j,k-1,Xvel))*(0.25*dxinv[0]);
                 dwdx = (p4(i+1,j,k,Zvel)+p4(i+1,j,k-1,Zvel)-p4(i-1,j,k,Zvel)-p4(i-1,j,k-1,Zvel))*(0.25*dxinv[0]);
                 dvdy = (p4(i,j+1,k,Yvel)+p4(i,j+1,k-1,Yvel)-p4(i,j-1,k,Yvel)-p4(i,j-1,k-1,Yvel))*(0.25*dxinv[1]);
@@ -2420,6 +2425,7 @@ void HydroState::calc_charged_viscous_fluxes(int passed_idx,
                 dvdx = (p4(i+1,j,k,Yvel)+p4(i+1,j,k-1,Yvel)-p4(i-1,j,k,Yvel)-p4(i-1,j,k-1,Yvel))*(0.25*dxinv[0]);
                 dudy = (p4(i,j+1,k,Xvel)+p4(i,j+1,k-1,Xvel)-p4(i,j-1,k,Xvel)-p4(i,j-1,k-1,Xvel))*(0.25*dxinv[1]);
 
+                dTdy = (d4(i,j+1,k,iTemp)+d4(i,j+1,k-1,iTemp)-d4(i,j-1,k,iTemp)-d4(i,j-1,k-1,iTemp))*(0.25*dxinv[1]);
                 //--- retrive the viscous stress tensor and heat flux vector on this face
                 if (GD::braginskii_anisotropic) BraginskiiViscousTensorHeatFlux(passed_idx, ion_idx, electron_idx, em_idx, i, j, k, box, dxinv,
                                                 xB, yB, zB, u_rel, dTdx, dTdy, dTdz,
