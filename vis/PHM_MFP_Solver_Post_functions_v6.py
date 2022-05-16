@@ -1039,7 +1039,6 @@ def get_transportProperties(ch, names, level):
   beta = ch.data["beta"]; dS = ch.data["skin_depth"]; c = ch.data["lightspeed"]
   n_ref = ch.data["n0"]; x_ref = ch.data["x_ref"]; u_ref = ch.data["u_ref"];
 
-  pdb.set_trace()
   # check if primitives that we have access to the cerberus gradients - super important 
   QD = {} #gradients of primitives 
   properties = ['x_D-field-dx', 'x_B-field-dx', 'y_B-field-dx', 'z_B-field-dx', 
@@ -1059,18 +1058,17 @@ def get_transportProperties(ch, names, level):
       QD[propertiesHandle[prop]] = ch.get(prop)[-1]
     except:
       print(f"Property {prop} unavailable from inputs")
-  pdb.set_trace()
   print("\t\t...extracted")
   # prepare indivudal component data --- pulled in from 1D code and adapted for 2D
       # needs to be done for every interface - multiprocesses for each row ?
   print("\tViscousTensor and heat flux calc")
   X = 0; Y=1; Z=2;
-  Xmom = 0; Ymom = 1; Zmom = 2; Eden = 3
+  Xmom = 0; Ymom = 1; Zmom = 2; EdenPi = 3; EdenQ = 4
 
   print(x.shape, y.shape)
   for name in names:
-    fluxX = np.zeros((x.shape[0]-1, y.shape[0]-1, 4)); 
-    fluxY = np.zeros((x.shape[0]-1, y.shape[0]-1, 4))
+    fluxX = np.zeros((x.shape[0]-1, y.shape[0]-1, EdenQ+1)); 
+    fluxY = np.zeros((x.shape[0]-1, y.shape[0]-1, EdenQ+1))
     # cell i,j will handle the interface between
     #   fluxX: i, j and i+1, j
     #   fluxY: i, j and i, j+1
@@ -1084,9 +1082,10 @@ def get_transportProperties(ch, names, level):
         fluxX[i,j,Xmom] += ViscTens[0];
         fluxX[i,j,Ymom] += ViscTens[3];
         fluxX[i,j,Zmom] += ViscTens[5];
-        fluxX[i,j,Eden] += 0.5*((Q[name][Xvel][i+1,j] + Q[name][Xvel][i,j])*ViscTens[0]+
+        fluxX[i,j,EdenPi] += 0.5*((Q[name][Xvel][i+1,j] + Q[name][Xvel][i,j])*ViscTens[0]+
                            (Q[name][Yvel][i+1,j] + Q[name][Yvel][i,j])*ViscTens[3]+
-                           (Q[name][Zvel][i+1,j] + Q[name][Zvel][i,j])*ViscTens[5]) + q_flux[0];
+                           (Q[name][Zvel][i+1,j] + Q[name][Zvel][i,j])*ViscTens[5])
+        fluxX[i,j,EdenQ] += q_flux[0];
         # fluxes in the y-direcion
         ViscTens, q_flux = \
           braginskiiViscousTensorHeatFlux(name, "ions", "electrons", "field", 
@@ -1095,9 +1094,11 @@ def get_transportProperties(ch, names, level):
         fluxY[i,j,Xmom] += ViscTens[3];
         fluxY[i,j,Ymom] += ViscTens[1];
         fluxY[i,j,Zmom] += ViscTens[4];
-        fluxY[i,j,Eden] += +0.5*((Q[name][Xvel][i,j+1]+Q[name][Xvel][i,j])*ViscTens[3]+
+        fluxY[i,j,EdenPi] += +0.5*((Q[name][Xvel][i,j+1]+Q[name][Xvel][i,j])*ViscTens[3]+
                 (Q[name][Yvel][i,j+1]+Q[name][Yvel][i,j])*ViscTens[1]+
-                (Q[name][Zvel][i,j+1]+Q[name][Zvel][i,j])*ViscTens[4]) + q_flux[1]; 
+                (Q[name][Zvel][i,j+1]+Q[name][Zvel][i,j])*ViscTens[4]) 
+
+        fluxY[i,j,EdenQ] += q_flux[1];
     
   print("\t\t..Calc done")
   # find max in each region and time 
@@ -1106,16 +1107,21 @@ def get_transportProperties(ch, names, level):
   dt = 1
   print("\tCalculating viscous flux contribution...")
   for name in names:
-    dudt_flux[name] = np.zeros((x.shape[0]-1, y.shape[0]-1, 4)); 
-    for prop in range(Eden+1):
+    dudt_flux[name] = np.zeros((x.shape[0]-1, y.shape[0]-1, EdenQ+1)); 
+    for prop in range(EdenQ+1):
       for j in range(1, y.shape[0]-1):#TODO replace with multiprocessing 
         for i in range(1, x.shape[0]-1):#TODO replace with multiprocessing 
           dudt_flux[name][i,j, prop] = dt/dx * ( fluxX[i,j,prop] - fluxX[i-1,j,prop] + \
                                      fluxY[i,j,prop] - fluxY[i,j-1,prop])
-
-  # return desired properties 
-  
+ 
   print("\t\t..Calc done")
+
+  # source term contributions 
+  print("\tCalculating viscous flux contribution...")
+  braginskiiSource(srcDst, offsetMap, stateU, primGrad, stateProps, lightspeed, 
+                   Larmor, Debye, verbosity):
+
+
   return x, y, dudt_flux
 
 def braginskiiViscousTensorHeatFlux(name, ionName, eleName, emName, i, j, dimFlux, dim,
