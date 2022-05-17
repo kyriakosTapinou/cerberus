@@ -1119,7 +1119,7 @@ def get_transportProperties(ch, names, level):
   # source term contributions 
   print("\tCalculating viscous flux contribution...")
   braginskiiSource(srcDst, offsetMap, stateU, primGrad, stateProps, lightspeed, 
-                   Larmor, Debye, verbosity):
+                   Larmor, Debye, verbosity)
 
 
   return x, y, dudt_flux

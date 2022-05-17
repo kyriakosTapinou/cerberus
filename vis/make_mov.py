@@ -8,7 +8,7 @@ Created on Tue Jun 28 16:42:38 2016
 import os, shutil
 import matplotlib as mpl
 
-mpl.use('agg')
+#mpl.use('agg')
 
 from glob import glob
 import h5py
