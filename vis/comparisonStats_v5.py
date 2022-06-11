@@ -30,8 +30,10 @@ if visulaisation_code_folder not in sys.path:
 if derived_functions_code_folder not in sys.path:
   sys.path.insert(0, derived_functions_code_folder)
 
-import PHM_MFP_Solver_Post_functions_v4 as phmmfp # running version 3
+import PHM_MFP_Solver_Post_functions_v6 as phmmfp # running version 3
 from get_boxlib import ReadBoxLib, get_files #from get_hdf5_data import ReadHDF5 # if hdf5 files used
+from get_hdf5_data import ReadHDF5 # used for the HRMI 
+
 
 
 ###################################################################################
@@ -48,7 +50,8 @@ def tilePcolormeshNormalise(i, j, i_last, x, y, val, name_ij, fig, gs, ax_i, div
                       bbox_to_anchor=(0., -0.125, 1,1), bbox_transform=ax_i[name_ij].transAxes, 
                       borderpad=0) #div_ij.append_axes("bottom", size="3%", pad=0.05)
 
-  if ("electric" in name_ij) or ("magnetic" in name_ij) or  ('Lorentz' in name_ij):
+  if ("_D-field" in name_ij) or ("_B-field" in name_ij) or  ('Lorentz' in name_ij) or \
+  ("vorticity" in name_ij) or ('current' in name_ij):
     vminValue = -attr_gcl; vmidValue = 0.; cmapValue = mpl.cm.bwr # "bwr";
   else:
     vminValue = 0. #0.5*attr_gcl[name_ij]; 
@@ -182,7 +185,14 @@ def plot_ScenariosPrimitive(dataFileList, outputType, raw_data_attr, levelList, 
         charge_density = phmmfp.get_charge_number_density(rc, "ions", returnMany=False)[1]
         charge_density += phmmfp.get_charge_number_density(rc, "electrons", returnMany=False)[1]
         attr[attr_name][i] = charge_density
-
+      elif '-current' in attr_name_access: # current density 
+        if 'x-' in attr_name_access: index = 2;
+        elif 'y-' in attr_name_access: index = 3;
+        elif 'z-' in attr_name_access: index = 4;
+        attr[attr_name][i] = \
+          phmmfp.get_charge_number_density(rc, "ions", returnMany=False)[index]
+        attr[attr_name][i] += \
+          phmmfp.get_charge_number_density(rc, "electrons", returnMany=False)[index]
       elif "Lorentz-" in attr_name_access:
         #Lorentz force
         name = attr_name_access.split('Lorentz-')[1].split('-')[1]
@@ -281,7 +291,7 @@ def plot_ScenariosPrimitive(dataFileList, outputType, raw_data_attr, levelList, 
           attr_name, fig, gs, ax[i], divider[i][attr_name], cax[i][attr_name], 
           norm[i][attr_name], cb[i][attr_name], attr_gcl[attr_name], view, label_prop[j], 
           attr_t[i], columnLetter[j])
-      if IDI_contour:
+      if IDI_contour and "Lorentz" in attr_name :
         #ax[i][attr_name].pcolormesh(
         #  x_tracer, y_tracer, DI_contour['ions'][i], cmap='gray', alpha=1., vmin=0, vmax=1.)
         ax[i][attr_name].contour(x_tracer[i], y_tracer[i], DI_contour['ions'][i], colors='gray', 
@@ -473,6 +483,125 @@ def compareInterfaceStatistics(fluid, key, date, reducedPlot, areaOnly, circulat
   plt.close(fig)
   return 
 
+def compareInterfaceThickness(fluid, date, cases, processedFiles, label_append, useNprocs):
+  ### generic motherfuckers 
+  data_lines = {"interface_area":'dashed', "y_avg_int_width":'dashed', "global_int_width":'solid', 
+                "growth_rate":'dashed', "global_growth_rate":'solid', 'interface_thickness':'dashed'}
+
+  data_markers = {"interface_area":'None', "y_avg_int_width":'None', "global_int_width":'None', 
+                  "growth_rate":'None', "global_growth_rate":'None', 'interface_thickness':'None'}
+
+  data_labels = {"interface_area":'', "y_avg_int_width":'Avg-', "global_int_width":'Gbl-',
+                 "growth_rate":'Avg-', "global_growth_rate":'Gbl-', 'interface_thickness':''}
+
+  ### specifics 
+  oneD_properties = ["interface_location", "y_avg_int_width", 
+                     "global_int_width",  "growth_rate", "global_growth_rate", 
+                     "interface_area"]
+
+  plot_properties = ["interface_thickness", "y_avg_int_width", "global_int_width", 
+                     "growth_rate", "global_growth_rate", "interface_area"]
+  #plot_labels = [r"$\delta$", r"$\eta_{avg}$", r"$\eta_{global}$", r"$\dot \eta$", 
+  #               r"$\dot \eta_{gbl}$", r"$A_{int}$"]
+  plot_labels = [r"$\delta$", r"$\eta$", r"$\dot \eta$", r"$A_{int}$"]
+
+  plot_limits = []
+  ### set up plot figure amd gridspec ###
+  figure_nR = 2; figure_nC = 2; wspacing = 0.3; hspacing = 0.1; 
+
+  fig_x, fig_y = phmmfp.get_figure_size(6.7, figure_nR, figure_nC, 1., wspacing, hspacing, 1)
+
+  fig = plt.figure(figsize=(fig_x,fig_y))
+  gs = gridspec.GridSpec(figure_nR, figure_nC, figure=fig) 
+  axes = {}; interface_data = {}; t_data = {}
+
+  for i in range(len(plot_labels)):#setting for grid according to series order
+    if i % 2 == 0:
+      column = 0; row = int(i/2)
+    else: 
+      column = 1; row = int(i/2)
+    axes[i] = fig.add_subplot(gs[row, column]); axes[i].set_ylabel(plot_labels[i])
+    if len(plot_limits) > 0: axes[i].set_ylim(plot_limits[i]) 
+
+  plot_axes = {"interface_thickness":axes[0], 
+               "y_avg_int_width":axes[1], "global_int_width":axes[1],
+               "growth_rate":axes[2], "global_growth_rate":axes[2],
+               "interface_area":axes[3]}
+
+  # extract data from h5 post process files 
+  for i in oneD_properties:
+    for (key, (dataDir, level)) in cases.items():
+      if 'HYDRO' in key or 'HRMI' in key:
+        case_species = 'neutral'
+      else:
+        case_species = fluid 
+      if case_species == 'neutral' and 'Lorentz' in i:
+        pass
+      else:
+        t_data[i, key], interface_data[i,key] = phmmfp.get_1D_time_series_data(processedFiles[key], 
+          species=case_species, quantity=i, nproc=useNprocs, cumsum=False)
+
+  # final time interface thickness 
+  intThickness = {}
+  for (key, (dataDir, level)) in cases.items():
+    nCellsY = len(interface_data["interface_location", key][-1].keys())
+    t_data["interface_thickness", key] = np.linspace(0,1,nCellsY)
+    interface_data["interface_thickness", key]   = np.zeros((nCellsY))
+
+    #intThickness[key] = np.zeros((nCellsY))
+    for i in range(nCellsY):
+      #intThickness[key][i] = interface_data['interface_location', key][-1][0][1][0] - \
+      #           interface_data['interface_location', key][-1][0][0][0]
+      interface_data["interface_thickness", key][i] =\
+        interface_data['interface_location', key][-1][i][1][0] -\
+                 interface_data['interface_location', key][-1][i][0][0]
+  
+  ### Plot this shit show ###
+  use_lw = 0.25; use_ms = 2
+  for prop in plot_properties: 
+    for key in cases.keys():
+      use_color = case_colors[key]
+
+      if 'HYDRO' in key or 'HRMI' in key:
+        use_label = data_labels[prop]+'H-p=%s'%(key.split('_p')[1].split('_ny')[0])
+      else:
+        use_label = data_labels[prop]+case_prefix[key] #+r'$-d_S-%.1f$'%case_params[key][0]
+
+      use_ls  = data_lines[prop]
+      use_marker = dS_marker[key]
+      #if prop == 'interface_thickness':
+      #  plot_axes[prop].plot(t_data[prop, key], intThickness[key], color=use_color, linestyle=use_ls, marker=use_marker, linewidth=use_lw, markersize=use_ms, label=use_label)
+
+      plot_axes[prop].plot(t_data[prop, key], interface_data[prop,key], color=use_color, linestyle=use_ls, marker=use_marker, linewidth=use_lw, markersize=use_ms, label=use_label)
+
+    ### sort legend according to labels 
+    leg_handles, leg_labels = plot_axes[prop].get_legend_handles_labels()
+    leg_hl = sorted(zip(leg_handles, leg_labels), key=operator.itemgetter(1))
+    leg_handles2, leg_labels2 = zip(*leg_hl)
+    plot_axes[prop].legend(leg_handles2, leg_labels2)
+    plot_axes[prop].legend(frameon=False, ncol=2, prop={"size":6}, loc=1)
+
+  for (i,ax) in axes.items():
+    if (i != len(plot_labels)-1) and ( i != len(plot_labels)-2 ):
+      #ax.axis('off') 
+      ax.set_xticklabels([])
+    else:
+      ax.set_xlabel(r"$t$")
+    
+    for someName in t_data.keys(): break 
+    ax.set_xlim(0, t_data[someName][-1]) #t_data[someName[0], cases.keys()[-1]][-1])
+    ax.plot([0,1], [0,0], 'k--', lw=0.4, alpha=0.3) #set the dotted line on zero
+  gs.tight_layout(fig, h_pad=0.05, w_pad=0.01)
+  
+  name = date + "_interface_geometry_" + label_append
+  name = name.replace(".","p")
+  name += ".tiff"
+  fig.savefig(name, format='tiff', dpi=600, bbox_inches='tight')
+  print("Saved ",name)
+  plt.close(fig)
+
+  return 
+
 ###################################################################################
 #                               Parameter settings                                #
 ###################################################################################
@@ -481,7 +610,8 @@ prepare_data = False # look for existing data file (use dictionary name assigned
 plot = True # to plot or not to plot, that is the question...
 
 plot_interface_stats = True # plot interface statistics 
-plot_scenarios_primitive = False # not implemented 
+plot_scenarios_primitive =  False # not implemented 
+plot_interface_thickness = False 
 plot_scenarios_eden_series = False # not implemented 
 
 plot_HRMI = True
@@ -492,7 +622,7 @@ plot_16 = True
 plot_18 = False
 plot_21 = False 
 
-useNprocs = 24
+useNprocs = 1
 
 max_res = 2048 # not used just elgacy variable
 view =  [[-0.4, 0.0], [1.4, 1.0]] # what windo of data to view 
@@ -510,14 +640,15 @@ if __name__ == '__main__':
   # example of plotting raw data (or the specialist derived properties accounted for). 
   #format is {nickname:(directory abslute, max_level)}  
   simOutputDirec = {
-"SRMI-OP-16-Res-512-IDEAL-CLEAN":("/scratch/project/rmitfp/0000-2D-RMI-Collisions/000-Option-16-FullSuiteResults-MEMORYREDUCED/Ideal-Clean", -1), 
-"SRMI-OP-16-Res-512-INTRA-ANISO-MAG-Z":("/scratch/project/rmitfp/0000-2D-RMI-Collisions/000-Option-16-FullSuiteResults-MEMORYREDUCED/Intra-Aniso-Magnetised-Z", -1), 
-"SRMI-OP-16-Res-512-INTRA-ISO-MAG-Z":("/scratch/project/rmitfp/0000-2D-RMI-Collisions/000-Option-16-FullSuiteResults-MEMORYREDUCED/Intra-Iso-Magnetised-Z", -1), 
-"SRMI-OP-16-Res-512-INTRA-ANISO-CLEAN":("/scratch/project/rmitfp/0000-2D-RMI-Collisions/222-Option-16-Anisotropic-Intra", -1), 
-"SRMI-OP-16-Res-512-INTRA-ISO-CLEAN":("/scratch/project/rmitfp/0000-2D-RMI-Collisions/222-Option-16-isotropic-Intra", -1), 
-#"TRMI-OP-16-Res-512-INTRA-ISO":("/scratch/project/rmitfp/0000-2D-RMI-Collisions/333-Option-16-TRMI/Intra-Iso-Clean", -1), 
-"SRMI-OP-16-Res-512-INTER-DIRTY":("/scratch/project/rmitfp/0000-2D-RMI-Collisions/000-Option-16-FullSuiteResults-MEMORYREDUCED/20210922-SRMI-option-16-Inter", -1), 
-"SRMI-OP-16-Res-512-FB-DIRTY":("/scratch/project/rmitfp/0000-2D-RMI-Collisions/000-Option-16-FullSuiteResults-MEMORYREDUCED/20210922-SRMI-option-16-FullBrag", -1), 
+"SRMI-OP-16-Res-512-IDEAL-CLEAN":("/media/kyriakos/Expansion/999_RES_512_RUNS/tinaroo_Ideal-Clean-HLLE/Ideal-Clean/", -1), 
+"SRMI-OP-16-Res-512-INTRA-ANISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-INTRA-Anisotropic/SRMI-Option-16-Res-512-INTRA-Anisotropic/", -1), 
+"SRMI-OP-16-Res-512-INTRA-ISO-":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-INTRA-Isotropic/SRMI-Option-16-Res-512-INTRA-Isotropic/", -1), 
+"SRMI-OP-16-Res-512-INTER-ANISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-Inter-Anisotropic/SRMI-Option-16-Res-512-Inter-Anisotropic/", -1), 
+"SRMI-OP-16-Res-512-INTER-ISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-Inter-Isotropic/SRMI-Option-16-Res-512-Inter-Isotropic/", -1), 
+"SRMI-OP-16-Res-512-FB-ISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-FB-Isotropic/SRMI-Option-16-Res-512-FB-Isotropic/", -1), 
+"SRMI-OP-16-Res-512-FB-ANISO-ISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_SRMI-Option-16-Res-512-FB-Anisotropic/", -1), 
+'PHM_HRMI_p0.5_ny2048':('/home/kyriakos/Documents/000_Species_RMI_Scenario_Results/000_R18_Scenario_Results/PHM_HRMI_p0.5_ny2048', -1), 
+'PHM_HRMI_p1_ny2048':('/home/kyriakos/Documents/000_Species_RMI_Scenario_Results/000_R18_Scenario_Results/PHM_HRMI_p1_ny2048', -1)
 }
   
 ###################################################################################
@@ -527,7 +658,7 @@ if __name__ == '__main__':
   if prepare_data:
     for key, (simDir, level) in simOutputDirec.items():
       phmmfp.get_batch_data(key, simDir, level, max_res, window, n_time_slices, 
-                            nproc=24, outputType=[outputKeyword]) #plt or chk files? default to plt
+                            nproc=useNprocs, outputType=[outputKeyword]) #plt or chk files? default to plt
   
 ###################################################################################
 #                                 Plot statistics                                 #
@@ -543,32 +674,41 @@ if __name__ == '__main__':
     #### must match the keys used for the data 
     #dS_marker = {:'+', :'x', 
 
+    dS_marker = {
+"SRMI-OP-16-Res-512-IDEAL-CLEAN":"None",
+"SRMI-OP-16-Res-512-INTRA-ANISO":"x",
+"SRMI-OP-16-Res-512-INTRA-ISO-":"None",
+"SRMI-OP-16-Res-512-INTER-ANISO":"x",
+"SRMI-OP-16-Res-512-INTER-ISO":"None",
+"SRMI-OP-16-Res-512-FB-ISO":"None",
+"SRMI-OP-16-Res-512-FB-ANISO-ISO":"x", 
+'PHM_HRMI_p0.5_ny2048':'None',
+'PHM_HRMI_p1_ny2048':'None',
+}
 
-
-    dS_marker = {"SRMI-OP-16-Res-512-IDEAL-CLEAN":"None", 
-"SRMI-OP-16-Res-512-INTRA-ANISO-MAG-Z":"x",
-"SRMI-OP-16-Res-512-INTRA-ISO-MAG-Z":"None",
-"SRMI-OP-16-Res-512-INTRA-ANISO-CLEAN":"x",
-"SRMI-OP-16-Res-512-INTRA-ISO-CLEAN":"None",
-"SRMI-OP-16-Res-512-INTER-DIRTY":"None",
-"SRMI-OP-16-Res-512-FB-DIRTY":"None", }
-
-    case_prefix = {"SRMI-OP-16-Res-512-IDEAL-CLEAN":"S16-IDL", 
-"SRMI-OP-16-Res-512-INTRA-ANISO-MAG-Z":"S16-INTRA-A-BZ",
-"SRMI-OP-16-Res-512-INTRA-ISO-MAG-Z":"S16-INTRA-I-BZ",
-"SRMI-OP-16-Res-512-INTRA-ANISO-CLEAN":"S16-INTRA-A",
-"SRMI-OP-16-Res-512-INTRA-ISO-CLEAN":"S16-INTRA-I",
-"SRMI-OP-16-Res-512-INTER-DIRTY":"S16-INTER-D",
-"SRMI-OP-16-Res-512-FB-DIRTY":"S16-FB-D"}
+    case_prefix = {"SRMI-OP-16-Res-512-IDEAL-CLEAN":"IDL",
+"SRMI-OP-16-Res-512-INTRA-ANISO":"INTRA-A",
+"SRMI-OP-16-Res-512-INTRA-ISO-":"INTRA-I",
+"SRMI-OP-16-Res-512-INTER-ANISO":"INTER-A",
+"SRMI-OP-16-Res-512-INTER-ISO":"INTER-I",
+"SRMI-OP-16-Res-512-FB-ISO":"FB-I",
+"SRMI-OP-16-Res-512-FB-ANISO-ISO":"FB-I", 
+'PHM_HRMI_p0.5_ny2048':'P=0.5',
+'PHM_HRMI_p1_ny2048':'P=1',
+}
 
     case_colors = {"SRMI-OP-16-Res-512-IDEAL-CLEAN":"k",
-"SRMI-OP-16-Res-512-INTRA-ANISO-MAG-Z":"b",
-"SRMI-OP-16-Res-512-INTRA-ISO-MAG-Z":"b",
-"SRMI-OP-16-Res-512-INTRA-ANISO-CLEAN":"m",
-"SRMI-OP-16-Res-512-INTRA-ISO-CLEAN":"m",
-"SRMI-OP-16-Res-512-INTER-DIRTY":"g",
-"SRMI-OP-16-Res-512-FB-DIRTY":"r",
-  } #'g', 'k', :'b', 'r', 'm', 'y', }
+"SRMI-OP-16-Res-512-INTRA-ANISO":"b",
+"SRMI-OP-16-Res-512-INTRA-ISO-":"b",
+"SRMI-OP-16-Res-512-INTER-ANISO":"g",
+"SRMI-OP-16-Res-512-INTER-ISO":"g",
+"SRMI-OP-16-Res-512-FB-ISO":"r",
+"SRMI-OP-16-Res-512-FB-ANISO-ISO":"r",
+'PHM_HRMI_p0.5_ny2048':'m',
+'PHM_HRMI_p1_ny2048':'y'
+}
+
+#'g', 'k', :'b', 'r', 'm', 'y', }
  
     label_append = 'SRMI_OPTION_16'
     for key, (simDir, useLevel) in simOutputDirec.items():
@@ -599,12 +739,24 @@ if __name__ == '__main__':
           cases[key] = (simDir, useLevel)
           level = useLevel
           dirName = phmmfp.get_save_name(key, simDir, level) # directry name for prcerssed files
-          dirName = simDir + "/" + dirName
-          outputFiles[key] = get_files(simDir, include=["plt"], get_all=False) 
-          processedFiles[key] = get_files(dirName, include=[".h5"], get_all=False) 
-          rc = ReadBoxLib(outputFiles[key][0], 0, view)
-          case_params[key] = (rc.data['skin_depth'],  rc.data['lightspeed'])
-          rc.close() 
+
+          if "PHM_HRMI_p" in simDir: # the HRMI processed files are in the same diretory as the results 
+            parentDir = simDir.split("/PHM_HRMI_p")[0]
+            dirName = parentDir + "/" + dirName
+            outputFiles[key] = ReadHDF5.get_files(simDir, include=[".h5"], exclude=["temp", "old"], get_all=False) 
+            processedFiles[key] = get_files(dirName, include=[".h5"], get_all=False) 
+          
+          else:# standard boxlib files
+            if False: # in the sim folder 
+              if simDir[-1] == "/": dirName = simDir + "/" + dirName # where is the processed files in relation to the sim output
+              else: dirName = simDir + dirName
+  
+            outputFiles[key] = get_files(simDir, include=["plt"], exclude=["temp", "old"], get_all=False) 
+            processedFiles[key] = get_files(dirName, include=[".h5"], get_all=False) 
+            rc = ReadBoxLib(outputFiles[key][0], 0, view)
+            case_params[key] = (rc.data['skin_depth'],  rc.data['lightspeed'])
+
+          rc.close() #close files
     
     print("\nData lists compiled --- we cool...\n\t...Begin plotting")
 
@@ -612,15 +764,16 @@ if __name__ == '__main__':
     if plot_scenarios_primitive:
       print('Plot species pimitive variables:')
       
-      label_prop = [r"$\rho_e$", r"$\rho_i$", r"$L_{x,i}$", r"$T_i$" ] #
-      # r"$\omega_{i}$", r"$\rho_{q}$", r"$T_e$", r"$T_i$", r"$\varrho_i$", 
-      #r"$\rho_{E,e}$", r"$\rho_{E,i}$", r"$\rho_{E, EM}$"]  
-      raw_data_attr_names = ['rho-electrons','rho-ions',  'Lorentz-x-ions', 'temperature-ions']
+      label_prop = [r"$E_x$",  r"$E_y$", r"$B_z$", r"$J_x$", r"$J_y$"] #
+      # r"$\omega_{i}$", r"$\rho_{q}$", r"$T_e$", r"$T_i$", r"$\varrho_i$", r"$\omega_{i}$"
+      #r"$\rho_{E,e}$", r"$\rho_{E,i}$", r"$\rho_{E, EM}$"]  r"$\rho_i$", r"$L_{x,i}$", 
+      raw_data_attr_names = ['x_D-field', 'y_D-field', 'z_B-field', 'x-current', 'y-current']
       #raw_data_attr_names = ['rho_E-electrons', 'rho_E-ions', "rho_E-EM", 'vorticity-ion', 
       # 'rho-charge', 'temperature-electron', 'temperature-ion', 'tracer-ion']
+      #'temperature-ions' 'vorticity-ions'
       levelList = []
-      for timeInput in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]: 
-        label_output = "20220509-"+key+"t-%.1f-rho-mass-Lorentz"%(timeInput)
+      for timeInput in [0.2, 0.5, 0.8, 1.0]: 
+        label_output = "20220606-Braginskii"+key+"t-%.1f-rho-EM-Jxy_"%(timeInput)
         input_files = []; level_list = []; ylabel_list = []; view_list = []
     
         cases_keys = [i for i in cases.keys()] #cases.keys()
@@ -635,13 +788,11 @@ if __name__ == '__main__':
           optionIndexes = {16:0, 18:10, 19:20, 21:30}                                          
           options = [16, 18, 19, 20, 21]
           scenarioIndexes = {'IDEAL':0, 'INTRA-ISO':1, 'INTRA-ANISO':2, 'INTER-ISO':3, 
-                              'INTER-ANISO':4, 
-                              #'FB-ISO':5, 'FB-ANISO':6, 
-                              'INTER-DIRTY':5, 'FB-DIRTY':6, 'INTRA-ISO-MAG-Z':7, 
-                              'INTRA-ANISO-MAG-Z':8}
-          scenarios = ['IDEAL', 'INTRA-ISO', 'INTRA-ANISO', 
-                        #'INTER-ISO', 'INTER-ANISO', 'FB-ISO', 'FB-ANISO'
-                        'INTER-DIRTY', 'FB-DIRTY', 'INTRA-ISO-MAG-Z', 'INTRA-ANISO-MAG-Z'                              ]
+                              'INTER-ANISO':4, 'FB-ISO':5, 'FB-ANISO':6}
+                              #'INTER-DIRTY':5, 'FB-DIRTY':6, 'INTRA-ISO-MAG-Z':7, 
+                              #'INTRA-ANISO-MAG-Z':8}
+          scenarios = ['IDEAL', 'INTRA-ISO', 'INTRA-ANISO', 'INTER-ISO', 'INTER-ANISO', 'FB-ISO', 'FB-ANISO']
+                      #'INTER-DIRTY', 'FB-DIRTY', 'INTRA-ISO-MAG-Z', 'INTRA-ANISO-MAG-Z']
           for key in cases:
             optionIndex = -1; scenarioIndex = -1
             for option in options:
@@ -678,16 +829,16 @@ if __name__ == '__main__':
           level_list.append(level)
   
         view_list = [view]*len(cases_sorted); 
-        label_data = ["S16-IDEAL", "S16-INTRA-ISO", "S16-INTRA-ANISO", "S16-INTER-DIRTY", 
-                      "S16-FB-DIRTY", "S16-INTRA-ISO-BZ", "S16-INTRA-ANISO-BZ"]
+        label_data = ["S16-IDEAL", "S16-INTRA-ISO", "S16-INTRA-ANISO", "S16-INTER-ISO", "S16-INTER-ISO",
+                      "S16-FB-ISO", "S16-FB-ANIISO"]
         plot_ScenariosPrimitive(input_files, [outputKeyword], raw_data_attr_names, level_list, 
           label_prop, label_data, label_output, view_list)
 
       # ======================= Interface statistics ===============================#
     if plot_interface_stats:
       print('\nPlotting comparison of interface statistics')
-      date = "20220509"
-      label_append = "_comparison_16-Ideal_INTRA_INTER_MAGZ"
+      date = "20220607"
+      label_append = "IONS_comparison_16-Braginskii"
       ###   
       reducedPlot = True# only plotting the overall circ, circ gen, growth rate, and 
       areaOnly = False
@@ -697,3 +848,11 @@ if __name__ == '__main__':
       compareInterfaceStatistics("ions", key, date, 
         reducedPlot, areaOnly, circulationComponentsOnly,
         cases, processedFiles, wspacing, hspacing, label_append, useNprocs=useNprocs)
+
+      # ======================= Interface statistics ===============================#
+    if plot_interface_thickness:
+      print('\nPlotting comparison of interface statistics')
+      date = "20220607"
+      label_append = "ELECTRONS_comparison_16-Braginskii"
+    
+      compareInterfaceThickness("electrons",date, cases, processedFiles, label_append, useNprocs)

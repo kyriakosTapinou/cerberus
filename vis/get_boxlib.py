@@ -2,6 +2,7 @@
 """
 read AMReX data files
 """
+import pdb
 
 import numpy as np
 import os
@@ -455,15 +456,19 @@ def get_time(name):
     return data["time"]
 
 def sortPltChk(inputString):
+  stepKeyword = "step"
   if 'plt' in inputString and 'chk' in inputString:
     print("\nError in get_box_lib sortPltChk function\n")
     return inputString
-  if 'plt' not in inputString and 'chk' not in inputString and 'step' not in inputString:       
-    print(f"\nError in get_box_lib sortPltChk function: {inputString}\n")
-    return inputString
+  if 'plt' not in inputString and 'chk' not in inputString and 'step' not in inputString:
+    if "Step" in inputString: 
+      stepKeyword = "Step_"
+    else:
+      print(f"\nError in get_box_lib sortPltChk function: {inputString}\n")
+      return inputString
 
-  if 'step' in inputString: 
-    return int(inputString.split("step")[1].split("_level")[0])
+  if stepKeyword in inputString: 
+    return int(inputString.split(stepKeyword)[1].split("_level")[0])
   elif 'plt' in inputString: splitOn = 'plt'
   elif 'chk' in inputString: splitOn = 'chk'
   return int(inputString.split(splitOn)[1])
@@ -484,7 +489,6 @@ def get_files(folder, include=[], exclude=[], times=[], tol=1e-2, get_all=False)
 
         if accept:
             names.append(name)
-
     names = sorted(names, key=sortPltChk)
 
     if get_all or (times == []):

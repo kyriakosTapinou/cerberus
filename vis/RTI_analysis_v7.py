@@ -43,13 +43,7 @@ from get_boxlib import ReadBoxLib, get_files
 import PHM_MFP_Solver_Post_functions_v4 as phmmfp
 
 #======================================Functions=====================================
-def pack_er_in_boys(name, time_floats, x_l, x_h, a_scale, p_scale, o_scale, label_append):
-
-  #======================================Example data and parameters===================
-  dataDirs = [("SRMI-Option-16-Res-2048-Intra-Anisotropic","/media/kyriakos/Expansion/000_MAGNUS_SUPERCOMPUTER_BACKUP/ktapinou/SRMI-Option-16-Res-2048-Intra-Anisotropic/"), 
-          ]
-  dDir = dataDirs[0][1]
-  label = dataDirs[0][0]
+def pack_er_in_boys(dDir, label, name, time_floats, x_l, x_h, a_scale, p_scale, o_scale, label_append):
 
   #####==================================Parameters====================================
   dFiles = get_files(dDir, include=["plt"], get_all=False)
@@ -59,7 +53,7 @@ def pack_er_in_boys(name, time_floats, x_l, x_h, a_scale, p_scale, o_scale, labe
   data_properties = ["a_x", "a_y", "pgrad_x", "pgrad_y", "L_x_total", "L_y_total", 'o_dot_baro']
 
   plot_properties = ["a_x", "a_y", "pgrad_x", "pgrad_y", "L_x_total", "L_y_total", 'o_dot_baro']
-  cmap_lst = ['bwr', 'bwr','bwr','bwr','bwr','bwr', 'bwr']
+  cmap_lst = [mpl.cm.bwr, mpl.cm.bwr,mpl.cm.bwr,mpl.cm.bwr,mpl.cm.bwr,mpl.cm.bwr, mpl.cm.bwr]
   prop_labels = [r'$a_x$', r'$a_y$', r'$\frac{\partial P}{\partial x}$', 
                   r'$\frac{\partial P}{\partial y}$', r'$a_{L,x}$', r'$a_{L,y}$', 
                   r'$\dot{\omega}_{baro}$']
@@ -69,7 +63,7 @@ def pack_er_in_boys(name, time_floats, x_l, x_h, a_scale, p_scale, o_scale, labe
   t_list = []
   level = -1
   tol = 0.45
-  view = [[-0.4, 0.0], [0.4,1.]]
+  view = [[-0.4, 0.0], [1.,1.]]
 
   defaultOptions = {'name':name, 'level':level} 
   options_L_x_E = copy.deepcopy(defaultOptions); options_L_x_E['quantity'] = 'L_x_E'
@@ -211,13 +205,13 @@ def pack_er_in_boys(name, time_floats, x_l, x_h, a_scale, p_scale, o_scale, labe
   print("plot total a_x, a_y, dp/dx, dp_dy, omega")
   #x_l = 3500; #x_h = 5000 #x_rho.shape[0]
   print('x_h = ', x_h)  
-  y_l = 0; y_h = int(y_rho.shape[0]/2)
+  y_l = 0; y_h = -1 #y_h = int(y_rho.shape[0]/2)
   y_tracer, x_tracer = np.meshgrid(y_tracer[y_l:y_h], x_tracer[x_l:x_h])  
   #define axis 
   wspacing = 0.1; hspacing = 0.05
   # should use 6.7 for figures :
-  fig_x, fig_y = phmmfp.get_figure_size(10., len(time_floats), len(plot_properties), 
-                   1.*x_rho[x_l:x_h].shape[0]/y_rho.shape[0]*2., wspacing, hspacing, 1)
+  fig_x, fig_y = phmmfp.get_figure_size(6.7, len(time_floats), len(plot_properties), 
+                   1.*x_rho[x_l:x_h].shape[0]/y_rho.shape[0]*1., wspacing, hspacing, 1)
   #(fig_x, fig_y) = (10, 20)
 
   #fig_x, fig_y = get_figure_size('thesis', 1)
@@ -274,7 +268,7 @@ def pack_er_in_boys(name, time_floats, x_l, x_h, a_scale, p_scale, o_scale, labe
         
         if key != 'o_dot_baro':
           ax[i,j].imshow(data_dict['msk'][time_float][x_l:x_h,y_l:y_h,:], 
-            'gray_r', interpolation = 'none')
+            'gray_r', interpolation = 'none', alpha=0.5)
           #print(x_tracer.shape, y_tracer.shape, data_dict['msk'][time_float][x_l:x_h,y_l:y_h].shape)
           """
           ax[i,j].contourf(x_tracer, y_tracer, data_dict['msk'][time_float][x_l:x_h,y_l:y_h], 
@@ -288,7 +282,7 @@ def pack_er_in_boys(name, time_floats, x_l, x_h, a_scale, p_scale, o_scale, labe
                       bbox_to_anchor=(0., -0.125, 1,1), bbox_transform=ax[i,j].transAxes, 
                       borderpad=0)
           cb[i,j] = mpl.colorbar.ColorbarBase(cax[i,j], orientation="horizontal",
-                    cmap="bwr", norm=norm[i,j], extend="both",   
+                    cmap=use_cmap, norm=norm[i,j], extend="both",   
                     ticks=[-use_lim, use_lim], format='%.1f')#format='%1.1E')
           cb[i,j].ax.tick_params(labelsize=5)
       """
@@ -329,7 +323,7 @@ def pack_er_in_boys(name, time_floats, x_l, x_h, a_scale, p_scale, o_scale, labe
 
   #plt.show()
   dpi_use = 600
-  name = "20220322_SRMI-He-RTI_accelerations_%s"%(label_append)
+  name = "20220608_SRMI-Li3-RTI_accelerations_%s"%(label_append)
   name = name.replace(".","p")
   name += ".png"
   fig.savefig(name, format='png', dpi=dpi_use) # bbox_inches='tight')
@@ -355,16 +349,43 @@ def pack_er_in_boys(name, time_floats, x_l, x_h, a_scale, p_scale, o_scale, labe
 #name = 'ion'
 
 ### Comparing to Lorentz plots in paper 2 for SMRI-He
-times = [0.0, 0.01, 0.02, 0.03, 0.04, 0.05] # [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07] #[0.5, 0.7, 0.8, 1.]
+if False:
+  times = [0.0, 0.01, 0.02, 0.03, 0.04, 0.05] # [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07] #[0.5, 0.7, 0.8, 1.]
+  label_append = 'ELECTRONS_Early_Precursor_SATURTED_t_0'; 
+  x_l = 0; x_h = -1
+  name = 'electrons'
+  a_scale = 1e-3# ele 1e-3 #ele 1e-4
+  o_scale = 1e-3# ele 1e-2 #ele 1e-3 
+  p_scale = 1e-3# ele 1e-2 #ele 1e-
+  pack_er_in_boys(name, times, x_l, x_h , a_scale, p_scale, o_scale, label_append)
 
-label_append = 'ELECTRONS_Early_Precursor_SATURTED_t_0'; 
-x_l = 0; x_h = -1
-name = 'electrons'
+#======================================Example data and parameters===================
+dataDirs = [
+#("SRMI-OP-16-Res-512-IDEAL-CLEAN", "/media/kyriakos/Expansion/999_RES_512_RUNS/tinaroo_Ideal-Clean-HLLE/Ideal-Clean/"),
+#("SRMI-OP-16-Res-512-INTRA-ANISO", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-INTRA-Anisotropic/SRMI-Option-16-Res-512-INTRA-Anisotropic/") ,
+#("SRMI-OP-16-Res-512-INTRA-ISO-", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-INTRA-Isotropic/SRMI-Option-16-Res-512-INTRA-Isotropic/") ,
+#("SRMI-OP-16-Res-512-INTER-ANISO", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-Inter-Anisotropic/SRMI-Option-16-Res-512-Inter-Anisotropic/") ,
+#("SRMI-OP-16-Res-512-INTER-ISO", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-Inter-Isotropic/SRMI-Option-16-Res-512-Inter-Isotropic/") ,
+#("SRMI-OP-16-Res-512-FB-ISO", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-FB-Isotropic/SRMI-Option-16-Res-512-FB-Isotropic/") ,
+("SRMI-OP-16-Res-512-FB-ANISO-ISO", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_SRMI-Option-16-Res-512-FB-Anisotropic/") ]
 
 
-#times = [0.03] 
-a_scale = 1e-3# ele 1e-3 #ele 1e-4
-o_scale = 1e-3# ele 1e-2 #ele 1e-3 
-p_scale = 1e-3# ele 1e-2 #ele 1e-
-pack_er_in_boys(name, times, x_l, x_h , a_scale, p_scale, o_scale, label_append)
-  
+for data in dataDirs:
+  dDir = data[1]
+  label = data[0]
+
+  times = [0.2, 0.5, 0.8, 1.0] # [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07] #[0.5, 0.7, 0.8, 1.]
+  x_l = 0; x_h = -1
+  a_scale = 1e-2# ele 1e-3 #ele 1e-4
+  o_scale = 1e-2# ele 1e-2 #ele 1e-3 
+  p_scale = 1e-2# ele 1e-2 #ele 1e-
+
+  name = 'ions'
+  label_append = 'IONS_SATURATED_1en2' + label; 
+  pack_er_in_boys(dDir, label, name, times, x_l, x_h , a_scale, p_scale, o_scale, label_append)
+
+  name = 'electrons'
+  label_append = 'ELECTRONS_SATURATED_1en2' + label; 
+  pack_er_in_boys(dDir, label, name, times, x_l, x_h , a_scale, p_scale, o_scale, label_append)
+
+

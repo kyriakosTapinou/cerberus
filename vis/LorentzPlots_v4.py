@@ -164,6 +164,7 @@ def pack_er_in_boys(dataDir, name, x_l, x_h, label_append, time_points, a_scale,
       for i in range(len(data_indexes)):
         v_lim[i][j] = default_lim 
 
+  cmap_use = mpl.cm.bwr
   for i in range(len(data_indexes)):
 
     #ax[i][0].set_ylabel(r't=%.3f'%(t_list[i]), fontsize=5, color="k") 
@@ -176,7 +177,7 @@ def pack_er_in_boys(dataDir, name, x_l, x_h, label_append, time_points, a_scale,
       ax[i][j].imshow( 
         #np.rot90(data_dict[properties[j]][data_indexes[i]][x_l:x_h, y_l:y_h], k=1, axes=(0,1)), 
         data_dict[properties[j]][data_indexes[i]][x_l:x_h, y_l:y_h],
-        cmap='bwr', vmin=-v_lim[i][j], vmax=v_lim[i][j])
+        cmap=cmap_use, vmin=-v_lim[i][j], vmax=v_lim[i][j])
       if IDI_contour == True:
         #ax[i][j].imshow(data_dict['msk'][data_indexes[i]][x_l:x_h, y_l:y_h], 
         #  'gray_r', alpha=1., interpolation = 'none')
@@ -202,11 +203,12 @@ def pack_er_in_boys(dataDir, name, x_l, x_h, label_append, time_points, a_scale,
                       borderpad=0)
         #cax[i][j]  = divider[i][j].append_axes("left", size="3%", pad=0.)
         norm[i][j] = mpl.colors.Normalize(vmin=-v_lim[i][j], vmax=v_lim[i][j])
-
         if "_B" in properties[j]:
-          cb[i][j] = mpl.colorbar.ColorbarBase(cax[i][j],orientation="vertical",cmap="bwr", norm=norm[i][j], extend="both", ticks=[-v_lim[i][j], 0., v_lim[i][j]], format='%.3f') 
+          cb[i][j] = mpl.colorbar.ColorbarBase(cax[i][j],orientation="vertical",cmap=cmap_use, 
+           norm=norm[i][j], extend="both", ticks=[-v_lim[i][j], 0., v_lim[i][j]], format='%.3f') 
         else:
-          cb[i][j] = mpl.colorbar.ColorbarBase(cax[i][j],orientation="vertical",cmap="bwr", norm=norm[i][j], extend="both", ticks=[-v_lim[i][j], 0., v_lim[i][j]], format='%.1f') 
+          cb[i][j] = mpl.colorbar.ColorbarBase(cax[i][j],orientation="vertical",cmap=cmap_use, 
+           norm=norm[i][j], extend="both", ticks=[-v_lim[i][j], 0., v_lim[i][j]], format='%.1f')
         cb[i][j].ax.tick_params(labelsize=4) 
 
       elif use_global_scale == False and i == len(time_points)-1:
@@ -216,9 +218,13 @@ def pack_er_in_boys(dataDir, name, x_l, x_h, label_append, time_points, a_scale,
                       borderpad=0) # divider[i][j].append_axes("bottom", size="6%", pad=0.)
         norm[i][j] = mpl.colors.Normalize(vmin=-v_lim[i][j], vmax=v_lim[i][j])
         if "_B" in properties[j]:
-          cb[i][j] = mpl.colorbar.ColorbarBase(cax[i][j],orientation="horizontal",cmap="bwr", norm=norm[i][j], extend="both", ticks=[-v_lim[i][j]*0.9, v_lim[i][j]*0.9], format='%1.3f')
+          cb[i][j] = mpl.colorbar.ColorbarBase(cax[i][j],orientation="horizontal",cmap=cmap_use, 
+           norm=norm[i][j], extend="both", ticks=[-v_lim[i][j]*0.9, v_lim[i][j]*0.9], \
+           format='%1.3f')
         else:
-          cb[i][j] = mpl.colorbar.ColorbarBase(cax[i][j],orientation="horizontal",cmap="bwr", norm=norm[i][j], extend="both", ticks=[-v_lim[i][j]*0.9, v_lim[i][j]*0.9], format='%1.1f')
+          cb[i][j] = mpl.colorbar.ColorbarBase(cax[i][j],orientation="horizontal",cmap=cmap_use,\
+           norm=norm[i][j], extend="both", ticks=[-v_lim[i][j]*0.9, v_lim[i][j]*0.9], \
+           format='%1.1f')
 
         cb[i][j].ax.tick_params(labelsize=6) 
 
@@ -241,16 +247,32 @@ a_scale = 1e-1
 o_scale = 1e-3
 p_scale = 1e-3
 
-h5dirs = [("SRMI-Option-16-Res-2048-Intra-Anisotropic","/media/kyriakos/Expansion/000_MAGNUS_SUPERCOMPUTER_BACKUP/ktapinou/SRMI-Option-16-Res-2048-Intra-Anisotropic/")]
+a_scale = 5e-1
+o_scale = 5e-1
+p_scale = 5e-1
+
+h5dirs = [
+#("SRMI-OP-16-Res-512-IDEAL-CLEAN", "/media/kyriakos/Expansion/999_RES_512_RUNS/tinaroo_Ideal-Clean-HLLE/Ideal-Clean/"),
+#("SRMI-OP-16-Res-512-INTRA-ANISO", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-INTRA-Anisotropic/SRMI-Option-16-Res-512-INTRA-Anisotropic/") ,
+#("SRMI-OP-16-Res-512-INTRA-ISO-", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-INTRA-Isotropic/SRMI-Option-16-Res-512-INTRA-Isotropic/") ,
+#("SRMI-OP-16-Res-512-INTER-ANISO", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-Inter-Anisotropic/SRMI-Option-16-Res-512-Inter-Anisotropic/") ,
+#("SRMI-OP-16-Res-512-INTER-ISO", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-Inter-Isotropic/SRMI-Option-16-Res-512-Inter-Isotropic/") ,
+#("SRMI-OP-16-Res-512-FB-ISO", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-FB-Isotropic/SRMI-Option-16-Res-512-FB-Isotropic/") ,
+("SRMI-OP-16-Res-512-FB-ANISO-ISO", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_SRMI-Option-16-Res-512-FB-Anisotropic/") ]
+
+#("SRMI-Option-16-Res-2048-Intra-Anisotropic","/media/kyriakos/Expansion/000_MAGNUS_SUPERCOMPUTER_BACKUP/ktapinou/SRMI-Option-16-Res-2048-Intra-Anisotropic/")]
 
 x_l = 0; x_h = -1
-label_append = h5dirs[0][0] + 'ELECTRONS_t_0p0_SATURATED_1en1'
-time_points = [0.0, 0.01, 0.02, 0.03, 0.04, 0.05] #, 0.07, 0.08, 0.09, 0.1] 
-window = [[-0.4, 0.], [0.4, 1.]]
+#label_append = h5dirs[0][0] + 'ELECTRONS_t_0p0_SATURATED_1en1'
+time_points = [0.2, 0.5, 0.8, 1.0] 
+#time_points = [0.0, 0.01, 0.02, 0.03, 0.04, 0.05] #, 0.07, 0.08, 0.09, 0.1] 
+window = [[-0.3, 0.], [1.1, 1.]]
 level = -1;
 
 #time_points = [0.06, 0.07, 0.08, 0.09]
-pack_er_in_boys(h5dirs[0][1], 'electrons', x_l, x_h, label_append, time_points, a_scale, p_scale, o_scale, level, window)
+for h5dir in h5dirs:
+  label_append = h5dir[0] + '_ELECTRON_SATURATION_5en1'
+  pack_er_in_boys(h5dir[1], 'electrons', x_l, x_h, label_append, time_points, a_scale, p_scale, o_scale, level, window)
 
 
 """

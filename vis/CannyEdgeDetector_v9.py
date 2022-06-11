@@ -259,7 +259,8 @@ def CannyShockDetector(dataDir, name, level, label_prefix, label_suffix, time_po
                        y_half=False, plot_properties=["shock", "rho_grad", "prs_grad", "prs", "Lx", "Ly"]):
 
   titleDict = {"shock":'Shock detector', "prs_grad":r"$|\frac{\partial P}{\partial \vec{x}} |$", "prs":"P", "Lx":r"$L_x$", "Ly":r"$L_y$", "o_b_dot":r"$\dot{\omega}_b$", "rho_grad":r"$|\frac{\partial \rho}{\partial \vec{x}} |$"}
-  colourDict = {"shock":"magma", "prs_grad":"magma", "prs":"magma", "Lx":"bwr", "Ly":"bwr", "o_b_dot":"bwr", "rho_grad":"magma"}
+
+  colourDict = {"shock":mpl.cm.magma, "prs_grad":mpl.cm.magma, "prs":mpl.cm.magma, "Lx":mpl.cm.bwr, "Ly":mpl.cm.bwr, "o_b_dot":mpl.cm.bwr, "rho_grad":mpl.cm.magma}
 
   data_properties = []
   #data_properties =  ["shock", "prs_grad", "prs", "Lx", "Ly", "o_b_dot"]
@@ -289,7 +290,7 @@ def CannyShockDetector(dataDir, name, level, label_prefix, label_suffix, time_po
 
   t_list = []; dS_list = [] 
   print("\nGenerally set to 0.25 mach error, reduced for electron breakdown investigation")
-  Mach_error = 0.05; tol_msk = 0.45; spacing = 5; 
+  Mach_error = 0.2; tol_msk = 0.45; spacing = 5; 
   #Mach_error = 0.025
   print('\nMach error:', Mach_error, '\tSpacing:', spacing, '\tInterface tolerance:', tol_msk, 'level:', level)
   ### Harvest data
@@ -548,8 +549,8 @@ def CannyShockDetector(dataDir, name, level, label_prefix, label_suffix, time_po
   if True: 
     LMag = 40  
     OMag = 1
-    dpdxMag = 80 
-    drhodxMag = 80 
+    dpdxMag = 50 #80 #15#. #default_lim*scale_lst[j] #25#100.0
+    drhodxMag = 50 #80 #15#. #default_lim*scale_lst[j] #25#100.0
   if use_global_scale == True:
     for j in range(len(data_properties)):
       default_lim = 0.
@@ -572,13 +573,13 @@ def CannyShockDetector(dataDir, name, level, label_prefix, label_suffix, time_po
 
         if useSetScales:
           if prop == 'prs_grad': 
-            v_lim_max[i][prop] = dpdxMag #50 #15#. #default_lim*scale_lst[j] #25#100.0
+            v_lim_max[i][prop] = dpdxMag 
           elif prop == 'rho_grad': 
-            v_lim_max[i][prop] = drhodxMag #50 #15#. #default_lim*scale_lst[j] #25#100.0
+            v_lim_max[i][prop] = drhodxMag 
           elif prop == 'shock':
             v_lim_max[i][prop] = 1. 
           elif prop == 'prs':
-            v_lim_max[i][prop] = 4 #default_lim #2#7 #0.5*default_lim#for d_s = 10
+            v_lim_max[i][prop] = 3 #4 #default_lim #2#7 #0.5*default_lim#for d_s = 10
           elif prop == 'o_b_dot':
             v_lim_max[i][prop] = OMag #30 #default_lim*scale_lst[j]
           elif prop == 'Lx' or prop == 'Ly':
@@ -699,8 +700,16 @@ def CannyShockDetector(dataDir, name, level, label_prefix, label_suffix, time_po
 ################# run this  
 if __name__ == "__main__":
   dataDirs = [
-    "/media/kyriakos/Expansion/000_MAGNUS_SUPERCOMPUTER_BACKUP/ktapinou/SRMI-Option-16-Res-2048-Intra-Anisotropic",
-      ]
+#("SRMI-OP-16-Res-512-IDEAL-CLEAN", "/media/kyriakos/Expansion/999_RES_512_RUNS/tinaroo_Ideal-Clean-HLLE/Ideal-Clean/"),
+("SRMI-OP-16-Res-512-INTRA-ANISO", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-INTRA-Anisotropic/SRMI-Option-16-Res-512-INTRA-Anisotropic/") ,
+("SRMI-OP-16-Res-512-INTRA-ISO-", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-INTRA-Isotropic/SRMI-Option-16-Res-512-INTRA-Isotropic/") ,
+("SRMI-OP-16-Res-512-INTER-ANISO", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-Inter-Anisotropic/SRMI-Option-16-Res-512-Inter-Anisotropic/") ,
+("SRMI-OP-16-Res-512-INTER-ISO", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-Inter-Isotropic/SRMI-Option-16-Res-512-Inter-Isotropic/") ,
+("SRMI-OP-16-Res-512-FB-ISO", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-FB-Isotropic/SRMI-Option-16-Res-512-FB-Isotropic/") ,
+("SRMI-OP-16-Res-512-FB-ANISO-ISO", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_SRMI-Option-16-Res-512-FB-Anisotropic/") ]
+
+    #"/media/kyriakos/Expansion/000_MAGNUS_SUPERCOMPUTER_BACKUP/ktapinou/SRMI-Option-16-Res-2048-Intra-Anisotropic",]
+
   view =  [[-0.4, 0.0], [1.4, 1.0]] #
   # for ds = 10
   scale_lst_10 = [1, 1.25e-2, 1, 1e-2, 1, 1] 
@@ -717,7 +726,7 @@ if __name__ == "__main__":
   filter_values = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,3 ]
   filter_levels = [3,3,3,3,3,3]
 
-  if True:
+  if False:
     # Paper TRS analysis section # Paper two 
     time_points = [1] #0.1, 0.3, 0.5, 0.7, 0.9, 1]; 
     label_append = '_Sumarry'; x_l = 0; x_h = -1
@@ -726,4 +735,14 @@ if __name__ == "__main__":
     CannyShockDetector(dataDirs[0], species_name, -2, label_prefix, label_append, time_points,\
                        view, scale_lst_10, filter_values, 3, y_half=False, \
                        plot_properties=["shock", "rho_grad", "prs_grad", "prs"])
+
+  if True:
+    for dataDir in dataDirs:
+      time_points = [0.1, 0.2, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]; 
+      label_append = dataDir[0] ; x_l = 0; x_h = -1
+      label_prefix = '20220606_SRMI_OPTION-16'
+      filter_values = [12]*len(time_points)
+      CannyShockDetector(dataDir[1], species_name, -1, label_prefix, label_append, time_points,\
+                         view, scale_lst_10, filter_values, 3, y_half=False, \
+                         plot_properties=["shock", "rho_grad", "prs_grad", "prs"])
 
