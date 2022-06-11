@@ -689,9 +689,13 @@ Real BraginskiiSource::get_max_freq(Vector<Real> &y) const
     Real q, m, r;
     Real rho, alpha;
     Real omega_p, omega_c;
-
+    Real Debye = GD::Debye;
+    Real n0_ref = GD::n0;
     Real D2 = GD::Debye*GD::Debye; // should this be the simulation D2 and L for the reference parameters + cdim, or should t be from the source terms own D2 and L
     Real L = GD::Larmor;
+
+    // Variables for the collision time scale in the cell
+    Real mass_e, T_e, charge_e, nd_e, mass_i, T_i, charge_i, nd_i; 
 
     Real f = 0;
     for (const auto &idx : offsets) {
@@ -709,15 +713,51 @@ Real BraginskiiSource::get_max_freq(Vector<Real> &y) const
 
         m = istate.get_mass(alpha);
         q = istate.get_charge(alpha);
+        Real g = istate.get_gamma(alpha);
+        Real mx = y[idx.solver + +HydroState::ConsIdx::Xmom];
+        Real my = y[idx.solver + +HydroState::ConsIdx::Ymom];
+        Real mz = y[idx.solver + +HydroState::ConsIdx::Zmom];
+        Real ed = y[idx.solver + +HydroState::ConsIdx::Eden];
+    
+        Real rhoinv = 1/rho;
+        Real ke = 0.5*rhoinv*(mx*mx + my*my + mz*mz);
+        Real prs = (ed - ke)*(g - 1);
 
         r = q/m;
+        if (q < 0) {
+          mass_e = m;
+          T_e = prs*rhoinv*m;
+          charge_e = q;
+          nd_e = rho/m;
+        } else if (q > 0) {
+          mass_i = m;
+          T_i = prs*rhoinv*m;
+          charge_i = q;
+          nd_i = rho/m;
+        } else {
+          Abort("Error: braginskii neutral species selected");
+        }
 
         omega_p = 10*std::sqrt(rho*r*r/D2)/(2*PI);
         omega_c = 10*(std::abs(r)*B)/(L*2*PI);
         f = std::max(f, omega_p);
         f = std::max(f, omega_c);
-
     }
+
+    Real p_lambda = get_coulomb_logarithm(T_i,T_e,nd_e);
+    // checking the collision time scales are adhered to 
+    //Print() << "\n\t" << 1/f ;
+    Real t_c_e = std::pow(Debye,4)*n0_ref
+                *(6*std::sqrt(2*mass_e)*std::pow(3.14159265358979323846*T_e, 3./2.)) / 
+                (p_lambda*std::pow((charge_i/-charge_e),2)*nd_i); 
+
+    Real t_c_i = std::pow(Debye,4)*n0_ref
+                  *(12*std::sqrt(mass_i)*std::pow(3.14159265358979323846*T_i, 3./2.)) /
+                  (p_lambda * std::pow(charge_i,4) * nd_i);
+    //Print() << "\n" << 1/(10/t_c_e) << "\t" << 1/(10/t_c_i);
+
+    f = std::max(f, 10/t_c_e);
+    f = std::max(f, 10/t_c_i);
 
     return f;
     }
