@@ -55,7 +55,8 @@ int GlobalData::do_tracer_particles = 0;
 int GlobalData::particle_verbose = 0;
 #endif
 
-int GlobalData::srin_switch = 0;
+int GlobalData::srin_switch = 0;//use Srinivassans freq catch or not...omega...
+int GlobalData::source_collision_frequency_constraint = 0; // enforce collision time constraint on source terms 
 int GlobalData::braginskii_anisotropic = 0; //default to isotropic
 Real GlobalData::viewFluxSrcContributions = 0; // print flux and source contributions for debug 
 int GlobalData::braginskii_hall_correction = 0; //default to isotropic
@@ -169,10 +170,13 @@ void GlobalData::read_config(const Vector<int> &is_periodic, const bool plot_out
 
     verbose = lua["verbosity"];
     srin_switch = lua["srin_switch"];
+    source_collision_frequency_constraint = lua["source_collision_frequency_constraint"];
     braginskii_anisotropic = lua["braginskii_anisotropic"];
     braginskii_hall_correction = lua["braginskii_hall_correction"];
 
     if (srin_switch>0) Print() << "====WARNING - srin_switch active\n";
+    if (source_collision_frequency_constraint > 0 ) Print() 
+      << "====WARNING - enforcing collision time scale on collisional terms\n";
     if (braginskii_anisotropic > 0) Print() << "====WARNING - braginskii_anisotropic active\n";
     if (braginskii_hall_correction > 0) Print() << "====WARNING - Hall parameter correction active --- this feature is not well tested \n";
 

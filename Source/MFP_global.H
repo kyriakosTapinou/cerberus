@@ -105,6 +105,9 @@ public:
 
     // Parameters
     static int srin_switch; //only used for braginskii source and fluxes to turn on or off srinivassan's collision switch
+
+    static int source_collision_frequency_constraint; //enforce collision time constraint on source terms 
+
     static int braginskii_anisotropic; //only used for braginskii source and fluxes to use isotropic or anisotropic braginskii formulation
     static Real viewFluxSrcContributions;
     static int braginskii_hall_correction;

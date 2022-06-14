@@ -10,10 +10,10 @@ public:
     BraginskiiSource(const sol::table& def);
     ~BraginskiiSource();
 
-    static void get_alpha_beta_coefficients(Real Debye, Real Larmor, Real mass_e, Real T_e, Real charge_e, Real charge_i 
-                        ,Real nd_e, Real nd_i, Real& alpha_0, Real& alpha_1, Real& alpha_2 
-                        ,Real& beta_1, Real& beta_2, Real& beta_3, Real& t_c_e, Real p_lambda 
-                        ,Real Bx, Real By, Real Bz);
+    static void get_alpha_beta_coefficients(const Real& Z_i, Real Debye, Real Larmor, 
+        Real mass_e, Real T_e, Real charge_e, Real charge_i, Real nd_e, Real nd_i, 
+        Real& alpha_0, Real& alpha_1, Real& alpha_2, Real& beta_1, Real& beta_2, Real& beta_3, 
+        Real& t_c_e, Real p_lambda, Real Bx, Real By, Real Bz);
 
     static Real get_coulomb_logarithm(Real T_i, Real T_e, Real nd_e); 
     Vector<Real> get_slopes() const;

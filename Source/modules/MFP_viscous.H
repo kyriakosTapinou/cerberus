@@ -77,6 +77,10 @@ public:
                                    Real& eta1,Real& eta2,Real& eta3,Real& eta4,
                                    Real& kappa1,Real& kappa2,Real& kappa3, 
                                    Real& beta1,Real& beta2,Real& beta3, int& truncatedTau);
+  virtual void get_transport_constants_electron(const Real& Z_i, Real& delta_0, Real& delta_1, 
+        Real& BT_gamma_0, Real& BT_gamma_0_p, Real& BT_gamma_1_p, Real& BT_gamma_1_pp, 
+        Real& BT_gamma_0_pp, Real& b_0, Real& b_0_pp, Real& b_0_p, Real& b_1_p, 
+        Real& b_1_pp);
   virtual void update_linked_states();
   virtual Vector<int> get_linked_states() {return {idx};}
   virtual Real get_max_speed(const Vector<Vector<Real>> &U);
@@ -187,6 +191,10 @@ public:
                               const Vector<Real>& B_xyz,Real& T_i,Real& eta0,
                               Real& eta1,Real& eta2,Real& eta3,Real& eta4,
                               Real& kappa1,Real& kappa2,Real& kappa3, int& truncatedTau) override;
+  //TODO debug 
+  //virtual void get_transport_constants_ion() override; 
+  //Note there are no Z dependent constants for ion intra
+
   virtual void update_linked_states() override;
 
   virtual Vector<int> get_linked_states() override {return {idx, linked_electron, linked_em};}//Note last must always eb linked_em for dependencies in viscous time step estimate in MFP_stepsize.cpp
@@ -243,6 +251,12 @@ public:
                                    Real& eta1,Real& eta2,Real& eta3,Real& eta4,
                                    Real& kappa1,Real& kappa2,Real& kappa3, 
                                    Real& beta1,Real& beta2,Real& beta3, int& truncatedTau) override;
+  //TODO debug 
+  virtual void get_transport_constants_electron(const Real& Z_i, Real& delta_0, Real& delta_1, 
+        Real& BT_gamma_0, Real& BT_gamma_0_p, Real& BT_gamma_1_p, Real& BT_gamma_1_pp, 
+        Real& BT_gamma_0_pp, Real& b_0, Real& b_0_pp, Real& b_0_p, Real& b_1_p, 
+        Real& b_1_pp) override; 
+
   virtual void update_linked_states() override;
 
   virtual Vector<int> get_linked_states() override {return {idx, linked_ion, linked_em};}//Note last must always eb linked_em for dependencies in viscous time step estimate in MFP_stepsize.cpp

@@ -3,7 +3,6 @@
 
 using GD = GlobalData;
 
-// INTENTIONALLY NOT REGISTERED
 std::string BraginskiiSource::tag = "braginskii";
 bool BraginskiiSource::registered = GetSourceTermFactory().Register(BraginskiiSource::tag, SourceTermBuilder<BraginskiiSource>);
 
@@ -239,7 +238,7 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
     Vector<Real> TG_perp(3);//Temp grad perpendicular to B_unit
     Vector<Real> TG_chev(3);//unit vector perp to gradT and B_unit
 
-    Real B_p=0.,B_pp=0.,bx_pp=0.,by_pp=0.,bz_pp=0.,bx_p=0.,by_p=0., xB=0, yB=0, zB=0; //initialised and set to zero to allow get_alpha_beta_coeffs to be run without any changes for both iso and aniso cae 
+    Real B_p=0.,B_pp=0.,bx_pp=0.,by_pp=0.,bz_pp=0.,bx_p=0.,by_p=0., xB=0, yB=0, zB=0; 
 
     int hydro_counter = 0;
     for (const auto &idx : index) {// for each state we are looking at. 
@@ -398,6 +397,9 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
     T_b =   p_b/n_b;
     q_b2 =  q_b*q_b;
     gam_b = state_b.get_gamma(alpha_b); 
+    
+    // Get charge for braginskii table of constants 
+    Real Z_i = -q_b/q_a ; // electrong charge is negative
 
     du = u_a - u_b; dv = v_a - v_b; dw = w_a - w_b; //dU2 = du*du + dv*dv + dw*dw;
 
@@ -443,6 +445,7 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
           TG_chev[i_disp]= B_unit[0]*dT_dy-B_unit[1]*dT_dx;
         }
       }
+      /*
       if (GD::verbose > 4) {
         Print() << "\nBunit\t" << B_unit[0] << "\nBunit\t" << B_unit[1] 
                 << "\nBunit\t" << B_unit[2] << "\n";
@@ -462,20 +465,24 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
         Print() << "TG_chev[0]\t" << TG_chev[0] << "\nTG_chev[1]\t" << TG_chev[1]   
                 << "\nTG_chev[2]\t" << TG_chev[2] << "\n";
       }
+      */
     }
-    //---------------Braginskii Momentum source 
+    //---------------Braginskii Momentum source
+    //TODO make sure Z dpendence in get_alpha_beta
     Real alpha_0, alpha_1, alpha_2, beta_0, beta_1, beta_2, t_c_a;
     Real p_lambda = get_coulomb_logarithm(T_b,T_a,n_a);
 
-    get_alpha_beta_coefficients(Debye, Larmor, m_a, T_a, q_a, q_b, n_a, n_b, alpha_0, alpha_1, alpha_2, 
-                                beta_0, beta_1, beta_2, t_c_a, p_lambda, xB, yB, zB); 
+    get_alpha_beta_coefficients(Z_i, Debye, Larmor, m_a, T_a, q_a, q_b, n_a, n_b, alpha_0, 
+        alpha_1, alpha_2, beta_0, beta_1, beta_2, t_c_a, p_lambda, xB, yB, zB); 
 
-
+    /*
     if (GD::verbose>4) {
       Print() << "alpha_0\t" << alpha_0 << "\nalpha_1\t" << alpha_1 << "\nalpha_2\t" << alpha_2   
               << "\nbeta_0\t" << beta_0 << "\nbeta_1\t" << beta_1 << "\nbeta_2\t" << beta_2 
               << "\nt_c_a\t" << t_c_a << "\n";
     }
+    */
+
     Vector<Real> R_u(3), R_T(3);
     if (GD::braginskii_anisotropic) {
     //frictional force
@@ -528,6 +535,7 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
     ydot[offset_b.solver + +HydroState::ConsIdx::Zmom] -= R_u[2]+R_T[2];
     ydot[offset_b.solver + +HydroState::ConsIdx::Eden] += Q_delta + Q_fric;
 
+    /*
     if (GD::viewFluxSrcContributions == 1) Print() << "\tElectron\t" << R_u[2]+R_T[2] << "\tIon:\t" << -R_u[2]-R_T[2]; 
 
     if (true && GD::verbose > 2) {
@@ -540,6 +548,7 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
         } 
         Print() << "T grad ele\t" << dT_dx << "\nT grad ele\t" << dT_dy << "\nT grad ele\t" << dT_dz << "\n"; 
     }
+    */
 
     return ydot;
 }
@@ -561,23 +570,17 @@ int BraginskiiSource::fun_jac(Real x, Real y, Real z, Real t, Vector<Real> &y0, 
     return 0;
 }
 
-void BraginskiiSource::get_alpha_beta_coefficients(Real Debye, Real Larmor, Real mass_e, Real T_e, Real charge_e, 
-                        Real charge_i, Real nd_e, Real nd_i, Real& alpha_0, Real& alpha_1, 
-                        Real& alpha_2, 
-                        Real& beta_0, Real& beta_1, Real& beta_2, Real& t_c_e, Real p_lambda, 
-                        Real Bx, Real By, Real Bz) {
+void BraginskiiSource::get_alpha_beta_coefficients(const Real& Z_i, Real Debye, Real Larmor, 
+      Real mass_e, Real T_e, Real charge_e, Real charge_i, Real nd_e, Real nd_i, Real& alpha_0, 
+      Real& alpha_1, Real& alpha_2, Real& beta_0, Real& beta_1, Real& beta_2, Real& t_c_e, 
+      Real p_lambda, Real Bx, Real By, Real Bz) {
 
   //collision time nondimensional
-  //Real Debye = GD::Debye, Larmor = GD::Larmor; //now using the ource terms own reference value, not the sim
   Real x_ref=GD::x_ref, n0_ref=GD::n0, m_ref=GD::m_ref, rho_ref=GD::rho_ref, 
     T_ref=GD::T_ref, u_ref=GD::u_ref;
 
   Real t_ref = x_ref/u_ref;
   Real pi_num = 3.14159265358979323846;
-  if (T_e < 0.) {
-      Print() << "\nT_e = " << T_e << "\nn_e = " << nd_e << "\nmass_e = " << mass_e;
-      amrex::Abort("Negative temperature ln 438");
-  }
   //t_c_e = std::pow(Debye,4)*n0_ref
   //                  *(6*std::sqrt(2*mass_e)*std::pow(pi_num*T_e, 3./2.)) / 
   //                  (p_lambda*std::pow(charge_e,4)*(charge_i/-charge_e)*nd_e); 
@@ -594,9 +597,6 @@ void BraginskiiSource::get_alpha_beta_coefficients(Real Debye, Real Larmor, Real
   //Real omega_ce =  -charge_e*std::sqrt( Bx*Bx + By*By + Bz*Bz )/mass_e/2/pi_num/Larmor; 
   Real omega_ce = -charge_e * std::sqrt( Bx*Bx + By*By + Bz*Bz ) / mass_e / Larmor; 
   Real omega_p  = std::sqrt(nd_e*charge_e*charge_e/mass_e/Debye/Debye) ;
-  if (false && GD::verbose > 2) {
-      Print() << "\tt_c_e:\t" << t_c_e << "\n" ;
-  }
 
   if (1/t_c_e < GD::effective_zero) t_c_e = 1/GD::effective_zero;
 
@@ -605,7 +605,6 @@ void BraginskiiSource::get_alpha_beta_coefficients(Real Debye, Real Larmor, Real
       Print() << "1/tau_e = " << 1/t_c_e << "\tomega_ce = " << omega_ce 
             << "\tomega_p = " << omega_p << "\n";
       }
-      //Print() << "\nMFP_braginskii.cpp ln 541 --- Electron collision frequency limited to minimum of plasma and cyclotron frequency\t" << "t_c_e = " << t_c_e << "\n";
       t_c_e = 1/std::min(omega_ce/2/pi_num, omega_p/2/pi_num) ;
       //t_c_e = 1/( 1/t_c_e + GD::effective_zero);
 
@@ -617,10 +616,94 @@ void BraginskiiSource::get_alpha_beta_coefficients(Real Debye, Real Larmor, Real
   Real delta_coef, x_coef ;// coefficients used exclusively in the braginskii 
                            // transport terms 
   x_coef = omega_ce*t_c_e;
-  Real delta_0 =3.7703, delta_1 = 14.79;
+
+  Real delta_0, delta_1, a_0, a_0_p, a_1_p, a_0_pp, a_1_pp, b_0, b_0_pp, b_0_p, b_1_p, b_1_pp;
+  // check Z_i and round 
+  if (Z_i < 0) Abort("\nNegative Z number ln 746 MFP_viscous.cpp\n");
+  Real Z_i_rounded = Z_i;
+  Z_i_rounded = std::roundf(Z_i_rounded);
+  // assign based on charge 
+  if (Z_i_rounded == 1) {
+    a_0 = 0.5129;
+    b_0 = 0.7110;
+    delta_0 = 3.7703;
+    delta_1 = 14.79;
+    b_1_p = 5.101;
+    b_0_p = 2.681;
+    b_1_pp = 3./2.;
+    b_0_pp = 3.053;
+    a_1_p = 6.416;
+    a_0_p = 1.837;
+    a_1_pp = 1.704;
+    a_0_pp = 0.7796;
+  } else if (Z_i_rounded == 2) {
+    a_0 = 0.4408;
+    b_0 = 0.9052;
+    delta_0 = 1.0465;
+    delta_1 = 10.80;
+    b_1_p = 4.450;
+    b_0_p = 0.9473;
+    b_1_pp = 3./2.;
+    b_0_pp = 1.784;
+    a_1_p = 5.523;
+    a_0_p = 0.5956;
+    a_1_pp = 1.704;
+    a_0_pp = 0.3439;
+  } else if (Z_i_rounded == 3) {
+    a_0 = 0.3965;
+    b_0 = 1.016;
+    delta_0 = 0.5814;
+    delta_1 = 9.618;
+    b_1_p = 4.233;
+    b_0_p = 0.5905;
+    b_1_pp = 3./2.;
+    b_0_pp = 1.442;
+    a_1_p = 5.226;
+    a_0_p = 0.3515;
+    a_1_pp = 1.704;
+    a_0_pp = 0.2400;
+  } else if (Z_i_rounded == 4) {
+    a_0 = 0.3752;
+    b_0 = 1.090;
+    delta_0 = 0.4106;
+    delta_1 = 9.055;
+    b_1_p = 4.124;
+    b_0_p = 0.4478;
+    b_1_pp = 3./2.;
+    b_0_pp = 1.285;
+    a_1_p = 5.077;
+    a_0_p = 0.2566;
+    a_1_pp = 1.704;
+    a_0_pp = 0.1957;
+  } else { 
+    a_0 = 0.2949;
+    b_0 = 1.521;
+    delta_0 = 0.0961;
+    delta_1 = 7.482;
+    b_1_p = 3.798;
+    b_0_p = 0.1461;
+    b_1_pp = 3./2.;
+    b_0_pp = 0.877;
+    a_1_p = 4.63;
+    a_0_p = 0.0678;
+    a_1_pp = 1.704;
+    a_0_pp = 0.0940;
+  }
+  /*
+  if ( (Z_i > 2 ) and (Z_i < 3)) {
+    Print() << "\nZ_i\t" << Z_i << "\t" << Z_i_rounded;
+
+    Print() << "\n" << a_0 << "\t" << b_0 << "\t" << delta_0 << "\t" 
+      << delta_1 << "\t" 
+      << a_1_p << "\t" << a_0_p << "\t" << a_1_pp << "\t" << a_0_pp
+      << b_1_p << "\t" << b_0_p << "\t" << b_1_pp << "\t" << b_0_pp ;
+  }
+  */
+
+  //Real delta_0 =3.7703, delta_1 = 14.79;
   delta_coef = x_coef*x_coef*x_coef*x_coef+delta_1*x_coef*x_coef + delta_0;// TODO delta0 tables 
 
-  Real a_0 = 0.5129, a_0_p =1.837, a_1_p =6.416, a_0_pp =0.7796, a_1_pp =1.704;
+  //Real a_0 = 0.5129, a_0_p =1.837, a_1_p =6.416, a_0_pp =0.7796, a_1_pp =1.704;
 
   alpha_0 = mass_e*nd_e/t_c_e*a_0;
 
@@ -629,7 +712,7 @@ void BraginskiiSource::get_alpha_beta_coefficients(Real Debye, Real Larmor, Real
     alpha_2 = mass_e*nd_e/t_c_e*x_coef*(a_1_pp*x_coef*x_coef+a_0_pp)/delta_coef;
   } else { alpha_1 = 0; alpha_2 = 0;}
 
-  Real b_0 = 0.711, b_0_pp = 3.053, b_0_p=2.681, b_1_p=5.101, b_1_pp=3./2.;
+  //Real b_0 = 0.711, b_0_pp = 3.053, b_0_p=2.681, b_1_p=5.101, b_1_pp=3./2.;
   
   beta_0 = nd_e*b_0;
   if (GD::braginskii_anisotropic) {    
@@ -637,11 +720,8 @@ void BraginskiiSource::get_alpha_beta_coefficients(Real Debye, Real Larmor, Real
   beta_2 = nd_e*x_coef*(b_1_pp*x_coef*x_coef+b_0_pp)/delta_coef;
   } else { beta_1 = 0; beta_2 = 0; }
 
-  if  (false && GD::verbose >= 4) {
-    Print() << "1/tau_e\t" << 1/t_c_e << "\nomega_ce\t" << omega_ce 
-        << "\nomega_p\t" << omega_p << "\nmass_e\t" << mass_e << "\nnd_e\t" << nd_e << "\n";
-  }
   //TODO remove after comparison with plasmapy braginskii
+  /*
   if (false && GD::verbose >= 2) {
       Print() << "\n\nResistivity\nrhor_para\t" <<1/(nd_e*nd_e*charge_e*charge_e/alpha_0);
       Print() << "\nrhor_perp\t" << 1/(nd_e*nd_e*charge_e*charge_e/alpha_1);
@@ -649,9 +729,10 @@ void BraginskiiSource::get_alpha_beta_coefficients(Real Debye, Real Larmor, Real
       
       Print() << "\n\nThermoelectric conductivity\nbeta_para\t" << beta_0 << "\nbeta_perp\t" << beta_1 << "\nbeta_chev\t" << beta_2 ;
   }
-
+  */
   return ;
   } 
+
 Real BraginskiiSource::get_max_freq(Vector<Real> &y) const
 {
     BL_PROFILE("BraginskiiSource::get_max_freq");
@@ -724,18 +805,20 @@ Real BraginskiiSource::get_max_freq(Vector<Real> &y) const
         Real prs = (ed - ke)*(g - 1);
 
         r = q/m;
-        if (q < 0) {
-          mass_e = m;
-          T_e = prs*rhoinv*m;
-          charge_e = q;
-          nd_e = rho/m;
-        } else if (q > 0) {
-          mass_i = m;
-          T_i = prs*rhoinv*m;
-          charge_i = q;
-          nd_i = rho/m;
-        } else {
-          Abort("Error: braginskii neutral species selected");
+        if (GD::source_collision_frequency_constraint == 1) {
+          if (q < 0) {
+            mass_e = m;
+            T_e = prs*rhoinv*m;
+            charge_e = q;
+            nd_e = rho/m;
+          } else if (q > 0) {
+            mass_i = m;
+            T_i = prs*rhoinv*m;
+            charge_i = q;
+            nd_i = rho/m;
+          } else {
+            Abort("Error: braginskii neutral species selected");
+          }
         }
 
         omega_p = 10*std::sqrt(rho*r*r/D2)/(2*PI);
@@ -744,20 +827,22 @@ Real BraginskiiSource::get_max_freq(Vector<Real> &y) const
         f = std::max(f, omega_c);
     }
 
-    Real p_lambda = get_coulomb_logarithm(T_i,T_e,nd_e);
-    // checking the collision time scales are adhered to 
-    //Print() << "\n\t" << 1/f ;
-    Real t_c_e = std::pow(Debye,4)*n0_ref
-                *(6*std::sqrt(2*mass_e)*std::pow(3.14159265358979323846*T_e, 3./2.)) / 
-                (p_lambda*std::pow((charge_i/-charge_e),2)*nd_i); 
-
-    Real t_c_i = std::pow(Debye,4)*n0_ref
-                  *(12*std::sqrt(mass_i)*std::pow(3.14159265358979323846*T_i, 3./2.)) /
-                  (p_lambda * std::pow(charge_i,4) * nd_i);
-    //Print() << "\n" << 1/(10/t_c_e) << "\t" << 1/(10/t_c_i);
-
-    f = std::max(f, 10/t_c_e);
-    f = std::max(f, 10/t_c_i);
+    if (GD::source_collision_frequency_constraint == 1) {
+      Real p_lambda = get_coulomb_logarithm(T_i,T_e,nd_e);
+      // checking the collision time scales are adhered to 
+      //Print() << "\n\t" << 1/f ;
+      Real t_c_e = std::pow(Debye,4)*n0_ref
+                  *(6*std::sqrt(2*mass_e)*std::pow(3.14159265358979323846*T_e, 3./2.)) / 
+                  (p_lambda*std::pow((charge_i/-charge_e),2)*nd_i); 
+  
+      Real t_c_i = std::pow(Debye,4)*n0_ref
+                    *(12*std::sqrt(mass_i)*std::pow(3.14159265358979323846*T_i, 3./2.)) /
+                    (p_lambda * std::pow(charge_i,4) * nd_i);
+      //Print() << "\n" << 1/(10/t_c_e) << "\t" << 1/(10/t_c_i);
+  
+      f = std::max(f, 10/t_c_e);
+      f = std::max(f, 10/t_c_i);
+    }
 
     return f;
     }

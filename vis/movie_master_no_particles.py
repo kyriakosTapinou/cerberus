@@ -38,11 +38,11 @@ def get_interface_mask(ds, c):
     tol = 0.45#0.001
     t_h = 0.5 + tol
     t_l = 0.5 - tol
-    #mask = (t_l <  tracer_array) & (tracer_array < t_h) 
+    mask = (t_l <  tracer_array) & (tracer_array < t_h) 
     #mask = np.ma.masked_equal(mask, False)
-    mask = np.ma.array(tracer_array, mask=(t_l <  tracer_array) & (tracer_array < t_h) )
-    norm_gray_r2rgba = matplotlib.colors.Normalize(vmin=0., vmax=1.)
-    gray_r2rgba = matplotlib.cm.ScalarMappable(norm=norm_gray_r2rgba, cmap=cmap_gray_r2rgba) 
+    #mask = np.ma.array(tracer_array, mask=(t_l <  tracer_array) & (tracer_array < t_h) )
+    #norm_gray_r2rgba = matplotlib.colors.Normalize(vmin=0., vmax=1.)
+    #gray_r2rgba = matplotlib.cm.ScalarMappable(norm=norm_gray_r2rgba, cmap=cmap_gray_r2rgba) 
 
     del tracer_array;
     return {"x":x_tracer, "y":y_tracer, "value":mask}
@@ -296,21 +296,16 @@ def plot2(frame, data, output_name):
     subPlot(axes, fig, gs, xn, yn, 2, 1, Ley, Ley_min, Ley_max, label_Ley, Ley_useCmap)
 
     
-    if True: # overlay mask 
+    if False: # overlay mask 
       # get mask and overlay 
       xn_MskI, yn_MskI, MskI, MskI_min, MskI_max, label_MskI, dummy, MskI_useCmap = extractPlotData(frame, data, "mask-ion", r"$interface_i$", getTime=False, signedMaxMin=False)
       xn_MskE, yn_MskE, MskE, MskE_min, MskE_max, label_MskE, dummy, MskE_useCmap = extractPlotData(frame, data, "mask-ele", r"$interface_e$", getTime=False, signedMaxMin=False)
-      pdb.set_trace()
       yn_MskI, xn_MskI = np.meshgrid(yn_MskI, xn_MskI)
       yn_MskE, xn_MskE = np.meshgrid(yn_MskE, xn_MskE)
-      axes[0].contourf(xn_MskE, yn_MskE, MskE, colors='purple', 
-        corner_mask=False, alpha=0.6)
-      axes[1].contourf(xn_MskI, yn_MskI, MskI, colors='gray', 
-        corner_mask=False, alpha=0.6)
-      axes[4].contourf(xn_MskE, yn_MskE, MskE, colors='purple', 
-        corner_mask=False, alpha=0.6)
-      axes[4].contourf(xn_MskI, yn_MskI, MskI, colors='gray', 
-        corner_mask=False, alpha=0.6)
+      axes[0].contour(xn_MskE, yn_MskE, MskE, levels=[0.05, 0.95], colors='purple', linewidths=0.5)
+      axes[1].contour(xn_MskI, yn_MskI, MskI, levels=[0.05, 0.95], colors='gray', linewidths=0.5)
+      axes[4].contour(xn_MskE, yn_MskE, MskE, levels=[0.05, 0.95], colors='purple', linewidths=0.5)
+      axes[4].contour(xn_MskI, yn_MskI, MskI, levels=[0.05, 0.95], colors='gray', linewidths=0.5)
 
     fig.suptitle(f"t = {time:.3f}")
     for (i, ax) in enumerate(axes):
@@ -377,19 +372,19 @@ if 1:
     ]
 
     q["plot"] = plot2
-    q["name"] = "MOVIE_POST_ION_ELECTRON_INTERFACE_ANALYSIS_MASKED" #rhoi-rhoe-omegai-omegae-momi-mome" #SRMI-Li3-option-16-Intra-Iso-By-Clean"
+    q["name"] = "MOVIE_POST_ION_ELECTRON_INTERFACE_ANALYSIS" #rhoi-rhoe-omegai-omegae-momi-mome" #SRMI-Li3-option-16-Intra-Iso-By-Clean"
 
     ##
     q["framerate"] = 10 # 10 # 20
     q["mov_save"] = q["files_dir"] + "/mov"
     q["offset"] = [0.0, 0.0]
     q["xy_limits"] = [[-0.75,0], [1.25,1]]
-    q["file_include"] = [".plt00000"]
+    q["file_include"] = [".plt"]
     q["file_exclude"] = ["chk"]
     q["cores"] = 1
     q["time_span"] = [] # np.arange(0,10+dt, dt)
     q["force_data"] = False
-    q["force_frames"] = False
+    q["force_frames"] = True
     q["only_frames"] = False 
     q["redo_streaks"] = False
     q["dpi"] = 200

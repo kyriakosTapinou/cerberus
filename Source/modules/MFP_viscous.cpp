@@ -28,6 +28,12 @@ void Viscous::get_electron_coeffs(State& EMstate,State& IONstate,
                                   Real& eta1,Real& eta2,Real& eta3,Real& eta4,
                                   Real& kappa1,Real& kappa2,Real& kappa3,
                                   Real& beta1,Real& beta2,Real& beta3, int& truncatedTau){return;}
+//TODO check 
+void Viscous::get_transport_constants_electron(const Real& Z_i, Real& delta_0, 
+        Real& delta_1, 
+        Real& BT_gamma_0, Real& BT_gamma_0_p, Real& BT_gamma_1_p, Real& BT_gamma_1_pp, 
+        Real& BT_gamma_0_pp, Real& b_0, Real& b_0_pp, Real& b_0_p, Real& b_1_p, 
+        Real& b_1_pp) {return;}
 
 Real Viscous::get_max_speed(const Vector<Vector<Real>> &U){return 0.0;}
 
@@ -363,6 +369,8 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
     x_coef = omega_ci*t_collision_ion;
 
     //TODO fix up coefficients here also with tabled depending atomic number
+    //ion intra species coefficients do not rely on Z dependent transport coefficients 
+    //get_transport_constants_ion()
 
     delta_kappa = x_coef*x_coef*x_coef*x_coef + 2.700*x_coef*x_coef + 0.677;
     delta_eta   = x_coef*x_coef*x_coef*x_coef + 4.030*x_coef*x_coef + 2.330;
@@ -371,7 +379,6 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
     //assign viscosity value 
     if (forceViscosity) eta0 = forceViscosityValue;
     else eta0 = 0.96*nd_i*T_i*t_collision_ion ;//* n0_ref;
-    //Print() << "Ion eta0:\t" << eta0 << "\n";
     if (GD::braginskii_anisotropic) {
       eta2 = nd_i*T_i*t_collision_ion*(6./5.*x_coef*x_coef+2.23)/delta_eta;
       eta1 = nd_i*T_i*t_collision_ion*(6./5.*(2*x_coef)*(2*x_coef)+2.23)/delta_eta2;
@@ -406,14 +413,16 @@ void BraginskiiIon::get_ion_coeffs(State& EMstate,State& ELEstate,
     
     //From Braginskii OG paper page 250 of paper in journal heading 4
     // Kinetics of a simple plasma (Quantitative Analyis)
-    // TODO Add in flexibility for different atomic numbers of the ion species used,
-    // see Braginskii
 
-    //TODO Print() << "\nget_ion_coefficients - Test if 1/no_ref on Diverence(q) and n0_ref of Kappa makes a difference (they cancel out overall but perhaps the numerics?\n";
-    kappa1 = 3.906*nd_i*T_i*t_collision_ion/mass_i;
+    //TODO Print() << "\nget_ion_coefficients - Test if 1/no_ref on Diverence(q) and n0_ref of Kappa makes a difference (they cancel out overall but perhaps the numerics?\n" --- tested and fine as it ;
+    // note there are no transport constants for kappa_ion
+    //TODO add in kappa common factor to save calcs   
+    Real kappa_common_factor = nd_i*T_i*t_collision_ion/mass_i;  
+
+    kappa1 = 3.906*kappa_common_factor;  
     if (GD::braginskii_anisotropic) {
-      kappa2 = (2.*x_coef*x_coef + 2.645)/delta_kappa*nd_i*T_i*t_collision_ion/mass_i;
-      kappa3 = (5./2.*x_coef*x_coef + 4.65)*x_coef*nd_i*T_i*t_collision_ion/mass_i/delta_kappa;
+      kappa2 = (2.*x_coef*x_coef + 2.645)/delta_kappa*kappa_common_factor;
+      kappa3 = (5./2.*x_coef*x_coef + 4.65)*x_coef*kappa_common_factor/delta_kappa;
     } else {kappa2 = 0; kappa3 = 0; }
 
     //TODO remove after comparison to plasmapy
@@ -532,7 +541,6 @@ Real BraginskiiIon::get_max_speed(const Vector<Vector<amrex::Real>>&U) {
 
     x_coef = omega_ci*t_collision_ion;
 
-    //TODO fix up coefficients here also with tabled depending atomic number
     delta_kappa = x_coef*x_coef*x_coef*x_coef + 2.700*x_coef*x_coef + 0.677;
     delta_eta   = x_coef*x_coef*x_coef*x_coef + 4.030*x_coef*x_coef + 2.330;
     delta_eta2  = 16*x_coef*x_coef*x_coef*x_coef + 4*4.030*x_coef*x_coef + 2.330;
@@ -595,12 +603,11 @@ Real BraginskiiIon::get_max_speed(const Vector<Vector<amrex::Real>>&U) {
     //*/
     //From Braginskii OG paper page 250 of paper in journal heading 4
     // Kinetics of a simple plasma (Quantitative Analyis)
-    // TODO Add in flexibility for different atomic numbers of the ion species used,
-    // see Braginskii
-    kappa1 = 3.906*nd_i*T_i*t_collision_ion/mass_i;
+    Real kappa_common_factor = nd_i*T_i*t_collision_ion/mass_i;  
+    kappa1 = 3.906*kappa_common_factor ;
     if (GD::braginskii_anisotropic) {
-      kappa2 = (2.*x_coef*x_coef + 2.645)/delta_kappa*nd_i*T_i*t_collision_ion/mass_i;
-      kappa3 = (5./2.*x_coef*x_coef + 4.65)*x_coef*nd_i*T_i*t_collision_ion/mass_i/delta_kappa;
+      kappa2 = (2.*x_coef*x_coef + 2.645)/delta_kappa*kappa_common_factor;
+      kappa3 = (5./2.*x_coef*x_coef + 4.65)*x_coef*kappa_common_factor/delta_kappa;
     } else {kappa2 = 0; kappa3 = 0; }
 
     if (GD::verbose >= 9 ) {
@@ -667,7 +674,6 @@ Real BraginskiiIon::get_max_speed(const Vector<Vector<amrex::Real>>&U) {
     //return (eta0/rho)/cfl;
     //return std::max(eta0, std::max(eta1, std::max(eta2, std::max(eta3,eta4))))/rho;
 }
-
 
 bool BraginskiiIon::valid_state(const int idx)
 {
@@ -740,6 +746,96 @@ int BraginskiiEle::get_type(){return Electron;}
 int BraginskiiEle::get_BraginskiiIdentity(){return 2;} 
 int BraginskiiEle::get_num(){return NUM_ELE_DIFF_COEFFS;}
 
+void BraginskiiEle::get_transport_constants_electron(const Real& Z_i, Real& delta_0, 
+        Real& delta_1, 
+        Real& BT_gamma_0, Real& BT_gamma_0_p, Real& BT_gamma_1_p, Real& BT_gamma_1_pp, 
+        Real& BT_gamma_0_pp, Real& b_0, Real& b_0_pp, Real& b_0_p, Real& b_1_p, 
+        Real& b_1_pp) {
+    // check Z_i and round 
+    if (Z_i < 0) Abort("\nNegative Z number ln 746 MFP_viscous.cpp\n");
+    Real Z_i_rounded = Z_i;
+    Z_i_rounded = std::roundf(Z_i_rounded);
+    // assign based on charge 
+    if (Z_i_rounded == 1) {
+      b_0 = 0.7110;
+      BT_gamma_0 = 3.1616;
+      delta_0 = 3.7703;
+      delta_1 = 14.79;
+      b_1_p = 5.101;
+      b_0_p = 2.681;
+      b_1_pp = 3./2.;
+      b_0_pp = 3.053;
+      BT_gamma_1_p = 4.664;
+      BT_gamma_0_p = 11.92;
+      BT_gamma_1_pp = 5./2.;
+      BT_gamma_0_pp = 21.67;
+    } else if (Z_i_rounded == 2) {
+      b_0 = 0.9052;
+      BT_gamma_0 = 4.890;
+      delta_0 = 1.0465;
+      delta_1 = 10.80;
+      b_1_p = 4.450;
+      b_0_p = 0.9473;
+      b_1_pp = 3./2.;
+      b_0_pp = 1.784;
+      BT_gamma_1_p = 3.957;
+      BT_gamma_0_p = 5.118;
+      BT_gamma_1_pp = 5./2.;
+      BT_gamma_0_pp = 15.37;
+    } else if (Z_i_rounded == 3) {
+      b_0 = 1.016;
+      BT_gamma_0 = 6.064;
+      delta_0 = 0.5814;
+      delta_1 = 9.618;
+      b_1_p = 4.233;
+      b_0_p = 0.5905;
+      b_1_pp = 3./2.;
+      b_0_pp = 1.442;
+      BT_gamma_1_p = 3.721;
+      BT_gamma_0_p = 3.525;
+      BT_gamma_1_pp = 5./2.;
+      BT_gamma_0_pp = 13.53;
+    } else if (Z_i_rounded == 4) {
+      b_0 = 1.090;
+      BT_gamma_0 = 6.920;
+      delta_0 = 0.4106;
+      delta_1 = 9.055;
+      b_1_p = 4.124;
+      b_0_p = 0.4478;
+      b_1_pp = 3./2.;
+      b_0_pp = 1.285;
+      BT_gamma_1_p = 3.604;
+      BT_gamma_0_p = 2.841;
+      BT_gamma_1_pp = 5./2.;
+      BT_gamma_0_pp = 12.65;
+    } else { 
+      b_0 = 1.521;
+      BT_gamma_0 = 12.471;
+      delta_0 = 0.0961;
+      delta_1 = 7.482;
+      b_1_p = 3.798;
+      b_0_p = 0.1461;
+      b_1_pp = 3./2.;
+      b_0_pp = 0.877;
+      BT_gamma_1_p = 3.25;
+      BT_gamma_0_p = 1.20;
+      BT_gamma_1_pp = 5./2.;
+      BT_gamma_0_pp = 10.23;
+    }
+    /*
+    if ( (Z_i > 2 ) and (Z_i < 3)) {
+      Print() << "\nZ_i\t" << Z_i << "\t" << Z_i_rounded;
+
+      Print() << "\n" << b_0 << "\t" << BT_gamma_0 << "\t" << delta_0 << "\t" 
+        << delta_1 << "\t" << b_1_p << "\t" << b_0_p << "\t" << b_1_pp << "\t" 
+        << b_0_pp << "\t" <<  BT_gamma_1_p << "\t" << BT_gamma_0_p << "\t" 
+        << BT_gamma_1_pp << "\t" << BT_gamma_0_pp ;
+    }
+    */
+    return ;
+    }
+
+
 void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
                                         const Vector<Real>& Q_i,const Vector<Real>& Q_e,
                                         const Vector<Real>& B_xyz,Real& T_e,Real& eta0,
@@ -765,6 +861,10 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
     mass_e  = istate.get_mass(Q_e);
     T_e     = istate.get_temperature_from_prim(Q_e); //
     nd_e    = Q_e[+HydroState::PrimIdx::Density]/mass_e;
+  
+    // Z number of ion species
+    //if ((charge_i > 2) and (charge_i < 3)) Print() << "\n##charge_i = " << charge_i ;
+    Real Z_i = -charge_i/charge_e; 
     //Magnetic field
     Real Bx=B_xyz[0], By=B_xyz[1], Bz=B_xyz[2];
 
@@ -811,18 +911,21 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
 
     Real delta_kappa, delta_eta, delta_eta2, x_coef;// coefficients used exclusively in the braginskii
     x_coef = omega_ce*t_collision_ele; 
-    // TODO fix up these table 2 page 251 BT
-    Real delta_0=3.7703, delta_1=14.79;
-    delta_kappa= x_coef*x_coef*x_coef*x_coef+delta_1*x_coef*x_coef + delta_0;
-    delta_eta  = x_coef*x_coef*x_coef*x_coef+13.8*x_coef*x_coef + 11.6;
-    delta_eta2 = 16*x_coef*x_coef*x_coef*x_coef+4*13.8*x_coef*x_coef + 11.6;
 
-    //Print() << "nd_e  = " << nd_e << "\tT_e = " << T_e << "\tt_collision_ele = " 
-    //        << t_collision_ele << "\n";
+    // TODO fix up these table 2 page 251 BT
+    Real delta_0, delta_1, BT_gamma_0, BT_gamma_0_p, BT_gamma_1_p, BT_gamma_1_pp, 
+      BT_gamma_0_pp, b_0, b_0_pp, b_0_p, b_1_p, b_1_pp;
+
+    get_transport_constants_electron(Z_i, delta_0, delta_1, BT_gamma_0, BT_gamma_0_p, 
+      BT_gamma_1_p, BT_gamma_1_pp, BT_gamma_0_pp, b_0, b_0_pp, b_0_p, b_1_p, b_1_pp);
+
+    //Real delta_0=3.7703, delta_1=14.79;
+    delta_kappa= x_coef*x_coef*x_coef*x_coef+delta_1*x_coef*x_coef + delta_0; // Z dependent
+    delta_eta  = x_coef*x_coef*x_coef*x_coef+13.8*x_coef*x_coef + 11.6; //Note it doesn't have Z dependence
+    delta_eta2 = 16*x_coef*x_coef*x_coef*x_coef+4*13.8*x_coef*x_coef + 11.6; //Note it doesn't have Z dependence
 
     if (forceViscosity) eta0 = forceViscosityValue;
     else eta0 = 0.733*nd_e *T_e * t_collision_ele;
-    //Print() << "Ele eta0:\t" << eta0 << "\n";
     if (GD::braginskii_anisotropic) {
       eta2 = nd_e *T_e*t_collision_ele*(2.05*x_coef*x_coef+8.5)/delta_eta;
       eta1 = nd_e *T_e*t_collision_ele*(2.05*(2*x_coef)*(2*x_coef)+8.5)/delta_eta2;
@@ -845,14 +948,15 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
     // Kinetics of a simple plasma (Quantitative Analyis)
     //TODO change coefficient values for different Z values
     // Currently set for a hydrogen  plasma
-    Real BT_gamma_0=11.92/3.7703,BT_gamma_0_p=11.92,BT_gamma_1_p=4.664,BT_gamma_1_pp=5./2.;
-    Real BT_gamma_0_pp=21.67;
+    //Real BT_gamma_0=11.92/3.7703,BT_gamma_0_p=11.92,BT_gamma_1_p=4.664,BT_gamma_1_pp=5./2.;
+    //Real BT_gamma_0_pp=21.67;
 
-    kappa1=nd_e*T_e*t_collision_ele/mass_e*BT_gamma_0;
+    //TODO add common factor to reduce calcs 
+    Real kappa_common_factor = nd_e*T_e*t_collision_ele/mass_e;
+    kappa1=kappa_common_factor*BT_gamma_0;
     if (GD::braginskii_anisotropic) {
-      kappa2=(BT_gamma_1_p*x_coef*x_coef+BT_gamma_0_p)/delta_kappa*nd_e*T_e*t_collision_ele/mass_e;
-      kappa3=(BT_gamma_1_pp*x_coef*x_coef+BT_gamma_0_pp)*x_coef*nd_e*T_e*t_collision_ele
-           /mass_e/delta_kappa;
+      kappa2=(BT_gamma_1_p*x_coef*x_coef+BT_gamma_0_p)/delta_kappa*kappa_common_factor;
+      kappa3=(BT_gamma_1_pp*x_coef*x_coef+BT_gamma_0_pp)*x_coef*kappa_common_factor/delta_kappa;
     } else {kappa2 = 0; kappa3 = 0;}
 
     //TODO remove after comparison to plasmapy
@@ -894,11 +998,8 @@ void BraginskiiEle::get_electron_coeffs(State& EMstate,State& IONstate,
         kappa3 = kappa1;
     }
 
-
-
     //--- beta terms for the thermal component of thermal heat flux of the electrons.
-
-    Real b_0 = 0.711, b_0_pp = 3.053, b_0_p=2.681, b_1_p=5.101, b_1_pp=3./2.;
+    //Real b_0 = 0.711, b_0_pp = 3.053, b_0_p=2.681, b_1_p=5.101, b_1_pp=3./2.;
     beta1 = nd_e*b_0*T_e;
     if (GD::braginskii_anisotropic) {
     beta2 = nd_e*(b_1_p*x_coef*x_coef+b_0_p)/delta_kappa*T_e;
@@ -946,7 +1047,8 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
     //Print() << "\nmass_i" << mass_i << "\n";
     T_i     = IONstate.get_temperature_from_cons(U_i); //
     nd_i    = IONstate.get_density_from_cons(U_i)/mass_i;
-
+    // ion Z number
+    Real Z_i = -charge_i/charge_e;
     //Magnetic field
     Real Bx = U_em[+FieldState::ConsIdx::Bx];
     Real By = U_em[+FieldState::ConsIdx::By];
@@ -991,7 +1093,13 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
     x_coef = omega_ce*t_collision_ele;
     
     // TODO fix up these table 2 page 251 BT
-    Real delta_0=3.7703, delta_1=14.79;
+    Real delta_0, delta_1, BT_gamma_0, BT_gamma_0_p, BT_gamma_1_p, BT_gamma_1_pp, 
+      BT_gamma_0_pp, b_0, b_0_pp, b_0_p, b_1_p, b_1_pp;
+
+    get_transport_constants_electron(Z_i, delta_0, delta_1, BT_gamma_0, BT_gamma_0_p, 
+      BT_gamma_1_p, BT_gamma_1_pp, BT_gamma_0_pp, b_0, b_0_pp, b_0_p, b_1_p, b_1_pp);
+
+    //Real delta_0=3.7703, delta_1=14.79;
     delta_kappa= x_coef*x_coef*x_coef*x_coef+delta_1*x_coef*x_coef + delta_0;
     delta_eta  = x_coef*x_coef*x_coef*x_coef+13.8*x_coef*x_coef + 11.6;
     delta_eta2 = 16*x_coef*x_coef*x_coef*x_coef+4*13.8*x_coef*x_coef + 11.6;
@@ -1045,16 +1153,14 @@ Real BraginskiiEle::get_max_speed(const Vector<Vector<amrex::Real> > &U) {
 
     //From Braginskii OG paper page 250 of paper in journal heading 4
     // Kinetics of a simple plasma (Quantitative Analyis)
-    //TODO change coefficient values for different Z values
-    // Currently set for a hydrogen  plasma
-    Real BT_gamma_0=11.92/3.7703,BT_gamma_0_p=11.92,BT_gamma_1_p=4.664,BT_gamma_1_pp=5./2.;
-    Real BT_gamma_0_pp=21.67;
-
-    kappa1=nd_e*T_e*t_collision_ele/mass_e*BT_gamma_0;
+    //Real BT_gamma_0=11.92/3.7703,BT_gamma_0_p=11.92,BT_gamma_1_p=4.664,BT_gamma_1_pp=5./2.;
+    //Real BT_gamma_0_pp=21.67;
+    Real kappa_common_factor = nd_e*T_e*t_collision_ele/mass_e;
+           
+    kappa1=kappa_common_factor*BT_gamma_0;
     if (GD::braginskii_anisotropic) {
-      kappa2=(BT_gamma_1_p*x_coef*x_coef+BT_gamma_0_p)/delta_kappa*nd_e*T_e*t_collision_ele/mass_e;
-      kappa3=(BT_gamma_1_pp*x_coef*x_coef+BT_gamma_0_pp)*x_coef*nd_e*T_e*t_collision_ele
-           /mass_e/delta_kappa;
+      kappa2=(BT_gamma_1_p*x_coef*x_coef+BT_gamma_0_p)/delta_kappa*kappa_common_factor;
+      kappa3=(BT_gamma_1_pp*x_coef*x_coef+BT_gamma_0_pp)*x_coef*kappa_common_factor/delta_kappa;
     } else {kappa2 = 0; kappa3 = 0;}
 
     
