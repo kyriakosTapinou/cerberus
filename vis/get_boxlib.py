@@ -896,7 +896,9 @@ class ReadBoxLib:
         
         g0 = gamma[sid][0]
         g1 = gamma[sid][1]
-        
+
+        #if alpha.max() > 1.: print(f"alpha greater than one:\t{alpha.max()}") #pdb.set_trace()
+
         omass =   (m0*m1)/(m0*alpha + m1*(1.0-alpha))
         ocharge = (alpha*m0*q1 + (1.0-alpha)*m1*q0)/(m0*alpha + m1*(1.0-alpha))
         
@@ -907,11 +909,34 @@ class ReadBoxLib:
         cv1 = 1.0/(m1*(g1-1.0))
         
         ogamma = ((1.0-alpha)*cp0 + alpha*cp1)/((1.0-alpha)*cv0 + alpha*cv1)
-        
+
+        """        
+        if ( omass.min() < min(m0, m1)):
+          print("omass fucked")
+          omass[omass < min(m0, m1)] = min(m0, m1)
+        if ( omass.max() > max(m0, m1)):
+          print("omass fucked")
+          omass[omass > max(m0, m1)] = max(m0, m1)
+
+        if ( ocharge.min() < min(q0, q1)):
+          print("ocharge fucked")
+          ocharge[ocharge < min(q0, q1)] = min(q0, q1)
+        if ( ocharge.max() > max(q0, q1)):
+          print("ocharge fucked")
+          ocharge[ocharge > max(q0, q1)] = max(q0, q1)
+
+        if ( ogamma.min() < min(g0, g1)):
+          print("ogamma fucked")
+          ogamma[ogamma < min(g0, g1)] = min(g0, g1)
+        if ( ogamma.max() > max(g0, g1)):
+          print("ogamma fucked")
+          ogamma[ogamma > max(g0, g1)] = max(g0, g1)
+        """
+
         self.flat_data["mass-"+name] = omass
         self.flat_data["charge-"+name] = ocharge
         self.flat_data["gamma-"+name] = ogamma
-      
+        
     def get(self, component, grid="cell", get_refinement=False):
         """
         get data corresponding to the names passed in
@@ -927,11 +952,18 @@ class ReadBoxLib:
                 # handle primitive vs conserved
                 try:
                     x, alpha = self.get(component.replace(special, "alpha"))
+                    #if alpha.max() > 1.: 
+                      #print(f"direct alpha greater than one:\t{alpha.max()}")
+                      #alpha[alpha>1.0] = 0.
+                    
                 except:
                     x, trace = self.get(component.replace(special, "tracer"))
                     x, rho = self.get(component.replace(special, "density"))
                     alpha = trace/rho
-                    
+                    #if alpha.max() > 1.: 
+                      #print(f"calculated alpha greater than one:\t{alpha.max()}")
+                      #alpha[alpha>1.0] = 1.0
+
                 name = component.replace(special,"")
                 name = name.replace("-","")
                 self.mixture(alpha, name)

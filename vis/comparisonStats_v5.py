@@ -51,7 +51,7 @@ def tilePcolormeshNormalise(i, j, i_last, x, y, val, name_ij, fig, gs, ax_i, div
                       borderpad=0) #div_ij.append_axes("bottom", size="3%", pad=0.05)
 
   if ("_D-field" in name_ij) or ("_B-field" in name_ij) or  ('Lorentz' in name_ij) or \
-  ("vorticity" in name_ij) or ('current' in name_ij):
+  ("vorticity" in name_ij) or ('current' in name_ij) or ('charge' in name_ij):
     vminValue = -attr_gcl; vmidValue = 0.; cmapValue = mpl.cm.bwr # "bwr";
   else:
     vminValue = 0. #0.5*attr_gcl[name_ij]; 
@@ -160,7 +160,7 @@ def plot_ScenariosPrimitive(dataFileList, outputType, raw_data_attr, levelList, 
     dx = rc.data["levels"][levelList[i]]['dx']; dy = dx;
     x, dummy = rc.get("rho-ions");
     y_attr[i] = x[1]; x_attr[i] = x[0];
-
+    print(f"time:\t{rc.data['time']}")
     for attr_name in raw_data_attr:
       if ('rho' in attr_name) and (('HRMI' in label_data[i]) or ('MHD' in label_data[i])):
         attr_name_access='rho-neutral'
@@ -324,7 +324,7 @@ def compareInterfaceStatistics(fluid, key, date, reducedPlot, areaOnly, circulat
 
   data_labels = {"circulation_interface_sum_half":'', "tau_sc_interface_sum_half":r"$\dot\Gamma_{comp.}-$", "baroclinic_interface_sum_half":r"$\dot\Gamma_{baro.}-$", 
                  "curl_Lorentz_E_interface_sum_half":r"$\dot\Gamma_{L,E}-$", "curl_Lorentz_B_interface_sum_half":r"$\dot\Gamma_{L,B}-$", "interface_area":'',
-                 "y_avg_int_width":'Avg-', "global_int_width":'Gbl-',"growth_rate":'Avg-', "global_growth_rate":'Gbl-', 'int_DGDT_sum_half':''}
+                 "y_avg_int_width":'', "global_int_width":'Gbl-',"growth_rate":'', "global_growth_rate":'Gbl-', 'int_DGDT_sum_half':''}
 
   plot_properties = ["circulation_interface_sum_half", "tau_sc_interface_sum_half", "baroclinic_interface_sum_half", "curl_Lorentz_E_interface_sum_half", "curl_Lorentz_B_interface_sum_half", "y_avg_int_width", "growth_rate", 'int_DGDT_sum_half']
 
@@ -332,10 +332,10 @@ def compareInterfaceStatistics(fluid, key, date, reducedPlot, areaOnly, circulat
   if reducedPlot: # for papers only pront total Gamma, Gamma dot half, eta, eta dot 
     oneD_properties = ["circulation_interface_sum_half", "tau_sc_interface_sum_half", "baroclinic_interface_sum_half", "curl_Lorentz_E_interface_sum_half", "curl_Lorentz_B_interface_sum_half", "y_avg_int_width", "growth_rate"]
     plot_properties = ["circulation_interface_sum_half", "y_avg_int_width", "growth_rate", 'int_DGDT_sum_half']
-    plot_labels = [ r"$\Gamma_z$",r"$\dot \Gamma_{z, total}$", r"$\eta$", r"$\dot \eta$"]
+    plot_labels = [ r"$\Gamma_z$",r"$\.\Gamma_{z, total}$", r"$\eta$", r"$\.\eta$"]
 
     figure_nR = 2; figure_nC = 2;
-    plot_limits = [] #plot_limits_dS_0p1_reduced 
+    plot_limits = [[-0.01, 0.20], [-0.5, 3.0], [0.1, 0.45], [0., 0.65]] #plot_limits_dS_0p1_reduced 
   elif areaOnly:
     oneD_properties = ["interface_area"]
     plot_properties = ["interface_area"]
@@ -428,7 +428,7 @@ def compareInterfaceStatistics(fluid, key, date, reducedPlot, areaOnly, circulat
           interface_data['int_DGDT_sum_half', key] = interface_data["tau_sc_interface_sum_half", key] + interface_data["baroclinic_interface_sum_half", key] + interface_data["curl_Lorentz_E_interface_sum_half", key] + interface_data["curl_Lorentz_B_interface_sum_half", key]  
 
   # Plot this shit show
-  use_lw = 0.25; use_ms = 2
+  use_lw = 0.75; use_ms = 2
   for prop in plot_properties: 
     for key in cases.keys():
       use_color = case_colors[key]
@@ -460,7 +460,7 @@ def compareInterfaceStatistics(fluid, key, date, reducedPlot, areaOnly, circulat
     leg_hl = sorted(zip(leg_handles, leg_labels), key=operator.itemgetter(1))
     leg_handles2, leg_labels2 = zip(*leg_hl)
     plot_axes[prop].legend(leg_handles2, leg_labels2)
-    plot_axes[prop].legend(frameon=False, ncol=2, prop={"size":6}, loc=1)
+    plot_axes[prop].legend(frameon=False, ncol=2, prop={"size":6}, loc=0)
 
   for (i,ax) in axes.items():
     if (i != len(plot_labels)-1) and ( i != len(plot_labels)-2 ):
@@ -609,8 +609,8 @@ prepare_data = False # look for existing data file (use dictionary name assigned
                     # here), create new file or use the existing file.
 plot = True # to plot or not to plot, that is the question...
 
-plot_interface_stats = True # plot interface statistics 
-plot_scenarios_primitive =  False # not implemented 
+plot_interface_stats = False # plot interface statistics 
+plot_scenarios_primitive = True # not implemented 
 plot_interface_thickness = False 
 plot_scenarios_eden_series = False # not implemented 
 
@@ -626,6 +626,7 @@ useNprocs = 1
 
 max_res = 2048 # not used just elgacy variable
 view =  [[-0.4, 0.0], [1.4, 1.0]] # what windo of data to view 
+view =  [[0.3, 0.0], [1.5, 1.0]] # view for t=1
 window = view ; # no point having more data than needed window =[[-2.0, 0.0], [2.0, 1.0]] 
 n_time_slices = 5 # number of time increments for contour plots 
 time_slices = range(n_time_slices) #[0, 9] # which indexes in the data_index list (calculated later) to be used, range(n_time_slices) means use all
@@ -640,15 +641,33 @@ if __name__ == '__main__':
   # example of plotting raw data (or the specialist derived properties accounted for). 
   #format is {nickname:(directory abslute, max_level)}  
   simOutputDirec = {
-"SRMI-OP-16-Res-512-IDEAL-CLEAN":("/media/kyriakos/Expansion/999_RES_512_RUNS/tinaroo_Ideal-Clean-HLLE/Ideal-Clean/", -1), 
-"SRMI-OP-16-Res-512-INTRA-ANISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-INTRA-Anisotropic/SRMI-Option-16-Res-512-INTRA-Anisotropic/", -1), 
-"SRMI-OP-16-Res-512-INTRA-ISO-":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-INTRA-Isotropic/SRMI-Option-16-Res-512-INTRA-Isotropic/", -1), 
-"SRMI-OP-16-Res-512-INTER-ANISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-Inter-Anisotropic/SRMI-Option-16-Res-512-Inter-Anisotropic/", -1), 
-"SRMI-OP-16-Res-512-INTER-ISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-Inter-Isotropic/SRMI-Option-16-Res-512-Inter-Isotropic/", -1), 
-"SRMI-OP-16-Res-512-FB-ISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-FB-Isotropic/SRMI-Option-16-Res-512-FB-Isotropic/", -1), 
-"SRMI-OP-16-Res-512-FB-ANISO-ISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_SRMI-Option-16-Res-512-FB-Anisotropic/", -1), 
-'PHM_HRMI_p0.5_ny2048':('/home/kyriakos/Documents/000_Species_RMI_Scenario_Results/000_R18_Scenario_Results/PHM_HRMI_p0.5_ny2048', -1), 
-'PHM_HRMI_p1_ny2048':('/home/kyriakos/Documents/000_Species_RMI_Scenario_Results/000_R18_Scenario_Results/PHM_HRMI_p1_ny2048', -1)
+#"SRMI-OP-16-Res-512-IDEAL-CLEAN":("/media/kyriakos/Expansion/999_RES_512_RUNS/tinaroo_Ideal-Clean-HLLE/Ideal-Clean/", -1), 
+#"SRMI-OP-16-Res-512-INTRA-ANISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-INTRA-Anisotropic/SRMI-Option-16-Res-512-INTRA-Anisotropic/", -1), 
+#"SRMI-OP-16-Res-512-INTRA-ISO-":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-INTRA-Isotropic/SRMI-Option-16-Res-512-INTRA-Isotropic/", -1), 
+#"SRMI-OP-16-Res-512-INTER-ANISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-Inter-Anisotropic/SRMI-Option-16-Res-512-Inter-Anisotropic/", -1), 
+#"SRMI-OP-16-Res-512-INTER-ISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-Inter-Isotropic/SRMI-Option-16-Res-512-Inter-Isotropic/", -1), 
+#"SRMI-OP-16-Res-512-FB-ISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-FB-Isotropic/SRMI-Option-16-Res-512-FB-Isotropic/", -1), 
+#"SRMI-OP-16-Res-512-FB-ANISO-ISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_SRMI-Option-16-Res-512-FB-Anisotropic/", -1), 
+
+#
+#"SRMI-OP-16-Res-2048-INTRA-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/SRMI-Option-16-Res-2048-INTRA-Anisotropic/", -1), 
+#"SRMI-OP-16-Res-2048-FB-ANISO-CLEAN":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/SRMI-Option-16-Res-2048-FB-Anisotropic/", -1), 
+#"SRMI-OP-16-Res-2048-FB-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Op-16-Res-2048-Clean-Full-Brag-Isotropic/", -1), ###suspect
+#"SRMI-OP-16-Res-2048-INTER-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Op-16-Clean-Inter-Isotropic/", -1), 
+#"SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Op-16-Clean-Inter-Anisotropic/", -1), 
+#"SRMI-OP-16-Res-2048-INTRA-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/20220427-Op-16-Clean-Intra-Isotropic-HLLC/", -1), 
+
+"SRMI-OP-16-Res-2048-IDEAL":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/20220504-Op-16-Clean-Ideal-HLLC/", -1), 
+# z correction 
+"SRMI-OP-16-Res-2048-INTRA-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ANISO-Option-16/", -1), 
+"SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-FB-ANISO-Option-16/", -1), 
+#"SRMI-OP-16-Res-2048-FB-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-FB-ISO-OPTION-16/", -1), ###suspect
+#"SRMI-OP-16-Res-2048-INTER-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTER-ISO-Option-16/", -1), 
+"SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTER-ANISO-Option-16/", -1), 
+#"SRMI-OP-16-Res-2048-INTRA-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ISO-Option-16/", -1), 
+
+#'PHM_HRMI_p0.5_ny2048':('/home/kyriakos/Documents/000_Species_RMI_Scenario_Results/000_R18_Scenario_Results/PHM_HRMI_p0.5_ny2048', -1), 
+#'PHM_HRMI_p1_ny2048':('/home/kyriakos/Documents/000_Species_RMI_Scenario_Results/000_R18_Scenario_Results/PHM_HRMI_p1_ny2048', -1)
 }
   
 ###################################################################################
@@ -673,7 +692,7 @@ if __name__ == '__main__':
     colors = ['g', 'k', 'b', 'm', 'r', 'y']
     #### must match the keys used for the data 
     #dS_marker = {:'+', :'x', 
-
+    """
     dS_marker = {
 "SRMI-OP-16-Res-512-IDEAL-CLEAN":"None",
 "SRMI-OP-16-Res-512-INTRA-ANISO":"x",
@@ -707,6 +726,46 @@ if __name__ == '__main__':
 'PHM_HRMI_p0.5_ny2048':'m',
 'PHM_HRMI_p1_ny2048':'y'
 }
+    """
+    dS_marker = {
+"SRMI-OP-16-Res-512-IDEAL-CLEAN":"None",
+"SRMI-OP-16-Res-2048-IDEAL":"None",
+"SRMI-OP-16-Res-2048-INTRA-ANISO":"x",
+"SRMI-OP-16-Res-2048-INTRA-ISO":"None",
+"SRMI-OP-16-Res-2048-INTER-ANISO":"x",
+"SRMI-OP-16-Res-2048-INTER-ISO":"None",
+"SRMI-OP-16-Res-2048-FB-ISO":"None",
+"SRMI-OP-16-Res-2048-FB-ANISO":"x", 
+'PHM_HRMI_p0.5_ny2048':'None',
+'PHM_HRMI_p1_ny2048':'None',
+}
+
+    case_prefix = {
+"SRMI-OP-16-Res-512-IDEAL-CLEAN":"IDL-512",
+"SRMI-OP-16-Res-2048-IDEAL":"IDL",
+"SRMI-OP-16-Res-2048-INTRA-ANISO":"INTRA-A",
+"SRMI-OP-16-Res-2048-INTRA-ISO":"INTRA-I",
+"SRMI-OP-16-Res-2048-INTER-ANISO":"INTER-A",
+"SRMI-OP-16-Res-2048-INTER-ISO":"INTER-I",
+"SRMI-OP-16-Res-2048-FB-ISO":"FB-I",
+"SRMI-OP-16-Res-2048-FB-ANISO":"FB-A", 
+'PHM_HRMI_p0.5_ny2048':'P=0.5',
+'PHM_HRMI_p1_ny2048':'P=1',
+}
+
+    case_colors = {
+"SRMI-OP-16-Res-512-IDEAL-CLEAN":"k",
+"SRMI-OP-16-Res-2048-IDEAL":"k",
+"SRMI-OP-16-Res-2048-INTRA-ANISO":"b",
+"SRMI-OP-16-Res-2048-INTRA-ISO":"b",
+"SRMI-OP-16-Res-2048-INTER-ANISO":"g",
+"SRMI-OP-16-Res-2048-INTER-ISO":"g",
+"SRMI-OP-16-Res-2048-FB-ISO":"r",
+"SRMI-OP-16-Res-2048-FB-ANISO":"r",
+'PHM_HRMI_p0.5_ny2048':'m',
+'PHM_HRMI_p1_ny2048':'y'
+}
+
 
 #'g', 'k', :'b', 'r', 'm', 'y', }
  
@@ -747,9 +806,9 @@ if __name__ == '__main__':
             processedFiles[key] = get_files(dirName, include=[".h5"], get_all=False) 
           
           else:# standard boxlib files
-            if False: # in the sim folder 
-              if simDir[-1] == "/": dirName = simDir + "/" + dirName # where is the processed files in relation to the sim output
-              else: dirName = simDir + dirName
+            if True: # in the sim folder 
+              if simDir[-1] == "/": dirName = simDir + dirName # where is the processed files in relation to the sim output
+              else: dirName = simDir + "/" + dirName
   
             outputFiles[key] = get_files(simDir, include=["plt"], exclude=["temp", "old"], get_all=False) 
             processedFiles[key] = get_files(dirName, include=[".h5"], get_all=False) 
@@ -763,17 +822,28 @@ if __name__ == '__main__':
     # ============================= contour of conserved properties ============#
     if plot_scenarios_primitive:
       print('Plot species pimitive variables:')
-      
-      label_prop = [r"$E_x$",  r"$E_y$", r"$B_z$", r"$J_x$", r"$J_y$"] #
+
+      #EM properties 
+      #label_prop = [r"$E_x$",  r"$E_y$", r"$B_z$", r"$J_x$", r"$J_y$"] #
+      #raw_data_attr_names = ['x_D-field', 'y_D-field', 'z_B-field', 'x-current', 'y-current']
+
+      #Fluid properties 
+      #label_prop = [r"$\rho_i$", r"$\rho_{q}$", r"$\omega_{i}$"] #
+      #raw_data_attr_names = ['rho-ions', 'rho-charge', 'vorticity-ions']
+      label_prop = [r"$\rho_i$", r"$\rho_e$", r"$T_{i}$", r"$T_{e}$"] #
+      raw_data_attr_names = ['rho-ions', 'rho-electrons','temperature-ions', 'temperature-electrons']
+
       # r"$\omega_{i}$", r"$\rho_{q}$", r"$T_e$", r"$T_i$", r"$\varrho_i$", r"$\omega_{i}$"
       #r"$\rho_{E,e}$", r"$\rho_{E,i}$", r"$\rho_{E, EM}$"]  r"$\rho_i$", r"$L_{x,i}$", 
-      raw_data_attr_names = ['x_D-field', 'y_D-field', 'z_B-field', 'x-current', 'y-current']
+
+      #EM properties 
       #raw_data_attr_names = ['rho_E-electrons', 'rho_E-ions', "rho_E-EM", 'vorticity-ion', 
       # 'rho-charge', 'temperature-electron', 'temperature-ion', 'tracer-ion']
       #'temperature-ions' 'vorticity-ions'
       levelList = []
-      for timeInput in [0.2, 0.5, 0.8, 1.0]: 
-        label_output = "20220606-Braginskii"+key+"t-%.1f-rho-EM-Jxy_"%(timeInput)
+      for timeInput in [1.0]: 
+        #label_output = "20220621-Braginskii"+key+"t-%.1f-rho-EM-Jxy_"%(timeInput)
+        label_output = "20220804_Braginskii-ANISO_Z-corrected_t-%.1f_rho-temp_"%(timeInput)
         input_files = []; level_list = []; ylabel_list = []; view_list = []
     
         cases_keys = [i for i in cases.keys()] #cases.keys()
@@ -812,7 +882,9 @@ if __name__ == '__main__':
               cases_sorted.append( (ordered_cases_dict[i], cases[ordered_cases_dict[i]]) )  
 
         for (key, (outputFile,level)) in cases_sorted:
-          
+          #hard coded
+          #print("\n###hard coded level overide")
+          #level = -4
           FTF_inputs = {}
           FTF_inputs['times_wanted'] = [ timeInput ] 
           FTF_inputs['frameType'] = 2
@@ -822,23 +894,33 @@ if __name__ == '__main__':
           FTF_inputs['fileNames'] = outputFiles[key]
           FTF_inputs['level'] = 0 # set to zero to minimise memory usage - we only need time data 
           FTF_inputs['window'] = view
-          print("\tSearching for time")
-          data_index, n_time_slices, time_slices = phmmfp.find_time_frames(FTF_inputs)
-          print("\t\t...done")
-          input_files.append( outputFiles[key][data_index[0]])
+          if True: ### 
+            print("\n\nhardocoded time search overide for last frame")
+            input_files.append( outputFiles[key][-1])
+          else:
+            print("\tSearching for time")
+            data_index, n_time_slices, time_slices = phmmfp.find_time_frames(FTF_inputs)
+            print("\t\t...done")
+            input_files.append( outputFiles[key][data_index[0]])
           level_list.append(level)
   
         view_list = [view]*len(cases_sorted); 
-        label_data = ["S16-IDEAL", "S16-INTRA-ISO", "S16-INTRA-ANISO", "S16-INTER-ISO", "S16-INTER-ISO",
-                      "S16-FB-ISO", "S16-FB-ANIISO"]
+        if False:
+          label_data = ["S16-IDEAL", "S16-INTRA-ISO", "S16-INTRA-ANISO", "S16-INTER-ISO", 
+                        "S16-INTER-ISO", "S16-FB-ISO", "S16-FB-ANIISO"]
+        elif False:
+          label_data = ["S16-IDEAL", "S16-INTRA-ISO", "S16-INTER-ISO", "S16-FB-ISO"]
+        elif True: 
+          label_data = ["S16-IDEAL", "S16-INTRA-ANISO", "S16-INTER-ANISO", "S16-FB-ANISO"]
+
         plot_ScenariosPrimitive(input_files, [outputKeyword], raw_data_attr_names, level_list, 
           label_prop, label_data, label_output, view_list)
 
       # ======================= Interface statistics ===============================#
     if plot_interface_stats:
       print('\nPlotting comparison of interface statistics')
-      date = "20220607"
-      label_append = "IONS_comparison_16-Braginskii"
+      date = "20220804"
+      label_append = "IONS_comparison_16-Braginskii_RES_2048"
       ###   
       reducedPlot = True# only plotting the overall circ, circ gen, growth rate, and 
       areaOnly = False

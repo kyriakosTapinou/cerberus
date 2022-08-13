@@ -1185,7 +1185,7 @@ void MFP::project_divergence(const Real time)
                 }
 
                 // scale the charge and current density appropriately
-                charge_density[ilev].mult(-cd_scale, 0);
+                charge_density[ilev].mult(-cd_scale, 0); // the zero refers to ghost cells to modify 
             }
 
             //                plot_FABs_2d(charge_density[0],0, "charge density", false, true);

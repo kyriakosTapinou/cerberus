@@ -13,7 +13,6 @@ BraginskiiSource::BraginskiiSource(const sol::table& def)
     name = def.get<std::string>("name"); 
     Debye = def["DebyeReference"]; //reference valuesfor the braginskii source specifically, not the simulation
     Larmor = def["LarmorReference"];
-    Print() << "\n\n====Warning Debug ln 17 MFP_braginskii.cpp - reference Debye and Larmor source term:\t" << Debye << "\t" << Larmor ; 
 
     if (!BraginskiiSource::valid_solver(def["solver"])) {
         Abort("Error: Source '"+name+"' needs a different solver");
@@ -119,7 +118,7 @@ void BraginskiiSource::calc_slopes(const Box& box,
 
                 // load into buffer
                 //for (int n=0; n<+HydroState::PrimIdx::Temp; ++n) {
-                b4(i,j,k,0) = U[+HydroState::PrimIdx::Temp];
+                b4(i,j,k,0) = U[+HydroState::PrimIdx::Temp]; // just temperature
                 //}
 
 
@@ -158,6 +157,7 @@ Real BraginskiiSource::get_coulomb_logarithm(Real T_i,Real T_e,Real nd_e){
   // Alternative is to use the formulation from 
   // "Ionic transport in high-energy-density matter" Stanton 2016
   return 10.;
+
   Real T_ref = GD::T_ref;
   Real n_ref = GD::n_ref; 
 
@@ -468,7 +468,6 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
       */
     }
     //---------------Braginskii Momentum source
-    //TODO make sure Z dpendence in get_alpha_beta
     Real alpha_0, alpha_1, alpha_2, beta_0, beta_1, beta_2, t_c_a;
     Real p_lambda = get_coulomb_logarithm(T_b,T_a,n_a);
 
@@ -490,7 +489,6 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
       R_u[1] = -alpha_0*u_para[1] - alpha_1*u_perp[1] + alpha_2*u_chev[1];
       R_u[2] = -alpha_0*u_para[2] - alpha_1*u_perp[2] + alpha_2*u_chev[2];
       //Thermal force
-      //Print() << "\nR_T set to zero\n";
       R_T[0] = -beta_0*TG_para[0] - beta_1*TG_perp[0] - beta_2*TG_chev[0];
       R_T[1] = -beta_0*TG_para[1] - beta_1*TG_perp[1] - beta_2*TG_chev[1];
       R_T[2] = -beta_0*TG_para[2] - beta_1*TG_perp[2] - beta_2*TG_chev[2];
@@ -506,10 +504,8 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
     }
     //Thermal equilibration
     Real Q_delta = 3*m_a/m_b*n_a/t_c_a*(T_a-T_b);
-    Real Q_fric  = (R_u[0]+R_T[0])*du + (R_u[1]+R_T[1])*dv + (R_u[2]+R_T[2])*dw;
-
-    //Real Debye = GD::Debye; now using the source terms own reference Debye and Larmor
-    //Real L = GD::Larmor;
+    //Real Q_fric  = (R_u[0]+R_T[0])*du + (R_u[1]+R_T[1])*dv + (R_u[2]+R_T[2])*dw; //TODO incorrect bc assumes internal energy cons, not total energy cons 
+    Real Q_fric  = (R_u[0]+R_T[0])*u_b + (R_u[1]+R_T[1])*v_b + (R_u[2]+R_T[2])*w_b;
 
     /*
     Real x_ref=GD::x_ref, n_ref=GD::n_ref, m_ref=GD::m_ref, rho_ref=GD::rho_ref, 
@@ -528,13 +524,14 @@ Vector<Real> BraginskiiSource::source(const Vector<Real>& y, const Vector<Offset
     ydot[offset_a.solver + +HydroState::ConsIdx::Xmom] += R_u[0]+R_T[0];
     ydot[offset_a.solver + +HydroState::ConsIdx::Ymom] += R_u[1]+R_T[1];
     ydot[offset_a.solver + +HydroState::ConsIdx::Zmom] += R_u[2]+R_T[2];
-    ydot[offset_a.solver + +HydroState::ConsIdx::Eden] -= Q_delta + Q_fric;
+    //ydot[offset_a.solver + +HydroState::ConsIdx::Eden] -= Q_delta + Q_fric;//TODO wrong frame 
+    ydot[offset_a.solver + +HydroState::ConsIdx::Eden] += -Q_delta + Q_fric; //changed for total energy frame 
     //note here the b is the ion
     ydot[offset_b.solver + +HydroState::ConsIdx::Xmom] -= R_u[0]+R_T[0];
     ydot[offset_b.solver + +HydroState::ConsIdx::Ymom] -= R_u[1]+R_T[1];
     ydot[offset_b.solver + +HydroState::ConsIdx::Zmom] -= R_u[2]+R_T[2];
-    ydot[offset_b.solver + +HydroState::ConsIdx::Eden] += Q_delta + Q_fric;
-
+    //ydot[offset_b.solver + +HydroState::ConsIdx::Eden] += Q_delta + Q_fric; //TODO incorrect bc assumes internal energy cons, not total energy cons 
+    ydot[offset_b.solver + +HydroState::ConsIdx::Eden] += Q_delta - Q_fric; //correct total energy frame
     /*
     if (GD::viewFluxSrcContributions == 1) Print() << "\tElectron\t" << R_u[2]+R_T[2] << "\tIon:\t" << -R_u[2]-R_T[2]; 
 

@@ -36,7 +36,7 @@ v19
 import os, sys, gc, h5py, copy, pdb
 import numpy as np, math
 import matplotlib as mpl
-mpl.use('agg') # i native system has no gui interface
+#mpl.use('agg') # i native system has no gui interface
 import matplotlib.pyplot as plt, matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
@@ -368,10 +368,10 @@ def interfaceStatistics(fluid, key, date, simDir, level, grid_i, grid_j,
 
   ax0 = fig.add_subplot(gs[0,0]); axes.append(ax0); ax0.set_ylabel(r"$\Gamma_z$, $\lambda_D$=%g, c=%g $p=\frac{1}{2}$"%(debye_print,c_print));
   #ax1 = fig.add_subplot(gs[1,0]); axes.append(ax1); ax1.set_ylabel(r"$\dot \Gamma_{z,full}$"); 
-  ax2 = fig.add_subplot(gs[1,0]); axes.append(ax2); ax2.set_ylabel(r"$\dot \Gamma_{z, half}$"); 
+  ax2 = fig.add_subplot(gs[1,0]); axes.append(ax2); ax2.set_ylabel(r"$\dot\Gamma_{z, half}$"); 
   #ax1.legend(loc="upper left")
   ax3 = fig.add_subplot(gs[0,1]); axes.append(ax3); ax3.set_ylabel(r"$\eta$"); 
-  ax4 = fig.add_subplot(gs[1,1]); axes.append(ax4); ax4.set_ylabel(r"$\dot \eta$"); 
+  ax4 = fig.add_subplot(gs[1,1]); axes.append(ax4); ax4.set_ylabel(r"$\dot\eta$"); 
   #ax5 = fig.add_subplot(gs[2,1]); axes.append(ax5); ax5.set_ylabel(r"$A_{int}$"); 
 
   if False: # set limits 
@@ -425,7 +425,7 @@ def interfaceStatistics(fluid, key, date, simDir, level, grid_i, grid_j,
       ax.set_xlim(0, t[-1])
       ax.plot([0,1], [0,0], 'k--', lw=0.4, alpha=0.3) #set the dotted line on zero
  
-  color = "k"; lw = 0.5
+  color = "k"; lw = 0.75 ; ms = 2
   tp.append([t, int_circ, {"color":color, "ls":"-", "lw":lw, "label":"Full interface"}, ax0])
   tp.append([t, int_circ_half, {"color":'g', "ls":"--", "lw":lw, "label":"1/2 interface"}, ax0])
   ###=====================================full interface properties 
@@ -441,13 +441,13 @@ def interfaceStatistics(fluid, key, date, simDir, level, grid_i, grid_j,
   #tp.append([tl, int_tc_half, 
   #  {"color":'b', "ls":"--", "lw":lw, "label":r"$\dot\Gamma_{conv.}$"}, ax2])
   tp.append([tb, int_b_half, 
-    {"color":'c', "ls":"-","marker":"x", "ms":1., "lw":lw,"label":r"$\dot\Gamma_{baro.}$" }, ax2])
+    {"color":'c', "ls":"-","marker":"x", "ms":ms, "lw":lw,"label":r"$\dot\Gamma_{baro.}$" }, ax2])
   tp.append([tl, int_L_E_half, 
     {"color":'r', "ls":"-.", "lw":lw, "label":r"$\dot\Gamma_{L,E}$"}, ax2])
   tp.append([tl, int_L_B_half, 
     {"color":'m', "ls":":", "lw":lw, "label":r"$\dot\Gamma_{L,B}$"}, ax2])
   tp.append([tl, int_DGDT_half,{"color":color, "ls":"-", "lw":lw, 
-    "marker":"o", "ms":1., "label":r"$\Sigma\dot\Gamma_{z,half}$"}, ax2])
+    "marker":"o", "ms":ms, "label":r"$\Sigma\dot\Gamma_{z,half}$"}, ax2])
   tp.append([teta, eta, {"color":color, "ls":"-", "lw":lw,"label":"Avg"}, ax3])
   tp.append([teta, geta, {"color":'g', "ls":"--", "lw":lw,"label":"Global"}, ax3])
   tp.append([tetad, etad, {"color":color, "ls":"-", "lw":lw,"label":"Avg"}, ax4]) 
@@ -495,8 +495,8 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
   rc.close()
 
   # attribute contours
-  wspacing = 0.05
-  hspacing = 0.05
+  wspacing = 0.2
+  hspacing = 0.2
   fig_x, fig_y = phmmfp.get_figure_size(6.7, grid_i, grid_j, 1., wspacing, hspacing, 1)
   fig = plt.figure(figsize=(fig_x,fig_y))
   # layout the grid for the figure 
@@ -513,12 +513,15 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
 
   #  t, int_circ = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="circulation_interface_sum", cumsum=False, nproc=useNproc)  #circulation_int_sum
 
-  ax0 = fig.add_subplot(gs[0,0]); axes.append(ax0); ax0.set_ylabel(r"$\Gamma_z$, $\lambda_D$=%g, c=%g $p=\frac{1}{2}$"%(debye_print,c_print));
+  ax0 = fig.add_subplot(gs[0,1]); axes.append(ax0); ax0.set_ylabel(r"$\Gamma_z$") #, $\lambda_D$" + f"={debye_print:.1e}, c={c_print}");
   #ax1 = fig.add_subplot(gs[1,0]); axes.append(ax1); ax1.set_ylabel(r"$\dot \Gamma_{z,full}$"); 
-  ax2 = fig.add_subplot(gs[1,0]); axes.append(ax2); ax2.set_ylabel(r"$\dot \Gamma_{z, half}$"); 
   #ax1.legend(loc="upper left")
-  ax3 = fig.add_subplot(gs[0,1]); axes.append(ax3); ax3.set_ylabel(r"$\eta$"); 
-  ax4 = fig.add_subplot(gs[1,1]); axes.append(ax4); ax4.set_ylabel(r"$\dot \eta$"); 
+  ax1 = fig.add_subplot(gs[0,0]); axes.append(ax1); ax1.set_ylabel(r"Ions $\dot\Gamma_{z, half}$"); 
+  ax2 = fig.add_subplot(gs[1,0]); axes.append(ax2); ax2.set_ylabel(r"Electrons $\dot\Gamma_{z, half}$"); 
+
+  ax3 = fig.add_subplot(gs[1,1]); axes.append(ax3); ax3.set_ylabel(r"$\eta$"); 
+  ax4 = ax3.twinx(); axes.append(ax4); ax4.set_ylabel(r"$\dot\eta$"); 
+  #ax4 = fig.add_subplot(gs[1,1]); axes.append(ax4); ax4.set_ylabel(r"$\dot\eta$"); 
   #ax5 = fig.add_subplot(gs[2,1]); axes.append(ax5); ax5.set_ylabel(r"$A_{int}$"); 
 
   if False: # set limits 
@@ -529,90 +532,109 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
     #ax5.set_ylim([0.,0.06])
 
   tp = []; data = {}
+  components =["circulation_interface", "tau_sc_interface", #"tau_conv_interface_sum", 
+               "baroclinic_interface", "curl_Lorentz_E_interface", "curl_Lorentz_B_interface", #"interface_area"
+              ]
+
+  sumAp = "_sum"; halfAp = "_sum_half";
+
+  componentsPlot = ["int_DGDT" + sumAp, "int_DGDT" + halfAp, "eta", "etad"]
+
   for fluid in fluids:
-  t, int_circ = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="circulation_interface_sum", cumsum=False, nproc=useNproc)  #circulation_int_sum
-  tl, int_tsc  = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="tau_sc_interface_sum", cumsum=False, nproc=useNproc) # flow term 1
-  #tl, int_tc  = get_1D_time_series_data(processed_files, species=fluid, quantity="tau_conv_interface_sum", cumsum=False, nproc=useNproc) # flow term 2
-  tb, int_b   = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="baroclinic_interface_sum", cumsum=False, nproc=useNproc)   # baroclinic term 
-  tl, int_L_E = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_Lorentz_E_interface_sum", cumsum=False, nproc=useNproc) # Lorentz E component 
-  tl, int_L_B = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_Lorentz_B_interface_sum", cumsum=False, nproc=useNproc) # Lorentz B component
-  tA, int_A   = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="interface_area", cumsum=False, nproc=useNproc) # interface area 
+    for comp in components:
+      t, data[comp, sumAp, fluid]  = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity=comp+sumAp,  cumsum=False, nproc=useNproc)  
 
-  int_DGDT_full = copy.deepcopy(int_tsc)
-  if type(int_tsc) == list:
-    for i in range(len(int_DGDT_full)):
-      int_DGDT_full[i] = int_tsc[i] + int_b[i] + int_L_E[i] + int_L_B[i]
-  else:
-    int_DGDT_full = int_tsc + int_b + int_L_E + int_L_B
-    #int_total_odot = int_tsc + int_tc + int_b + int_L_E + int_L_B
+      t, data[comp, halfAp, fluid] = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity=comp+halfAp, cumsum=False, nproc=useNproc)  
+      
+    for ap in [sumAp, halfAp]:
+      data["int_DGDT", ap, fluid] = copy.deepcopy(data[comp, ap, fluid])
+      if type(data[comp, sumAp, fluid]) == list:
+        for i in range(len(data[comp, sumAp, fluid])): # just loop through all the time entries 
+          data["int_DGDT", ap, fluid][i] = data["tau_sc_interface", ap, fluid][i] + data["baroclinic_interface", ap, fluid][i] \
+                                           + data["curl_Lorentz_E_interface", ap, fluid][i] + data["curl_Lorentz_B_interface", ap, fluid][i] 
+                                              #int_tsc[i] + int_b[i] + int_L_E[i] + int_L_B[i]
+      else:
+          data["int_DGDT", ap, fluid] = data["tau_sc_interface", ap, fluid] + data["baroclinic_interface", ap, fluid] \
+                                        + data["curl_Lorentz_E_interface", ap, fluid] + data["curl_Lorentz_B_interface", ap, fluid] 
 
-  t, int_circ_half = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="circulation_interface_sum_half", cumsum=False, nproc=useNproc)  #vorticity_int_sum
-  tl, int_tsc_half  = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="tau_sc_interface_sum_half", cumsum=False, nproc=useNproc) # flow term 1
-  #tl, int_tc_half  = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="tau_conv_interface_sum_half", cumsum=False, nproc=useNproc) # flow term 2
-  tb, int_b_half   = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="baroclinic_interface_sum_half", cumsum=False, nproc=useNproc)   # baroclinic term 
-  tl, int_L_E_half = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_Lorentz_E_interface_sum_half", cumsum=False, nproc=useNproc) # Lorentz E component 
-  tl, int_L_B_half= phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_Lorentz_B_interface_sum_half", cumsum=False, nproc=useNproc) # Lorentz B component
+        #int_DGDT_full = int_tsc + int_b + int_L_E + int_L_B
+      #int_total_odot = int_tsc + int_tc + int_b + int_L_E + int_L_B
+    t, data["eta", fluid] =  phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="y_avg_int_width", cumsum=False, nproc=useNproc)
+    t, data["etad", fluid] = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="growth_rate", cumsum=False, nproc=useNproc)
 
-  int_DGDT_half = copy.deepcopy(int_tsc_half)
-  if type(int_tsc_half) == list:
-    for i in range(len(int_DGDT_half)):
-      int_DGDT_half[i] = int_tsc_half[i] + int_b_half[i] + int_L_E_half[i] + int_L_B_half[i]
-  else:
-     int_total_odot_half = int_tsc_half + int_tc_half + int_b_half + int_L_E_half + int_L_B_half
-     #int_DGDT_half = int_tsc_half + int_b_half + int_L_E_half + int_L_B_half
+  #teta, eta   = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="y_avg_int_width", cumsum=False, nproc=useNproc)
+  #teta, geta   = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="global_int_width", cumsum=False, nproc=useNproc)
+  #tetad, etad = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="growth_rate", cumsum=False, nproc=useNproc)
+  #tetad, getad = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="global_growth_rate",cumsum=False, nproc=useNproc)
 
-  teta, eta   = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="y_avg_int_width", cumsum=False, nproc=useNproc)
-  teta, geta   = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="global_int_width", cumsum=False, nproc=useNproc)
-  tetad, etad = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="growth_rate", cumsum=False, nproc=useNproc)
-  tetad, getad = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="global_growth_rate",cumsum=False, nproc=useNproc)
-
-  axes[-1].set_xlabel(r"$t$")
+  ax0.set_xticklabels([])
+  ax1.set_xticklabels([])
+  ax2.set_xlabel(r"$t$")
+  ax3.set_xlabel(r"$t$")
+  """
   for ax in axes[0:-1]:
       ax.set_xticklabels([])
   for ax in axes:
       ax.set_xlim(0, t[-1])
       ax.plot([0,1], [0,0], 'k--', lw=0.4, alpha=0.3) #set the dotted line on zero
- 
-  color = "k"; lw = 0.5
-  tp.append([t, int_circ, {"color":color, "ls":"-", "lw":lw, "label":"Full interface"}, ax0])
-  tp.append([t, int_circ_half, {"color":'g', "ls":"--", "lw":lw, "label":"1/2 interface"}, ax0])
-  ###=====================================full interface properties 
-  #tp.append([tl, int_tsc, {"color":'g', "ls":"-", "lw":lw, "label":r"$\dot\Gamma_{comp.}$"}, ax1])
-  #tp.append([tl, int_tc, {"color":'b', "ls":"--", "lw":lw, "label":r"$\dot\Gamma_{conv.}$"}, ax1])
-  #tp.append([tb, int_b, {"color":'c', "ls":"-","marker":"x", "ms":1., "lw":lw,"label":r"$\dot\Gamma_{baro.}$" }, ax1])
-  #tp.append([tl, int_L_E, {"color":'r', "ls":"-.", "lw":lw, "label":r"$\dot\Gamma_{L,E}$"}, ax1])
-  #tp.append([tl, int_L_B, {"color":'m', "ls":":", "lw":lw, "label":r"$\dot\Gamma_{L,B}$"}, ax1])
-  #tp.append([tl, int_DGDT_full, {"color":color, "ls":"-", "lw":lw, "marker":"o", "ms":1., "label":r"$\Sigma\dot\Gamma_{z,full}$"}, ax1])
-  ###=====================================Half interface properties 
-  tp.append([tl, int_tsc_half, 
-    {"color":'g', "ls":"-", "lw":lw, "label":r"$\dot\Gamma_{comp.}$"}, ax2])
-  #tp.append([tl, int_tc_half, 
-  #  {"color":'b', "ls":"--", "lw":lw, "label":r"$\dot\Gamma_{conv.}$"}, ax2])
-  tp.append([tb, int_b_half, 
-    {"color":'c', "ls":"-","marker":"x", "ms":1., "lw":lw,"label":r"$\dot\Gamma_{baro.}$" }, ax2])
-  tp.append([tl, int_L_E_half, 
-    {"color":'r', "ls":"-.", "lw":lw, "label":r"$\dot\Gamma_{L,E}$"}, ax2])
-  tp.append([tl, int_L_B_half, 
-    {"color":'m', "ls":":", "lw":lw, "label":r"$\dot\Gamma_{L,B}$"}, ax2])
-  tp.append([tl, int_DGDT_half,{"color":color, "ls":"-", "lw":lw, 
-    "marker":"o", "ms":1., "label":r"$\Sigma\dot\Gamma_{z,half}$"}, ax2])
-  tp.append([teta, eta, {"color":color, "ls":"-", "lw":lw,"label":"Avg"}, ax3])
-  tp.append([teta, geta, {"color":'g', "ls":"--", "lw":lw,"label":"Global"}, ax3])
-  tp.append([tetad, etad, {"color":color, "ls":"-", "lw":lw,"label":"Avg"}, ax4]) 
-  tp.append([tetad, getad, {"color":'g', "ls":"--", "lw":lw,"label":"Global"}, ax4]) 
+  """
 
-  #tp.append([tA, int_A, {"color":'g', "ls":"-", "lw":lw,"label":"Full interface Area"}, ax5]) 
+  color = "k"; lw = 0.75; ms = 2; 
+  ## load the data to plot 
+  #ionMarker = "None"; ionLine = "--"
+  #eleMarker = "x"; eleLine = "None"
+
+  # total circ sum and half 
+  ionMarker = "None"; ionLine = "--"
+  eleMarker = "None"; eleLine = "--"
+  tp.append([t, data["circulation_interface", sumAp,  "ions"],      {"color":color, "ls":ionLine, "lw":lw, "marker":ionMarker, "ms":ms, "label":"Ion full"}, ax0])
+  tp.append([t, data["circulation_interface", halfAp, "ions"],      {"color":'g', "ls":ionLine, "lw":lw, "marker":ionMarker, "ms":ms, "label":"Ion half"}, ax0])
+  tp.append([t, data["circulation_interface", sumAp,  "electrons"], {"color":"tab:orange", "ls":eleLine, "lw":lw, "marker":eleMarker, "ms":ms, "label":"Ele full"}, ax0])
+  tp.append([t, data["circulation_interface", halfAp, "electrons"], {"color":'b', "ls":eleLine, "lw":lw, "marker":eleMarker, "ms":ms, "label":"Ele half"}, ax0])
+
+  ###=====================================Half interface properties 
+  #ION
+  # ion sources
+  ionMarker = "None"; ionLine = "--"
+  eleMarker = "None"; eleLine = "--"
+  tp.append([t, data["int_DGDT", halfAp, "ions"], {"color":color, "ls":ionLine, "lw":lw, "marker":ionMarker, "ms":ms, "label":r"$\Sigma\dot\Gamma_{z,half}$"}, ax1])
+  tp.append([t, data["tau_sc_interface", halfAp, "ions"], {"color":'g', "ls":ionLine, "lw":lw, "marker":ionMarker, "ms":ms, "label":r"$\dot\Gamma_{comp.}$"}, ax1])
+  tp.append([t, data["baroclinic_interface", halfAp, "ions"], {"color":'c', "ls":ionLine, "lw":lw, "marker":ionMarker, "ms":ms, "label":r"$\dot\Gamma_{baro.}$" }, ax1])
+  tp.append([t, data["curl_Lorentz_E_interface", halfAp, "ions"], {"color":'tab:orange', "ls":ionLine, "lw":lw, "marker":ionMarker, "ms":ms, "label":r"$\dot\Gamma_{L,E}$"}, ax1])
+  tp.append([t, data["curl_Lorentz_B_interface", halfAp, "ions"], {"color":'m', "ls":ionLine, "lw":lw, "marker":ionMarker, "ms":ms,  "label":r"$\dot\Gamma_{L,B}$"}, ax1])
+    
+  # ion sources
+  ionMarker = "None"; ionLine = "--"
+  eleMarker = "None"; eleLine = "--"
+  tp.append([t, data["int_DGDT", halfAp, "electrons"], {"color":color, "ls":eleLine, "lw":lw, "marker":eleMarker, "ms":ms, "label":r"$\Sigma\dot\Gamma_{z,half}$"}, ax2])
+  tp.append([t, data["tau_sc_interface", halfAp, "electrons"], {"color":'g', "ls":eleLine, "lw":lw, "marker":eleMarker, "ms":ms, "label":r"$\dot\Gamma_{comp.}$"}, ax2])
+  tp.append([t, data["baroclinic_interface", halfAp, "electrons"], {"color":'c', "ls":eleLine, "lw":lw, "marker":eleMarker, "ms":ms, "label":r"$\dot\Gamma_{baro.}$" }, ax2])
+  tp.append([t, data["curl_Lorentz_E_interface", halfAp, "electrons"], {"color":'tab:orange', "ls":eleLine, "lw":lw, "marker":eleMarker, "ms":ms, "label":r"$\dot\Gamma_{L,E}$"}, ax2])
+  tp.append([t, data["curl_Lorentz_B_interface", halfAp, "electrons"], {"color":'m', "ls":eleLine, "lw":lw, "marker":eleMarker, "ms":ms,  "label":r"$\dot\Gamma_{L,B}$"}, ax2])
+
+  ### growth and amplitude 
+  ionMarker = "None";
+  eleMarker = "None";
+  tp.append([t, data["eta", "ions"], {"color":'k', "ls":'--', "lw":lw, "marker":ionMarker, "ms":ms, "label":r"$\eta_i$"}, ax3])
+  tp.append([t, data["etad", "ions"], {"color":'b', "ls":'-.', "lw":lw, "marker":ionMarker, "ms":ms,  "label":r"$\dot\eta_i$"}, ax4])
+
+  tp.append([t, data["eta", "electrons"], {"color":'g', "ls":'--', "lw":lw, "marker":eleMarker, "ms":ms, "label":r"$\eta_e$"}, ax3])
+  tp.append([t, data["etad", "electrons"], {"color":'tab:orange', "ls":'-.', "lw":lw, "marker":eleMarker, "ms":ms,  "label":r"$\dot\eta_e$"}, ax4])
 
   for p in tp:
       #print(p[2])
       ax = p[-1]
       ax.plot(p[0], p[1], **p[2])
-      ax.legend(frameon=False, ncol=2, prop={"size":8}, loc=1)
+      ax.legend(frameon=False, ncol=2, prop={"size":8}, loc=0)
+
+  ax3.legend(frameon=False, ncol=2, prop={"size":8}, loc=2)
+  ax4.legend(frameon=False, ncol=2, prop={"size":8}, loc=4)
   gs.tight_layout(fig, h_pad=0.05, w_pad=0.01)
   
   name = date+"_Interface_Statistics_" + key + "lvl%i"%(level)
   name = name.replace(".","p")
   name += ".png"
+  plt.show()
   fig.savefig(name, format='png', dpi=600, bbox_inches='tight')
   print("saved ",name)
   plt.close(fig)
@@ -627,7 +649,7 @@ prepare_data = False # look for existing data file (use dictionary name assigned
 plot = True ; # to plot or not to plot, that is the question...
 
 consVarComparison = False; 
-plot_interface_stats = True # plot interface statistics 
+plot_interface_stats = False # plot interface statistics 
 plot_ion_electron_interface_comparison = True
 
 max_res = 2048 # mas resolution used --- debug 
@@ -663,14 +685,24 @@ if __name__ == '__main__':
                     #"SRMI-Option-16-Res-2048-Ideal-dirty":("/media/kyriakos/Expansion/000_MAGNUS_SUPERCOMPUTER_BACKUP/ktapinou/SRMI-Option-16-Res-2048-Ideal-Dirty", -1)}
                     #"SRMI-Option-16-Res-2048-Intra-Anisotropic":("/media/kyriakos/Expansion/000_MAGNUS_SUPERCOMPUTER_BACKUP/ktapinou/SRMI-Option-16-Res-2048-Intra-Anisotropic/", -1), 
                     #"SRMI-Option-16-Res-2048-Intra-Isotropic":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/20220125-Op-16-Clean-Intra",-1),
+###512 yuck
+#"SRMI-OP-16-Res-512-IDEAL-CLEAN":("/media/kyriakos/Expansion/999_RES_512_RUNS/tinaroo_Ideal-Clean-HLLE/Ideal-Clean/", -1), 
+#"SRMI-OP-16-Res-512-INTRA-ANISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-INTRA-Anisotropic/SRMI-Option-16-Res-512-INTRA-Anisotropic/", -1), 
+#"SRMI-OP-16-Res-512-INTRA-ISO-":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-INTRA-Isotropic/SRMI-Option-16-Res-512-INTRA-Isotropic/", -1), 
+#"SRMI-OP-16-Res-512-INTER-ANISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-Inter-Anisotropic/SRMI-Option-16-Res-512-Inter-Anisotropic/", -1), 
+#"SRMI-OP-16-Res-512-INTER-ISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-Inter-Isotropic/SRMI-Option-16-Res-512-Inter-Isotropic/", -1), 
+#"SRMI-OP-16-Res-512-FB-ISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-FB-Isotropic/SRMI-Option-16-Res-512-FB-Isotropic/", -1), 
+#"SRMI-OP-16-Res-512-FB-ANISO-ISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_SRMI-Option-16-Res-512-FB-Anisotropic/", -1)
 
-"SRMI-OP-16-Res-512-IDEAL-CLEAN":("/media/kyriakos/Expansion/999_RES_512_RUNS/tinaroo_Ideal-Clean-HLLE/Ideal-Clean/", -1), 
-"SRMI-OP-16-Res-512-INTRA-ANISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-INTRA-Anisotropic/SRMI-Option-16-Res-512-INTRA-Anisotropic/", -1), 
-"SRMI-OP-16-Res-512-INTRA-ISO-":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-INTRA-Isotropic/SRMI-Option-16-Res-512-INTRA-Isotropic/", -1), 
-"SRMI-OP-16-Res-512-INTER-ANISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-Inter-Anisotropic/SRMI-Option-16-Res-512-Inter-Anisotropic/", -1), 
-"SRMI-OP-16-Res-512-INTER-ISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-Inter-Isotropic/SRMI-Option-16-Res-512-Inter-Isotropic/", -1), 
-"SRMI-OP-16-Res-512-FB-ISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-FB-Isotropic/SRMI-Option-16-Res-512-FB-Isotropic/", -1), 
-"SRMI-OP-16-Res-512-FB-ANISO-ISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_SRMI-Option-16-Res-512-FB-Anisotropic/", -1)
+### 2048
+#"SRMI-OP-16-Res-2048-FB-ANISO-CLEAN":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/SRMI-Option-16-Res-2048-FB-Anisotropic", -1)
+#"SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Op-16-Clean-Inter-Anisotropic", -1), 
+
+#"SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTER-ANISO-Option-16", -1), 
+#"SRMI-OP-16-Res-2048-INTRA-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ANISO-Option-16", -1), 
+#"SRMI-OP-16-Res-2048-IDEAL":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/20220504-Op-16-Clean-Ideal-HLLC", -1), 
+"SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-FB-ANISO-Option-16", -1)
+
                    }
 
 ###################################################################################
@@ -680,7 +712,7 @@ if __name__ == '__main__':
   if prepare_data:
     for key, (simDir, level) in simOutputDirec.items():
       phmmfp.get_batch_data(key, simDir, level, max_res, window, n_time_slices, 
-                            nproc=6, outputType=[outputKeyword]) #plt or chk files? default to plt
+                            nproc=4, outputType=[outputKeyword]) #plt or chk files? default to plt
   
 ###################################################################################
 #                                 Plot statistics                                 #
@@ -704,7 +736,7 @@ if __name__ == '__main__':
         data_index.append( int(i*contour_save_increment))
       data_index.append(int(len(outputFiles)-1))
       print("Search for times")
-      if True: # Use non standard time frames for outputs overwritting settings above
+      if consVarComparison: # Use non standard time frames for outputs overwritting settings above
         FTF_inputs = {}
         FTF_inputs['times_wanted'] = [0.1*i for i in range(1,6)]
         #[0.0, 0.01, 0.02, 0.03, 0.04, 0.05] #07, 0.08]  
@@ -729,7 +761,7 @@ if __name__ == '__main__':
       print('Data_indexes used:', data_index)
    
       # ============================= contour of conserved properties ============#
-      if  consVarComparison:
+      if consVarComparison:
         print('\nPlotting conserved variables contour plot comparison')
     
         label_density_plots = '20220509-'+key+'density-EM-Early-Precursor-Saturated-2-velocity'
@@ -743,10 +775,16 @@ if __name__ == '__main__':
       # ======================= Interface statistics ===============================#
       if plot_interface_stats:
         print('\nPlotting interface statistics')
-        date = "20220608_IONS"
+        date = "20220804_IONS"
         interfaceStatistics("ions", key, date, simDir, level, 2, 2, nproc=8)
+
+        date = "20220804_ELECTRONS"
+        interfaceStatistics("electrons", key, date, simDir, level, 2, 2, nproc=8)
+
 
       if plot_ion_electron_interface_comparison:
 
-        date = "20220610_ION_ELECTRON_COMPARISON"
-        ionElectronInterfaceStatistics
+        date = "20220804_ION_ELECTRON_COMPARISON"
+        fluids = ["ions", "electrons"]
+        ionElectronInterfaceStatistics(fluids, key, date, simDir, level, 2, 2, nproc=8)
+

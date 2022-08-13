@@ -1,5 +1,4 @@
 #======== AMREX ==========
-#amr.restart = ./VelocityDecay_II.chk1000000
 amrex.fpe_trap_invalid=1
 amrex.fpe_trap_zero=1
 fpe_trap_overflow=1
@@ -7,7 +6,7 @@ amr.v = 0
 
 # ======== TIME ==========
 max_step  = 1000000
-stop_time = 0.5 # 0.00155
+stop_time = 1.5 # 0.00155
 
 # ======== DOMAIN ==========
 geometry.is_periodic = 1 1 1
@@ -50,13 +49,13 @@ particles.v = 0
 amr.checkpoint_files_output = 1
 amr.check_file              = KyriThermalEquilibration.chk    # root name of checkpoint file
 amr.check_int               = -1    # number of timesteps between checkpoints
-amr.check_per               = 5e-4
+amr.check_per               = 5e-2
 
 # PLOTFILES
 amr.plot_files_output = 1
 amr.plot_file         = KyriThermalEquilibration.plt     # root name of plotfile
 amr.plot_int          = -1      # number of timesteps between plotfiles
-amr.plot_per          = 5e-4
+amr.plot_per          = 1e-3
 
 
 # ======== PROBLEM DESCRIPTION ==========
@@ -68,22 +67,70 @@ mfp.lua = "
 -- === SETTINGS ===
 effective_zero = 1e-14
 verbosity = 1
-cfl = 0.005 -- 0.0005
+cfl = 0.5
+cfl_viscous = 1.
+srin_switch = 0;
+source_collision_frequency_constraint = 0;
+braginskii_anisotropic = 0;
+viewFluxSrcContributions = 0;
 
+force_dt = 0.0001
+
+--do_CTU = 1 --  corner transport upwind 
+--do_face_sources = 1
 zero_dimensional = 1
 
-do_face_sources = 1
-do_CTU = 1
+--############### universal constants
+--reference values 
+mu_0_dim = 1.25663706e-6 
+ep_0_dim = 8.85418782e-12
+kB = 1.38064852e-23
 
-force_dt = 0
+c_ref = 299792458.0; --m/s
+q_ref = 1.60217662e-19 -- Coulombs
+m_ref = 1.6726219000e-27 -- kg proton mass
 
-ref_length = 1e-3 -- m
-ref_density= 1.67e-13 -- kg/m^-3
-ref_mass   = 1.67e-27 --1. -- kg
+--############### problem reference values from Ghosh A multispecies, multifluid model for laser–induced counterstreaming Plasma Simulations 2019
+
+ref_length = 0.1/100 -- cm to [m]
+n_ref = 1e20*1e6 -- cm3 to [m3]
+ref_mass = m_ref -- -- [kg]
+ref_density = ref_mass*n_ref -- [kg/m^-3]
+T_ref = 11604525.00617 -- K
+
+x_ref = ref_length
+rho_ref = ref_density
 
 lightspeed = 968.634759289--25.0
 skin_depth = 10.
 beta = 1.0
+
+--############### check consistency of props (lost the original calcs)
+u_ref = math.sqrt(kB*T_ref/m_ref);
+print('lightspeed ', lightspeed)
+lightspeed = c_ref/u_ref;
+print('lightspeed ', lightspeed)
+
+B_ref = math.sqrt(2*mu_0_dim*n_ref*m_ref*u_ref*u_ref/beta)
+ref_omega_c = q_ref*B_ref/m_ref; 
+ref_omega_p = math.sqrt(n_ref*q_ref*q_ref/m_ref/ep_0_dim); 
+
+ref_larmor_dim = u_ref/ref_omega_c;
+ref_skin_dim = m_ref/(q_ref*math.sqrt(mu_0_dim*rho_ref)) 
+ref_skin_nd = ref_skin_dim/x_ref;
+ref_skin_dim_ele = (m_ref/100)/(q_ref*math.sqrt(mu_0_dim*(rho_ref/100))) 
+ref_skin_nd_ele = ref_skin_dim_ele/x_ref;
+
+Larmor = ref_larmor_dim/x_ref --======================================important 
+Debye = ref_skin_nd/lightspeed --=======================================important 
+--print('Larmor ', Larmor, 'Debye ', Debye)
+
+skin_depth = skin_depth_nd
+
+print('skin_depth set ', skin_depth, 'skin_depth derived', ref_skin_nd)
+print('Electron skin_depth set ', skin_depth, 'electron skin_depth derived', ref_skin_nd_ele)
+betaBoi = 2*(Larmor/ref_skin_nd)^2 -- magnetic interaction parameter
+print('beta set ', beta, 'beta derived', betaBoi)
 
 -- ======== PROBLEM ==========
 mass_ion1 = 1.0
@@ -94,18 +141,16 @@ gam = 5/3
 
 -- define the problem with independent variables
 n_ion1 = 0.1
-T_ion1 = 1.0
-
+T_ion1 = 1.
 p_ion1 = n_ion1*T_ion1
 rho_ion1 = n_ion1*mass_ion1
 
-n_ele1 = 1.0
+n_ele1 = 1.0 --n_ion1
 T_ele1 = 0.25 
 p_ele1 = n_ele1*T_ele1
 rho_ele1=n_ele1*mass_ele
 
 -- === DEFINE STATES ===
-cfl_viscous = 1000 --100 -- 10000000
 
 --[[
 ion_nu_nod = 10e-3
@@ -117,7 +162,6 @@ print(ion_nu_dim)
 --]]
 
 states = {
-
     ion = {
         type='hydro',
         mass=mass_ion1,
@@ -148,23 +192,22 @@ states = {
         --viscosity = {mu0=1.7894e-5, T0=273.11, BT=1, cfl=cfl_viscous, type='BraginskiiEle'}
     },
 
-
     field = {
         type='field',
-        reconstruction='constant',
-        flux='HLLE',
-        project_divergence = 1,
+        reconstruction='O6',
+        flux='RankineHugoniot',
+        project_divergence = 0,
     }
-
 }
 
 sources = {
-    plasma={
-        solver = 'explicit', 
-        sources = {
-            braginskii={'ion', 'electron', 'field', type='braginskii', reconstruction='centre',},
+    collide={
+        solver='explicit',
+        sources={
+            braginskii={'ion', 'electron', 'field', type='braginskii',
+                        reconstruction='vanLeer', DebyeReference=Debye, LarmorReference=Larmor,},
         },
-    },
+    }, 
 }
 "
 

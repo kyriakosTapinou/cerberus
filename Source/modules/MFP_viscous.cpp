@@ -260,7 +260,7 @@ BraginskiiIon::BraginskiiIon(const int global_idx, const sol::table& def)
     Debye = def["DebyeReference"];
     Larmor = def["LarmorReference"];
     Print() << "\nMFP_viscous.cpp BraginskiiIon - Reference Debye:\t" << Debye << " Larmor:\t" << Larmor ;
-    if (forceViscosity) Print() << "\n====WARNING - BraginskiiIon forceViscosity active\n";
+    if (forceViscosity) Print() << "\n====WARNING - BraginskiiIon forceViscosity active\n\tforceViscosityValue:\t" << forceViscosityValue ;
     cfl = def.get_or("cfl",1.0); 
 }
 
@@ -706,8 +706,7 @@ BraginskiiEle::BraginskiiEle(const int global_idx, const sol::table& def)
     Debye = def["DebyeReference"];
     Larmor = def["LarmorReference"];
     Print() << "\nMFP_viscous.cpp BraginskiiEle - Reference Debye:\t" << Debye << " Larmor:\t" << Larmor ;
-    if (forceViscosity) Print() << "\n====WARNING - BraginskiiEle forceViscosity active\n";
-    Print() << "\n====forceViscosity====\t" << forceViscosity << "\n====forceViscosityValue====\t" << forceViscosityValue ;
+    if (forceViscosity) Print() << "\n====WARNING - BraginskiiEle forceViscosity active\n\tforceViscosityValue:\t" << forceViscosityValue ;
     cfl = def.get_or("cfl",1.0);
     //Print() << "\nln 656 - cfl viscous ele: " << cfl << "\n";
 }

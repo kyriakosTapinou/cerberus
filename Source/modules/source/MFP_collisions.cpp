@@ -114,7 +114,6 @@ Vector<dual> Collisions::collisions(const Vector<dual> &y0,
 
     // define our output and set it to zero
     Vector<dual> ydot(y0.size());
-
     for (int a = 0; a < num_hydro; ++a) {
 
         const OffsetIndex &offset_a = offsets[a];
@@ -140,7 +139,6 @@ Vector<dual> Collisions::collisions(const Vector<dual> &y0,
         dual T_a = state_a.get_temperature_from_prim(Q_a);
 
         for (int b = a+1; b < num_hydro; ++b) {
-
             const OffsetIndex &offset_b = offsets[b];
 
             State &state_b = GD::get_state(offset_b.global);
@@ -166,11 +164,10 @@ Vector<dual> Collisions::collisions(const Vector<dual> &y0,
 
             Real m_ab = (m_a*m_b)/(m_a + m_b);
 
-
             dual du2 = 0.0;
             Array<dual,3> du;
             // Check to see if this is an electron fluid, use the ion-electron relations if so 
-            if (q_b < 0) {
+            if (q_b < 0) { // ion-electron collisions 
                 for (int i=0; i<3; ++i) {
                     du[i] = Q_a[vec_idx_a + i] - Q_b[vec_idx_b + i] ;
                     du2 += du[i]*du[i];
@@ -178,22 +175,28 @@ Vector<dual> Collisions::collisions(const Vector<dual> &y0,
 
                 dual nu; Array<dual,3> R;
                 nu = c1 * q_a2 * pow(q_b2, 2) *rho_a/m_a* lnC / (pow(m_b, 2)*pow(T_b/m_b, 1.5));
-                dual Q = -3*rho_b*nu/(m_a+m_b)*(T_a-T_b);
+                dual Q = -3*rho_b*nu/(m_a+m_b)*(T_a-T_b); //Q_ie
                 for (int i = 0; i < 3; ++i) {
-                    R[i] = -rho_b * nu * du[i];
-                    Q += R[i] * Q_a[vec_idx_a + i];
+                    R[i] = -rho_b * nu * du[i]; //R_ie
+                    Q += R[i] * Q_a[vec_idx_a + i]; // R_ie*Vi
                 }
 
                 for (int i = 0; i < 3; ++i) {
-                    ydot[offset_a.solver + vec_idx_a + i] += R[i];
-                    ydot[offset_b.solver + vec_idx_b + i] -= R[i];
+                    ydot[offset_a.solver + vec_idx_a + i] += R[i]; //+R_ie
+                    ydot[offset_b.solver + vec_idx_b + i] -= R[i]; //-R_ie = R_ei 
                 }
-                ydot[offset_a.solver + nrg_idx_a] += Q;
-                ydot[offset_b.solver + nrg_idx_b] -= Q;
+                ydot[offset_a.solver + nrg_idx_a] += Q; //+R_ie V_i + Q_ie
+                ydot[offset_b.solver + nrg_idx_b] -= Q; //-R_ie V_i - Q_ie = R_ei V_i + Q_ei
+
             // Otherwise if an ion, then use the ion-ion relations
             } else { 
+                if ((q_a < 0) || (q_b < 0)) {
+                  Abort("Error: Collisions -  ion-electron collision using wrong relatios");
+                }
+
+                Print() << "Ion-ion collisions activated\n";  //TODO delete me 
                 for (int i=0; i<3; ++i) {
-                    du[i] = Q_b[vec_idx_b + i] - Q_a[vec_idx_a + i];
+                    du[i] = Q_b[vec_idx_b + i] - Q_a[vec_idx_a + i]; // daryl og 
                     du2 += du[i]*du[i];
                 }
 
@@ -208,12 +211,12 @@ Vector<dual> Collisions::collisions(const Vector<dual> &y0,
                 }
     
                 // effect of collisions
-                dual Q = m_ab*rho_a/m_a*nu*du2 + 3*rho_a*nu/(m_a + m_b)*(T_b - T_a);
+                dual Q = m_ab*rho_a/m_a*nu*du2 + 3*rho_a*nu/(m_a + m_b)*(T_b - T_a);//Qfric+Qab
     
                 Array<dual,3> R;
                 for (int i=0; i<3; ++i) {
-                    R[i] = rho_a*nu*du[i];
-                    Q += R[i]*Q_a[vec_idx_a + i];
+                    R[i] = rho_a*nu*du[i]; // daryl og R_ab = - R_ba
+                    Q += R[i]*Q_a[vec_idx_a + i]; 
                 }
     
                 for (int i=0; i<3; ++i) {

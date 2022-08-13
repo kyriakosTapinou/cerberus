@@ -1,6 +1,9 @@
 import sys
-cmd_folder ="/home/kyriakos/Documents/Code/000_cerberus_dev/githubRelease-cerberus/cerberus/vis/" #"/home/s4318421/git-cerberus/cerberus/vis"  # nopep8
+cmd_folder ="/home/ktapinou/cerberus/vis/" # nopep8
 import pdb 
+import numpy as np
+import matplotlib 
+matplotlib.use('Agg')
 
 if cmd_folder not in sys.path:  # nopep8
     sys.path.insert(0, cmd_folder)
@@ -10,13 +13,9 @@ import PHM_MFP_Solver_Post_functions_v6 as phmmfp # running version 3
 from tile_mov import tile_movie
 from make_mov import make_all, get_particle_trajectories
 
-import matplotlib 
-
 import matplotlib.pyplot as plt # changed this biz
 import matplotlib.gridspec as gridspec
 from matplotlib import ticker
-
-import numpy as np
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 #matplotlib.use('Agg')
@@ -142,6 +141,17 @@ def get_EM(ds, c):
     time = np.array([ds.time])
     return {"x":x[0], "y":x[1], "value":EM, "time":time}
 
+def get_EM_grad(ds, c):
+    x, EM = ds.get("%s-field"%c["component"])
+    dirMap = {'x':0, 'y':1, 'z':2}
+    gradDir = dirMap[c["direction"]]
+    time = np.array([ds.time])
+    
+    dx = x[0][1] - x[0][0]
+    EM = np.gradient(EM, x[gradDir], axis=gradDir)
+
+    return {"x":x[0], "y":x[1], "value":EM, "time":time}
+
 def get_rhoE_EM(ds, c):
     sumEM2 = 0.
     for EM in ["x_D", "y_D", "z_D", "x_B", "y_B", "z_B"]:
@@ -162,7 +172,7 @@ def get_E_error(ds, c):
     x, qi = ds.get("charge-ions", grid='node')
     Larmor = ds.data['Larmor']
     Debye  = ds.data['Debye']
-    
+    lightspeed = ds.data["lightspeed"]
     divE = 0.
     i = 0
     for EM in ["x_D", "y_D"]:
@@ -170,7 +180,7 @@ def get_E_error(ds, c):
       dx = x[0][1] - x[0][0]
       divE += np.gradient(EM, x[i], axis=i)
       i += 1
-    divError = divE - Larmor/Debye/Debye*(re/me*qe + ri/mi*qi)
+    divError = divE - Larmor/Debye/Debye/lightspeed*(re/me*qe + ri/mi*qi)
 
     time = np.array([ds.time])
     return {"x":x[0], "y":x[1], "value":divError, "time":time}
@@ -230,6 +240,7 @@ def plot2(frame, data, output_name):
     #  extractPlotData(frame, data, "rho-ions", r"$\rho_i$", getTime=True)
     #xn_rhoe, yn_rhoe, rhoe, rhoe_min, rhoe_max, label_rhoe, dummy, rhoe_useCmap = \
     #  extractPlotData(frame, data, "rho-electrons", r"$\rho_e$", getTime=False)
+    """
     xn, yn, omegai, omegai_min, omegai_max, label_omegai, time, omegai_useCmap = \
       extractPlotData(frame, data, "omega-ions", r"$\omega_i$", getTime=True, signedMaxMin=True)
     xn_omegae, yn_omegae, omegae, omegae_min, omegae_max, label_omegae, dummy, omegae_useCmap = \
@@ -239,73 +250,117 @@ def plot2(frame, data, output_name):
     xn_mome, yn_mome, mome, mome_min, mome_max, label_mome, dummy, mome_useCmap = \
      extractPlotData(frame, data, "mom-electrons", r"$\rho v_e$", getTime=False, signedMaxMin=False)
 
-    #xn, yn, Ex, Ex_min, Ex_max, label_Ex, time, Ex_useCmap = \
-    #  extractPlotData(frame, data, "Ex", r"$E_x$", getTime=True, signedMaxMin=True)
-    #xn_Ey, yn_Ey, Ey, Ey_min, Ey_max, label_Ey, dummy, Ey_useCmap = \
-    #  extractPlotData(frame, data, "Ey", r"$E_y$", getTime=False, signedMaxMin=True)
-    #xn_Bz, yn_Bz, Bz, Bz_min, Bz_max, label_Bz, dummy, Bz_useCmap = \
-    #  extractPlotData(frame, data, "Bz", r"$B_z$", getTime=False, signedMaxMin=True)
+    xn, yn, Ex, Ex_min, Ex_max, label_Ex, time, Ex_useCmap = \
+      extractPlotData(frame, data, "Ex", r"$E_x$", getTime=True, signedMaxMin=True)
+    xn_Ey, yn_Ey, Ey, Ey_min, Ey_max, label_Ey, dummy, Ey_useCmap = \
+      extractPlotData(frame, data, "Ey", r"$E_y$", getTime=False, signedMaxMin=True)
+
+    xn_Bx, yn_Bx, Bx, Bx_min, Bx_max, label_Bx, dummy, Bx_useCmap = \
+      extractPlotData(frame, data, "Bx", r"$B_x$", getTime=False, signedMaxMin=True)
+    xn_By, yn_By, By, By_min, By_max, label_By, dummy, By_useCmap = \
+      extractPlotData(frame, data, "By", r"$B_y$", getTime=False, signedMaxMin=True)
+    xn_Bz, yn_Bz, Bz, Bz_min, Bz_max, label_Bz, dummy, Bz_useCmap = \
+      extractPlotData(frame, data, "Bz", r"$B_z$", getTime=False, signedMaxMin=True)
+    """
+    xn, yn, Exdx, Exdx_min, Exdx_max, label_Exdx, time, Exdx_useCmap = \
+      extractPlotData(frame, data, "Exdx", r"$dE_x/dx$", getTime=True, signedMaxMin=True)
+    xn, yn, Exdy, Exdy_min, Exdy_max, label_Exdy, time, Exdy_useCmap = \
+      extractPlotData(frame, data, "Exdy", r"$dE_x/dy$", getTime=True, signedMaxMin=True)   
+    #xn, yn, Eydx, Eydx_min, Eydx_max, label_Eydx, time, Eydx_useCmap = \
+    #  extractPlotData(frame, data, "Eydx", r"$dE_y/dx$", getTime=True, signedMaxMin=True)
+    xn, yn, Eydy, Eydy_min, Eydy_max, label_Eydy, time, Eydy_useCmap = \
+      extractPlotData(frame, data, "Eydy", r"$dE_y/dy$", getTime=True, signedMaxMin=True)
+
+    xn, yn, Bxdx, Bxdx_min, Bxdx_max, label_Bxdx, time, Bxdx_useCmap = \
+      extractPlotData(frame, data, "Bxdx", r"$dB_x/dx$", getTime=True, signedMaxMin=True)
+    xn, yn, Bxdy, Bxdy_min, Bxdy_max, label_Bxdy, time, Bxdy_useCmap = \
+      extractPlotData(frame, data, "Bxdy", r"$dB_x/dy$", getTime=True, signedMaxMin=True)   
+    xn, yn, Bydx, Bydx_min, Bydx_max, label_Bydx, time, Bydx_useCmap = \
+      extractPlotData(frame, data, "Bydx", r"$dB_y/dx$", getTime=True, signedMaxMin=True)
+    xn, yn, Bydy, Bydy_min, Bydy_max, label_Bydy, time, Bydy_useCmap = \
+      extractPlotData(frame, data, "Bydy", r"$dB_y/dy$", getTime=True, signedMaxMin=True)   
+
+    xn_dive, yn_dive, dive, dive_min, dive_max, label_dive, dummy, dive_useCmap = extractPlotData(frame, data, "divE_error", r"$\nabla\cdot E - rho...$", getTime=False,signedMaxMin=True)
+    xn_divb, yn_divb, divb, divb_min, divb_max, label_divb, dummy, divb_useCmap = extractPlotData(frame, data, "divB_error", r"$\nabla B$", getTime=False,signedMaxMin=True)
+
     #xn_Jz, yn_Jz, Jz, Jz_min, Jz_max, label_Jz, dummy, Jz_useCmap = extractPlotData(frame, data, "Jz", r"$J_z$", getTime=False, signedMaxMin=True)
     #xn_Jy, yn_Jy, Jy, Jy_min, Jy_max, label_Jy, dummy, Jy_useCmap = extractPlotData(frame, data, "Jy", r"$J_y$", getTime=False, signedMaxMin=True)
     #xn_Jx, yn_Jx, Jx, Jx_min, Jx_max, label_Jx, dummy, Jx_useCmap = extractPlotData(frame, data, "Jx", r"$J_x$", getTime=False, signedMaxMin=True)
-    #xn_dive, yn_dive, dive, dive_min, dive_max, label_dive, dummy, useCmap = extractPlotData(frame, data, "divE_error", r"$\div{E}$", getTime=False)
-    #xn_rhoEM, yn_rhoEM, rhoEM, rhoEM_min, rhoEM_max, label_rhoEM, dummy, useCmap = extractPlotData(frame, data, "rhoE_EM", r"$\rho_{E,EM}$", getTime=False)
-    xn_rc, yn_rc, rc, rc_min, rc_max, label_rc, dummy, rc_useCmap = extractPlotData(frame, data, "rc", r"$\rho_c$", getTime=False, signedMaxMin=True)
 
+    #xn_rhoEM, yn_rhoEM, rhoEM, rhoEM_min, rhoEM_max, label_rhoEM, dummy, useCmap = extractPlotData(frame, data, "rhoE_EM", r"$\rho_{E,EM}$", getTime=False)
+    #xn_rc, yn_rc, rc, rc_min, rc_max, label_rc, dummy, rc_useCmap = extractPlotData(frame, data, "rc", r"$\rho_c$", getTime=False, signedMaxMin=True)
+    """
     xn_Lix, yn_Lix, Lix, Lix_min, Lix_max, label_Lix, dummy, Lix_useCmap = extractPlotData(frame, data, "Lorentz-ion-x", r"$\mathcal{L}_{i,x}$", getTime=False, signedMaxMin=True)
     xn_Liy, yn_Liy, Liy, Liy_min, Liy_max, label_Liy, dummy, Liy_useCmap = extractPlotData(frame, data, "Lorentz-ion-y", r"$\mathcal{L}_{i,y}$", getTime=False, signedMaxMin=True)
     xn_Lex, yn_Lex, Lex, Lex_min, Lex_max, label_Lex, dummy, Lex_useCmap = extractPlotData(frame, data, "Lorentz-ele-x", r"$\mathcal{L}_{e,x}$", getTime=False, signedMaxMin=True)
     xn_Ley, yn_Ley, Ley, Ley_min, Ley_max, label_Ley, dummy, Ley_useCmap = extractPlotData(frame, data, "Lorentz-ele-y", r"$\mathcal{L}_{e,y}$", getTime=False, signedMaxMin=True)
+    """
 
     limits = frame["q"]["xy_limits"]
     yn, xn = np.meshgrid(yn, xn)
     axes = []
 
     l = 0 #streak length
-    fig = plt.figure(figsize=[16, 8], constrained_layout=True) #figsize=(8,9)) # note it is y, x, measurement 
+
+    fig = plt.figure(figsize=(16, 8)) #figsize=(8,9)) # note it is y, x, measurement 
+    gs = gridspec.GridSpec(ncols=3, nrows=3) #, hspace=0.1)
+    #fig = plt.figure(figsize=[16, 8], constrained_layout=True) ### on local 
     # fig = plt.figure(constrained_layout=True) # if on tinaroo or other
 
-    gs = gridspec.GridSpec(ncols=3, nrows=3, figure=fig) #, hspace=0.1)
+    #gs = gridspec.GridSpec(ncols=3, nrows=3, figure=fig) #, hspace=0.1) #### on local 
 
     #print("Pre plot")
     #subPlot(axes, fig, gs, xn, yn, 0, 0, rhoi, rhoi_min, rhoi_max, label_rhoi, rhoi_useCmap)
     #subPlot(axes, fig, gs, xn, yn, 0, 1, rhoe, rhoe_min, rhoe_max, label_rhoe, rhoe_useCmap)
-    subPlot(axes,fig, gs, xn, yn, 0, 0, omegai, omegai_min, omegai_max, label_omegai, omegai_useCmap)
-    subPlot(axes,fig, gs, xn, yn, 0, 1, omegae, omegae_min, omegae_max, label_omegae, omegae_useCmap)
+    #subPlot(axes,fig, gs, xn, yn, 0, 0, omegai, omegai_min, omegai_max, label_omegai, omegai_useCmap)
+    #subPlot(axes,fig, gs, xn, yn, 0, 1, omegae, omegae_min, omegae_max, label_omegae, omegae_useCmap)
 
     if False:
       print("Hard coded limits on rho")
       subPlot(axes, fig, gs, xn, yn, 0, 0, rhoi, rhoi_min, 12, label_rhoi, useCmap)
       subPlot(axes, fig, gs, xn, yn, 0, 1, rhoe, rhoe_min, 0.12, label_rhoe, useCmap)
 
-    subPlot(axes, fig, gs, xn, yn, 0, 2, momi, momi_min, momi_max, label_momi, momi_useCmap)
-    subPlot(axes, fig, gs, xn, yn, 1, 2, mome, mome_min, mome_max, label_mome, mome_useCmap)
+    #subPlot(axes, fig, gs, xn, yn, 0, 2, momi, momi_min, momi_max, label_momi, momi_useCmap)
+    #subPlot(axes, fig, gs, xn, yn, 0, 0, mome, mome_min, mome_max, label_mome, mome_useCmap)
+    subPlot(axes, fig, gs, xn, yn, 0, 0, Exdx, Exdx_min, Exdx_max, label_Exdx, Exdx_useCmap)    
+    subPlot(axes, fig, gs, xn, yn, 0, 1, Exdy, Exdy_min, Exdy_max, label_Exdy, Exdy_useCmap)
+    subPlot(axes, fig, gs, xn, yn, 0, 2, Eydy, Eydy_min, Eydy_max, label_Eydy, Eydy_useCmap)
+    subPlot(axes, fig, gs, xn, yn, 1, 0, Bxdx, Bxdx_min, Bxdx_max, label_Bxdx, Bxdx_useCmap)    
+    subPlot(axes, fig, gs, xn, yn, 1, 1, Bxdy, Bxdy_min, Bxdy_max, label_Bxdy, Bxdy_useCmap)
+    subPlot(axes, fig, gs, xn, yn, 1, 2, Bydx, Bydx_min, Bydx_max, label_Bydx, Bydx_useCmap)    
+    subPlot(axes, fig, gs, xn, yn, 2, 0, Bydy, Bydy_min, Bydy_max, label_Bydy, Bydy_useCmap)
 
-    #subPlot(axes, fig, gs, xn, yn, 1, 0, Ex, Ex_min, Ex_max, label_Ex, Ex_useCmap)
-    #subPlot(axes, fig, gs, xn, yn, 1, 1, Ey, Ey_min, Ey_max, label_Ey, Ey_useCmap)
-    #subPlot(axes, fig, gs, xn, yn, 2, 0, Bz, Bz_min, Bz_max, label_Bz, Bz_useCmap)
+    """
+    subPlot(axes, fig, gs, xn, yn, 0, 1, Ex, Ex_min, Ex_max, label_Ex, Ex_useCmap)
+    subPlot(axes, fig, gs, xn, yn, 0, 2, Ey, Ey_min, Ey_max, label_Ey, Ey_useCmap)
+    subPlot(axes, fig, gs, xn, yn, 1, 0, Bx, Bx_min, Bx_max, label_Bx, Bx_useCmap)
+    subPlot(axes, fig, gs, xn, yn, 1, 1, By, By_min, By_max, label_By, By_useCmap)
+    subPlot(axes, fig, gs, xn, yn, 1, 2, Bz, Bz_min, Bz_max, label_Bz, Bz_useCmap)
+    """
     #subPlot(axes, fig, gs, xn, yn, 0, 1, Jx, Jx_min, Jx_max, label_Jx, useCmap)
     #subPlot(axes, fig, gs, xn, yn, 1, 1, Jy, Jy_min, Jy_max, label_Jy, useCmap)
     #subPlot(axes, fig, gs, xn, yn, 2, 1, Jz, Jz_min, Jz_max, label_Jz, useCmap)
     #subPlot(axes, fig, gs, xn, yn, 2, 0, dive, dive_min, dive_max, label_dive, useCmap)
     #subPlot(axes, fig, gs, xn, yn, 1, 1, rhoEM , rhoEM_min, rhoEM_max, label_rhoEM, useCmap)
-    subPlot(axes, fig, gs, xn, yn, 2, 2, rc, rc_min, rc_max, label_rc, rc_useCmap)
+    #subPlot(axes, fig, gs, xn, yn, 2, 2, rc, rc_min, rc_max, label_rc, rc_useCmap)
+    subPlot(axes, fig, gs, xn, yn, 2, 1, dive, dive_min, dive_max, label_dive, dive_useCmap)
+    subPlot(axes, fig, gs, xn, yn, 2, 2, divb, divb_min, divb_max, label_divb, divb_useCmap)
+    """
     subPlot(axes, fig, gs, xn, yn, 1, 0, Lix, Lix_min, Lix_max, label_Lix, Lix_useCmap)
     subPlot(axes, fig, gs, xn, yn, 2, 0, Liy, Liy_min, Liy_max, label_Liy, Liy_useCmap)
     subPlot(axes, fig, gs, xn, yn, 1, 1, Lex, Lex_min, Lex_max, label_Lex, Lex_useCmap)
     subPlot(axes, fig, gs, xn, yn, 2, 1, Ley, Ley_min, Ley_max, label_Ley, Ley_useCmap)
-
+    """
     
-    if False: # overlay mask 
+    if True: # overlay mask 
       # get mask and overlay 
       xn_MskI, yn_MskI, MskI, MskI_min, MskI_max, label_MskI, dummy, MskI_useCmap = extractPlotData(frame, data, "mask-ion", r"$interface_i$", getTime=False, signedMaxMin=False)
       xn_MskE, yn_MskE, MskE, MskE_min, MskE_max, label_MskE, dummy, MskE_useCmap = extractPlotData(frame, data, "mask-ele", r"$interface_e$", getTime=False, signedMaxMin=False)
       yn_MskI, xn_MskI = np.meshgrid(yn_MskI, xn_MskI)
       yn_MskE, xn_MskE = np.meshgrid(yn_MskE, xn_MskE)
-      axes[0].contour(xn_MskE, yn_MskE, MskE, levels=[0.05, 0.95], colors='purple', linewidths=0.5)
-      axes[1].contour(xn_MskI, yn_MskI, MskI, levels=[0.05, 0.95], colors='gray', linewidths=0.5)
-      axes[4].contour(xn_MskE, yn_MskE, MskE, levels=[0.05, 0.95], colors='purple', linewidths=0.5)
-      axes[4].contour(xn_MskI, yn_MskI, MskI, levels=[0.05, 0.95], colors='gray', linewidths=0.5)
+      for ax in axes:
+        ax.contour(xn_MskE, yn_MskE, MskE, levels=[0.05, 0.95], colors='purple', linewidths=0.5)
+      #axes[4].contour(xn_MskI, yn_MskI, MskI, levels=[0.05, 0.95], colors='gray', linewidths=0.5)
 
     fig.suptitle(f"t = {time:.3f}")
     for (i, ax) in enumerate(axes):
@@ -337,55 +392,67 @@ if 1:
     q["get"] = [
         #{"func":get_mass_density, "tag":"rho-ions", "component":"ions"},
         #{"func":get_mass_density, "tag":"rho-electrons", "component":"electrons"},
-        {"func":get_vorticity_wrapper, "tag":"omega-electrons",   
-                                       "name":"electrons", "quantity":"omega"},
-        {"func":get_vorticity_wrapper, "tag":"omega-ions",   
-                                       "name":"ions", "quantity":"omega"},
-        {"func":get_Lorentz_wrapper, "tag":"Lorentz-ion-x", "level":q["level"],
-                                       "name":"ions", "quantity":"L_x_total"},
-        {"func":get_Lorentz_wrapper, "tag":"Lorentz-ion-y",  "level":q["level"], 
-                                       "name":"ions", "quantity":"L_y_total"},
-        {"func":get_Lorentz_wrapper, "tag":"Lorentz-ele-x",   "level":q["level"],
-                                       "name":"electrons", "quantity":"L_x_total"},
-        {"func":get_Lorentz_wrapper, "tag":"Lorentz-ele-y",   "level":q["level"],
-                                       "name":"electrons", "quantity":"L_y_total"},
-        {"func":get_mom_density, "tag":"mom-ions", "component":"ions"},
-        {"func":get_mom_density, "tag":"mom-electrons", "component":"electrons"},
+        #{"func":get_vorticity_wrapper, "tag":"omega-electrons",   
+        #                               "name":"electrons", "quantity":"omega"},
+        #{"func":get_vorticity_wrapper, "tag":"omega-ions",   
+        #                               "name":"ions", "quantity":"omega"},
+        #{"func":get_Lorentz_wrapper, "tag":"Lorentz-ion-x", "level":q["level"],
+        #                               "name":"ions", "quantity":"L_x_total"},
+        #{"func":get_Lorentz_wrapper, "tag":"Lorentz-ion-y",  "level":q["level"], 
+        #                               "name":"ions", "quantity":"L_y_total"},
+        #{"func":get_Lorentz_wrapper, "tag":"Lorentz-ele-x",   "level":q["level"],
+        #                               "name":"electrons", "quantity":"L_x_total"},
+        #{"func":get_Lorentz_wrapper, "tag":"Lorentz-ele-y",   "level":q["level"],
+        #                               "name":"electrons", "quantity":"L_y_total"},
+        #{"func":get_mom_density, "tag":"mom-ions", "component":"ions"},
+        #{"func":get_mom_density, "tag":"mom-electrons", "component":"electrons"},
         
         #{"func":get_Jz, "tag":"Jz"},
-        {"func":get_charge_density, "tag":"rc"},
+        #{"func":get_charge_density, "tag":"rc"},
         {"func":get_interface_mask, "tag":"mask-ion", "component":"ions"},
         {"func":get_interface_mask, "tag":"mask-ele", "component":"electrons"},
-
         #{"func":get_Jx, "tag":"Jx"},
         #{"func":get_Jy, "tag":"Jy"},
         #{"func":get_EM, "tag":"Ex", "component":"x_D"},
         #{"func":get_EM, "tag":"Ey", "component":"y_D"},
+        #{"func":get_EM, "tag":"Bx", "component":"x_B"},
+        #{"func":get_EM, "tag":"By", "component":"y_B"},
         #{"func":get_EM, "tag":"Bz", "component":"z_B"},
+        {"func":get_EM_grad, "tag":"Bxdx", "component":"x_B", "direction":'x'},
+        {"func":get_EM_grad, "tag":"Bxdy", "component":"x_B", "direction":'y'},
+        {"func":get_EM_grad, "tag":"Bydx", "component":"y_B", "direction":'x'},
+        {"func":get_EM_grad, "tag":"Bydy", "component":"y_B", "direction":'y'},
+        #{"func":get_EM_grad, "tag":"Bzdx", "component":"z_B", "direction":'x'},
+        #{"func":get_EM_grad, "tag":"Bzdy", "component":"z_B", "direction":'y'},
+        {"func":get_EM_grad, "tag":"Exdx", "component":"x_D", "direction":'x'},
+        {"func":get_EM_grad, "tag":"Exdy", "component":"x_D", "direction":'y'},
+        #{"func":get_EM_grad, "tag":"Eydx", "component":"y_E", "direction":'x'},
+        {"func":get_EM_grad, "tag":"Eydy", "component":"y_D", "direction":'y'},
+
         #{"func":get_number_density, "tag":"nd-ions", "component":"ions"},
         #{"func":get_number_density, "tag":"nd-electrons", "component":"electrons"},
         #{"func":get_particles, "tag":"particles-ion", "get_streak":True, "component":"ion"},
         #{"func":get_particles, "tag":"particles-electron", "get_streak":True, "component":"electron"},
-        #{"func":get_E_error, "tag":"divE_error", "component":""},
-        #{"func":get_B_error, "tag":"divB_error", "component":""},
+        {"func":get_E_error, "tag":"divE_error", "component":""},
+        {"func":get_B_error, "tag":"divB_error", "component":""},
         #{"func":get_rhoE_EM, "tag":"rhoE_EM", "component":""},
     ]
 
     q["plot"] = plot2
-    q["name"] = "MOVIE_POST_ION_ELECTRON_INTERFACE_ANALYSIS" #rhoi-rhoe-omegai-omegae-momi-mome" #SRMI-Li3-option-16-Intra-Iso-By-Clean"
+    q["name"] = "MOVIE_POST_PM_EM_GRADIENTS_DEBUG" #rhoi-rhoe-omegai-omegae-momi-mome" #SRMI-Li3-option-16-Intra-Iso-By-Clean"
 
     ##
     q["framerate"] = 10 # 10 # 20
-    q["mov_save"] = q["files_dir"] + "/mov"
+    q["mov_save"] = q["files_dir"] + "/mov_EM_debug"
     q["offset"] = [0.0, 0.0]
     q["xy_limits"] = [[-0.75,0], [1.25,1]]
     q["file_include"] = [".plt"]
     q["file_exclude"] = ["chk"]
-    q["cores"] = 1
+    q["cores"] = 20
     q["time_span"] = [] # np.arange(0,10+dt, dt)
     q["force_data"] = False
-    q["force_frames"] = True
-    q["only_frames"] = False 
+    q["force_frames"] = False
+    q["only_frames"] = False
     q["redo_streaks"] = False
     q["dpi"] = 200
 

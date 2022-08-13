@@ -40,7 +40,8 @@ def interp_val(input_alpha, t_low, t_high): # interperate value
     return t_high
 
 def get_interface(ch, name):
-  x, alpha = ch.get_flat("alpha-%s"%name)
+  #x, alpha = ch.get_flat("alpha-%s"%name) # problem when reading for the first time without intiialiing get of something first 
+  x, alpha = ch.get("alpha-%s"%name)
 
   if alpha.max() > 1. and  alpha.min() > 0.5: pdb.set_trace()
   y= x[1]; x = x[0]; dx = x[1] - x[0]; dy = y[1] - y[0]
@@ -1001,8 +1002,11 @@ def get_EM(rc, options):
       return x, y, y_density_current
 #3###############################################################333
 
-def get_transportProperties(ch, names, level, useNPROC=1):
+def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
+
+  print(f"\n\nNote isoOveride set to:{isoOveride}")
   Q = {}
+  print(f"Time is:\t{ch.time}")
   Density=0; Xvel = 1; Yvel=2; Zvel=3; Prs=4; Temp=5; Alpha=6;
   x_D = 0; y_D = 1; z_D = 2; x_B = 3; y_B = 4; z_B = 5; muIdx = 6; epIdx = 7;
   print("\tExtracting primitives...")
@@ -1048,23 +1052,34 @@ def get_transportProperties(ch, names, level, useNPROC=1):
 
   # check if primitives that we have access to the cerberus gradients - super important 
   QD = {} #gradients of primitives 
-  properties = ['x_D-field-dx', 'x_B-field-dx', 'y_B-field-dx', 'z_B-field-dx', 
-                'p-electrons-dx', 'p-electrons-dy', 'p-ions-dx', 'p-ions-dy', 'x_vel-ions-dx',
-                'y_vel-ions-dx', 'x_vel-ions-dy', 'y_vel-ions-dy', 'x_vel-electrons-dx', 
-                'y_vel-electrons-dx', 'x_vel-electrons-dy', 'y_vel-electrons-dy']
-  propertiesHandle = {'x_D-field-dx':"xDdx", 'x_B-field-dx':"xBdx", 'y_B-field-dx':"yBdx", 
-                      'z_B-field-dx':"zBdx", 'p-electrons-dx':"Pedx", 'p-electrons-dy':"Pedy", 
+  properties = ['x_D-field-dx', 'x_D-field-dy', 
+                'y_D-field-dx', 'y_D-field-dy', 
+                'x_B-field-dx', 'y_B-field-dx', 'y_B-field-dy', 'z_B-field-dx', 'z_B-field-dy',
+                'p-electrons-dx', 'p-electrons-dy', 'p-ions-dx', 'p-ions-dy', 
+                'x_vel-ions-dx', 'y_vel-ions-dx', 'x_vel-ions-dy', 'y_vel-ions-dy', 
+                'x_vel-electrons-dx', 'y_vel-electrons-dx', 
+                'x_vel-electrons-dy', 'y_vel-electrons-dy', 
+                'T-electrons-dx', 'T-electrons-dy', 'T-ions-dx', 'T-ions-dy', 
+               ]
+  propertiesHandle = {'x_D-field-dx':"xDdx", 'x_D-field-dy':"xDdy", 
+                      'y_D-field-dx':"yDdx", 'y_D-field-dy':"yDdy", 
+                      'x_B-field-dx':"xBdx", 'y_B-field-dx':"yBdx", 
+                      'y_B-field-dy':"yBdy", 'z_B-field-dx':"zBdx", 'z_B-field-dy':"zBdy",
+                      'p-electrons-dx':"Pedx", 'p-electrons-dy':"Pedy", 
                       'p-ions-dx':"Pidx", 'p-ions-dy':"Pidy", 
                       'x_vel-ions-dx':"Uidx", 'y_vel-ions-dx':"Vidx", 
                       'x_vel-ions-dy':"Uidy", 'y_vel-ions-dy':"Vidy", 
                       'x_vel-electrons-dx':"Uedx", 'y_vel-electrons-dx':"Vedx", 
-                      'x_vel-electrons-dy':"Uedy", 'y_vel-electrons-dy':"Vedy"}
+                      'x_vel-electrons-dy':"Uedy", 'y_vel-electrons-dy':"Vedy", 
+                      'T-electrons-dx':"Tedx", 'T-electrons-dy':"Tedy", 
+                      'T-ions-dx':"Tidx", 'T-ions-dy':"Tidy"}
 
   for prop in properties:
     try:
       QD[propertiesHandle[prop]] = ch.get(prop)[-1]
+      print(f"\t\tGradient {prop} read")
     except:
-      print(f"\t\tProperty {prop} unavailable from inputs")
+      print(f"\t\t-->>Gradient {prop} unavailable")
   print("\t...extracted\n")
   # prepare indivudal component data --- pulled in from 1D code and adapted for 2D
       # needs to be done for every interface - multiprocesses for each row ?
@@ -1072,9 +1087,10 @@ def get_transportProperties(ch, names, level, useNPROC=1):
   X = 0; Y=1; Z=2;
   Xmom = 0; Ymom = 1; Zmom = 2; EdenPi = 3; EdenQ = 4
   
+  fluxX = {}; fluxY = {}
   for name in names:
-    fluxX = np.zeros((x.shape[0]-1, y.shape[0]-1, EdenQ+1)); #loose cell 0 and -1
-    fluxY = np.zeros((x.shape[0]-1, y.shape[0]-1, EdenQ+1))
+    fluxX[name] = np.zeros((x.shape[0]-1, y.shape[0]-1, EdenQ+1)); #loose cell 0 and -1
+    fluxY[name] = np.zeros((x.shape[0]-1, y.shape[0]-1, EdenQ+1))
     # cell i,j will handle the interface between
     #   fluxX: i, j and i+1, j e.g. the hi flux for cell i,j is fluxX[i,j], 
     # the low flux for cell i,j is fluxX[i-1,j]
@@ -1103,7 +1119,7 @@ def get_transportProperties(ch, names, level, useNPROC=1):
           "name":name, "ionName":"ions", "eleName":"electrons", "fieldName":"field", 
           "iRange":iRange, "jRange":jRange, "Debye":dS/c, "Larmor":math.sqrt(beta/2)*dS, 
           "lightspeed":c, "xref":x_ref, "n0ref":n_ref, "mref":m_ref, "rhoref":rho_ref, 
-          "Tref":T_ref, "uref":u_ref, "dx":dx, "verbosity":1})
+          "Tref":T_ref, "uref":u_ref, "dx":dx, "isoOveride":isoOveride, "verbosity":1})
 
     data = []
   
@@ -1125,8 +1141,8 @@ def get_transportProperties(ch, names, level, useNPROC=1):
         jh = ycell[j+1]
         #print(f"\tBlock bounds: {xcell[i]}, {ih}\t{ycell[j]}, {jh}")
   
-        fluxX[xcell[i]:ih, ycell[j]:jh, :] = data[counter][0]
-        fluxY[xcell[i]:ih, ycell[j]:jh, :] = data[counter][1]
+        fluxX[name][xcell[i]:ih, ycell[j]:jh, :] = data[counter][0]
+        fluxY[name][xcell[i]:ih, ycell[j]:jh, :] = data[counter][1]
         counter += 1
 
     #======================================================================================
@@ -1180,8 +1196,9 @@ def get_transportProperties(ch, names, level, useNPROC=1):
           dudt_flux[name][i,j, prop] = dt/dx * ( fluxX[i-1,j,prop] - fluxX[i,j,prop] + \
                                      fluxY[i,j-1,prop] - fluxY[i,j,prop])
     """
-    dUfluxX = dt/dx*(fluxX[0:-1, 1:  , :] - fluxX[1:, 1:, :])
-    dUfluxY = dt/dx*(fluxX[1:,   0:-1, :] - fluxX[1:, 1:, :])
+    dUfluxX = dt/dx*(fluxX[name][0:-1, 1:  , :] - fluxX[name][1:, 1:, :])
+    #dUfluxY = dt/dx*(fluxX[name][1:,   0:-1, :] - fluxX[name][1:, 1:, :])
+    dUfluxY = dt/dx*(fluxY[name][1:,   0:-1, :] - fluxY[name][1:, 1:, :])
     dudt_flux[name][:,:, :] = dUfluxX + dUfluxY
   print("\t\t..Calc done")
   
@@ -1225,7 +1242,7 @@ def get_transportProperties(ch, names, level, useNPROC=1):
                   "eleName":"electrons", "fieldName":"field", "Debye":dS/c, 
                   "Larmor":math.sqrt(beta/2)*dS, "lightspeed":c, "xref":x_ref, "n0ref":n_ref, 
                   "mref":m_ref, "rhoref":rho_ref, "Tref":T_ref, "uref":u_ref, "dx":dx, 
-                  "verbosity":1})
+                  "isoOveride":isoOveride, "verbosity":1})
   data = []
 
   nproc = useNPROC
@@ -1257,6 +1274,9 @@ def braginskiiViscousWrapper(din):#name, ionName, eleName, emName, iRange, jRang
 
   name = din["name"]; iRange = din["iRange"]; jRange = din["jRange"];
   Q = din["Q"]; QD = din["QD"]
+  isoOveride = din["isoOveride"];
+  
+  #print("\n\n####Viscous fluxes on flud:\t", name)
 
   Xmom = 0; Ymom = 1; Zmom = 2; EdenPi = 3; EdenQ = 4
   Density=0; Xvel = 1; Yvel=2; Zvel=3; Prs=4; Temp=5; Alpha=6;
@@ -1271,7 +1291,7 @@ def braginskiiViscousWrapper(din):#name, ionName, eleName, emName, iRange, jRang
       ViscTens, q_flux = \
         braginskiiViscousTensorHeatFlux(name, "ions", "electrons", "field", i, j, 0, 1, 
         din["Q"], din["QD"], din["Debye"], din["Larmor"], din["n0ref"], din["xref"], 
-        din["uref"], din["dx"], din["verbosity"])
+        din["uref"], din["dx"], isoOveride, din["verbosity"])
         # Q, QD, dS/c, math.sqrt(beta/2)*dS, n_ref, x_ref, u_ref, dx, verbosity = 1)
 
       fluxX[iloc,jloc,Xmom] += ViscTens[0];
@@ -1299,10 +1319,12 @@ def braginskiiViscousWrapper(din):#name, ionName, eleName, emName, iRange, jRang
   return fluxX, fluxY
 
 def braginskiiViscousTensorHeatFlux(name, ionName, eleName, emName, i, j, dimFlux, dim,
-                              Q, QD, Debye, Larmor, n0_ref, x_ref, u_ref, dX, verbosity = 1):
+                              Q, QD, Debye, Larmor, n0_ref, x_ref, u_ref, dX, 
+                              isoOveride = False, verbosity = 1):
   Density=0; Xvel = 1; Yvel=2; Zvel=3; Prs=4; Temp=5; Alpha=6;
   x_D = 0; y_D = 1; z_D = 2; x_B = 3; y_B = 4; z_B = 5; muIdx = 6; epIdx = 7;
 
+  #print("\n\nViscous fluxes on flud:\t", name)
   # note stateL and stateR are the indexes in the dimension of interest
   if dimFlux == 0: # in the x-dimension
     xl = i; xh = xl+1;
@@ -1329,6 +1351,13 @@ def braginskiiViscousTensorHeatFlux(name, ionName, eleName, emName, i, j, dimFlu
   B = Bx*Bx + By*By + Bz*Bz;
   B_xyz = np.array([Bx, By, Bz]);
 
+  """ just change the actual coefficients applied and the gradients used 
+  if isoOveride:
+    BL = 0; BL_xyz = np.zeros(3)
+    BR = 0; BR_xyz = np.zeros(3)
+    Bx = 0; By = 0; Bz = 0.;
+    B = 0.0; B_xyz = np.zeros(3)
+  """
   if (B < 0.0):
     print("MFP_braginskii.cpp ln 1103 - Negative magnetic field error");
     sys.ext("ln 204 MFP_braginskii.cpp");
@@ -1345,10 +1374,7 @@ def braginskiiViscousTensorHeatFlux(name, ionName, eleName, emName, i, j, dimFlu
       else :  
         B_pp = 1/np.sqrt(B); # B prime prime 
         B_p  = 1/np.sqrt(Bx*Bx + By*By); # B prime 
-  """
 
-
-  """
   bx_pp = Bx*B_pp; bx_p = Bx*B_p;
   by_pp = By*B_pp; by_p = By*B_p;
   bz_pp = Bz*B_pp;
@@ -1428,7 +1454,11 @@ def braginskiiViscousTensorHeatFlux(name, ionName, eleName, emName, i, j, dimFlu
   else: species = "i"
 
   if dimFlux == 0:
-    dT_dx = (Q[name][Temp][xh,yh] - Q[name][Temp][xl,yl])/dX;
+    try: # if we have accees to the gradient info 
+      dT_dx = 0.5*(QD["T" + species + "dx"][xl,yl]  + QD["T" + species + "dx"][xh,yh])
+    except: 
+      dT_dx = (Q[name][Temp][xh,yh] - Q[name][Temp][xl,yl])/dX;
+
     try: # if we have accees to the gradient info 
       du_dx = 0.5*(QD["U" + species + "dx"][xl,yl]  + QD["U" + species + "dx"][xh,yh])
       dv_dx = 0.5*(QD["V" + species + "dx"][xl,yl]  + QD["V" + species + "dx"][xh,yh])
@@ -1442,7 +1472,10 @@ def braginskiiViscousTensorHeatFlux(name, ionName, eleName, emName, i, j, dimFlu
     if dim == 0: # 1D
       drho_dy=0; du_dy=0; dv_dy=0; dw_dy=0; dp_dy=0; dT_dy=0; 
     elif dim == 1: # 2D # find the derivatives in the dimensions off the flux dimension -  hard coded for x direction flux 
-      dT_dy = (Q[name][Temp][xh,yl+1]+Q[name][Temp][xl,yl+1]-Q[name][Temp][xh,yl-1]-Q[name][Temp][xl,yl-1])/4/dX;
+      try:
+        dT_dy = 0.5*(QD["T" + species + "dy"][xl,yl]  + QD["T" + species + "dy"][xh,yh]) 
+      except:
+        dT_dy = (Q[name][Temp][xh,yl+1]+Q[name][Temp][xl,yl+1]-Q[name][Temp][xh,yl-1]-Q[name][Temp][xl,yl-1])/4/dX;
       try:
         du_dy = 0.5*(QD["U" + species + "dy"][xl,yl]  + QD["U" + species + "dy"][xh,yh]) 
         dv_dy = 0.5*(QD["V" + species + "dy"][xl,yl]  + QD["V" + species + "dy"][xh,yh]) 
@@ -1455,7 +1488,11 @@ def braginskiiViscousTensorHeatFlux(name, ionName, eleName, emName, i, j, dimFlu
               Q[name][Zvel][xl,yl-1])/4/dX;
 
   if dimFlux ==1:
-    dT_dx = (Q[ionName][Temp][xl+1,yh] + Q[ionName][Temp][xl+1,yl] - Q[ionName][Temp][xl-1,yh] - Q[ionName][Temp][xl-1,yl])/4/dX;
+    try:
+      dT_dx = 0.5*(QD["T" + species + "dx"][xl,yl]  + QD["T" + species + "dx"][xh,yh]) 
+    except:
+      dT_dx = (Q[ionName][Temp][xl+1,yh] + Q[ionName][Temp][xl+1,yl] - Q[ionName][Temp][xl-1,yh] - Q[ionName][Temp][xl-1,yl])/4/dX;
+
     try:
       du_dx = 0.5*(QD["U" + species + "dx"][xl,yl]  + QD["U" + species + "dx"][xh,yh]) 
       dv_dx = 0.5*(QD["V" + species + "dx"][xl,yl]  + QD["V" + species + "dx"][xh,yh])
@@ -1466,8 +1503,11 @@ def braginskiiViscousTensorHeatFlux(name, ionName, eleName, emName, i, j, dimFlu
               Q[ionName][Yvel][xl-1,yh] - Q[ionName][Yvel][xl-1,yl])/4/dX;
     dw_dx = (Q[ionName][Zvel][xl+1,yh] + Q[ionName][Zvel][xl+1,yl] -\
             Q[ionName][Zvel][xl-1,yh] - Q[ionName][Zvel][xl-1,yl])/4/dX;
+    try:
+      dT_dy = 0.5*(QD["T" + species + "dy"][xl,yl]  + QD["T" + species + "dy"][xh,yh]) 
+    except:
+      dT_dy = (Q[name][Temp][xh,yh] - Q[name][Temp][xl,yl])/dX;
 
-    dT_dy = (Q[name][Temp][xh,yh] - Q[name][Temp][xl,yl])/dX;
     try:
       du_dy = 0.5*(QD["U" + species + "dy"][xl,yl]  + QD["U" + species + "dy"][xh,yh]) 
       dv_dy = 0.5*(QD["V" + species + "dy"][xl,yl]  + QD["V" + species + "dy"][xh,yh]) 
@@ -1555,7 +1595,8 @@ def braginskiiViscousTensorHeatFlux(name, ionName, eleName, emName, i, j, dimFlu
   #  print(f"Check negative of strain rate calculated\n{Strain}");
   #  print("Test each of the B field conditions to try break the code");
 
-  if (B < EffectiveZero): # Do we have a special case of B=0?
+  if (B < EffectiveZero) or (isoOveride): # Do we have a special case of B=0?
+    #if isoOveride:  print("IsoOveride enforced visc stress tensor")
     ViscStress[0,0] = -eta0*Strain[0,0];
     
     ViscStress[0,1] = -eta0*Strain[0,1];
@@ -1670,39 +1711,40 @@ def braginskiiViscousTensorHeatFlux(name, ionName, eleName, emName, i, j, dimFlu
   ViscTens[5] = ViscStress[0,2];
 
   q_flux = np.zeros((3));
-  if (name == eleName):
-    qu_e_temp = beta1*u_para[0] + beta2*u_perp[0] + beta3*u_chev[0] ;
 
-    qt_e_temp = -kappa1*TG_para[0] - kappa2*TG_perp[0] - kappa3*TG_chev[0];
+  if isoOveride: # do the normal version
+    #print("isoOveride active q")
+    if (name == eleName):
+      q_flux[0] = beta1*duVec[0] -kappa1*dT_dVec[0]
+      q_flux[1] = beta1*duVec[1] -kappa1*dT_dVec[1]
+      q_flux[2] = beta1*duVec[2] -kappa1*dT_dVec[2]
 
-    q_flux[0] = qt_e_temp + qu_e_temp ;
-    #TODO fix up the backward differences for the higher dimensions.
-
-    q_flux[1] = beta1*u_para[1] + beta2*u_perp[1] + beta3*u_chev[1] \
-               -kappa1*TG_para[1] -kappa2*TG_perp[1] - kappa3*TG_chev[1];
-
-    q_flux[2] = beta1*u_para[2] + beta2*u_perp[2] + beta3*u_chev[2] \
-               -kappa1*TG_para[2] -kappa2*TG_perp[2] - kappa3*TG_chev[2];
-  elif(name == ionName):
-    q_flux[0] = -kappa1*TG_para[0] - kappa2*TG_perp[0] + kappa3*TG_chev[0];
-
-    q_flux[1] = -kappa1*TG_para[1] - kappa2*TG_perp[1] + kappa3*TG_chev[1];
-
-    q_flux[2] = -kappa1*TG_para[2] - kappa2*TG_perp[2]+ kappa3*TG_chev[2];
+    elif(name == ionName):
+      q_flux[0] = -kappa1*dT_dVec[0]
+      q_flux[1] = -kappa1*dT_dVec[1]
+      q_flux[2] = -kappa1*dT_dVec[2]
+  else: # do the anisotropic 
+    if (name == eleName):
+      #qu_e_temp =  ;
+      #qt_e_temp = ;
+      #q_flux[0] = qt_e_temp + qu_e_temp ;
+      q_flux[0] = beta1*u_para[0] + beta2*u_perp[0] + beta3*u_chev[0] + \
+                  -kappa1*TG_para[0] - kappa2*TG_perp[0] - kappa3*TG_chev[0]
+      #TODO fix up the backward differences for the higher dimensions.
+  
+      q_flux[1] = beta1*u_para[1] + beta2*u_perp[1] + beta3*u_chev[1] \
+                 -kappa1*TG_para[1] -kappa2*TG_perp[1] - kappa3*TG_chev[1];
+  
+      q_flux[2] = beta1*u_para[2] + beta2*u_perp[2] + beta3*u_chev[2] \
+                 -kappa1*TG_para[2] -kappa2*TG_perp[2] - kappa3*TG_chev[2];
+    elif(name == ionName):
+      q_flux[0] = -kappa1*TG_para[0] - kappa2*TG_perp[0] + kappa3*TG_chev[0];
+  
+      q_flux[1] = -kappa1*TG_para[1] - kappa2*TG_perp[1] + kappa3*TG_chev[1];
+  
+      q_flux[2] = -kappa1*TG_para[2] - kappa2*TG_perp[2]+ kappa3*TG_chev[2];
   
   if (verbosity > 4):
-    """
-    print("Bunit\t", B_unit[0], "\nBunit\t", B_unit[1], "\nBunit\t", B_unit[2])
-    print("u_rel\t", duVec[0], "\nu_rel\t", duVec[1], "\nu_rel\t", duVec[2])
-    print("dot_B_unit_U\t", dot_B_unit_U)
-    print("dot_B_unit_TG\t", dot_B_unit_TG)
-    print("u_para[0]\t", u_para[0], "\nu_para\t", u_para[1], "\nu_para\t", u_para[2])
-    print("u_perp[0]\t", u_perp[0], "\nu_perp\t", u_perp[1], "\nu_perp\t", u_perp[2])
-    print("u_chev[0]\t", u_chev[0], "\nu_chev[1]\t", u_chev[1], "\nu_chev[2]\t", u_chev[2])
-    print("TG_para[0]\t", TG_para[0], "\nTG_para[1]\t", TG_para[1], "\nTG_para[2]\t", TG_para[2])
-    print("TG_perp[0]\t", TG_perp[0], "\nTG_perp[1]\t", TG_perp[1], "\nTG_perp[2]\t", TG_perp[2])
-    print("TG_chev[0]\t", TG_chev[0], "\nTG_chev[1]\t", TG_chev[1],"\nTG_chev[2]\t", TG_chev[2])
-    """
     print("qVector\t" , q_flux[0], "\nqVector\t", q_flux[1], "\nqVector\t", q_flux[2]);
     print( "ViscTens\t" , ViscTens[0] ,"\nviscTens\t" , ViscTens[1], "\nviscTens\t" , 
                           ViscTens[2] , "\nviscTens\t" ,ViscTens[3], "\nviscTens\t" , 
@@ -1720,11 +1762,12 @@ def braginskiiSourceWrapper(din):
     braginskiiSource(din["Q"], din["QD"], din["ionName"], din["eleName"], din["fieldName"], 
                      din["Debye"], din["Larmor"], din["lightspeed"], din["xref"], 
                      din["n0ref"], din["mref"], din["rhoref"], din["Tref"], din["uref"], 
-                     din["dx"], din["verbosity"])
+                     din["dx"], din["isoOveride"], din["verbosity"])
   return srcDst
 
 def braginskiiSource(Q, QD, ionName, electronName, fieldName, Debye, Larmor, lightspeed, 
-                     x_ref, n0_ref, m_ref, rho_ref, T_ref, u_ref, dx, verbosity = 1):
+                     x_ref, n0_ref, m_ref, rho_ref, T_ref, u_ref, dx, 
+                     isoOveride=False, verbosity = 1):
 
   Density=0; Xvel = 1; Yvel=2; Zvel=3; Prs=4; Temp=5; Alpha=6;
   xD = 0; yD = 1; zD = 2; xB = 3; yB = 4; zB = 5; muIdx = 6; epIdx = 7;
@@ -1741,7 +1784,18 @@ def braginskiiSource(Q, QD, ionName, electronName, fieldName, Debye, Larmor, lig
   B_xyz = np.array([Bx, By, Bz]);
 
   B = Bx*Bx + By*By + Bz*Bz;
+
+  """
+  if isoOveride:
+    Bx[:] = 0.; By[:] = 0. ; Bz[:] = 0. ;
+    B_xyz[:] = 0;
+    B[:] = 0. 
+    pdb.set_trace()
+  """
+
   # NOTE that below here everything was designed to be a cell based operation, have to check the operations that van be vectorised and those which cannot
+
+  print(f"dimensions of B:\t{B.shape}")
 
   #TODO Vectorise the magnetic field sorting
   if ((B < 0.0).any()):
@@ -1754,6 +1808,7 @@ def braginskiiSource(Q, QD, ionName, electronName, fieldName, Debye, Larmor, lig
         np.logical_and((np.absolute(Bx)<EffectiveZero), (np.absolute(By)<EffectiveZero)), 
         (np.absolute(Bz)>EffectiveZero)),
       0., 1/np.sqrt(By*By + Bx*Bx)))
+
 
     """
     if (B < EffectiveZero):
@@ -1768,7 +1823,6 @@ def braginskiiSource(Q, QD, ionName, electronName, fieldName, Debye, Larmor, lig
       B_pp = 1/np.sqrt(B); # B prime prime 
       B_p  = 1/np.sqrt(Bx*Bx + By*By); # B prime 
     """
-
   bx_pp = Bx*B_pp; bx_p = Bx*B_p;
   by_pp = By*B_pp; by_p = By*B_p;
   bz_pp = Bz*B_pp; 
@@ -1826,9 +1880,11 @@ def braginskiiSource(Q, QD, ionName, electronName, fieldName, Debye, Larmor, lig
   dp_dx   = primGrad[eleName][Prs];
   """
   try:  
-    dT_dVec[0] = QD['T-electrons-dx']
-    dT_dVec[1] = QD['T-electrons-dy']
-    dT_dVec[2] = QD['T-electrons-dz']
+    dT_dVec = {}
+    dT_dVec[0] = QD['Tedx'] # is this the handle used? dont think so 
+    dT_dVec[1] = QD['Tedy']
+    dT_dVec[2] = QD['Tedy']*0.
+    print("temp gradients used in sources")
   except:
     dT_dVec = {}
     dT_dVec[0] = np.gradient(primEle[Temp], dx, axis = 1);
@@ -1921,14 +1977,27 @@ def braginskiiSource(Q, QD, ionName, electronName, fieldName, Debye, Larmor, lig
   #t_c_a = 1/nu_ie_rambo;
   R_u = {} #np.zeros((3)); 
   R_T = {} #np.zeros((3));
-  #frictional force
-  R_u[0] = -alpha_0*u_para[0] - alpha_1*u_perp[0] + alpha_2*u_chev[0];
-  R_u[1] = -alpha_0*u_para[1] - alpha_1*u_perp[1] + alpha_2*u_chev[1];
-  R_u[2] = -alpha_0*u_para[2] - alpha_1*u_perp[2] + alpha_2*u_chev[2];
-  #Thermal force
-  R_T[0] = -beta_0*TG_para[0] - beta_1*TG_perp[0] - beta_2*TG_chev[0];
-  R_T[1] = -beta_0*TG_para[1] - beta_1*TG_perp[1] - beta_2*TG_chev[1];
-  R_T[2] = -beta_0*TG_para[2] - beta_1*TG_perp[2] - beta_2*TG_chev[2];
+
+  if isoOveride:
+    #print("isoOveride active source terms")
+    R_u[0] = -alpha_0*duVec[0]
+    R_u[1] = -alpha_0*duVec[1]
+    R_u[2] = -alpha_0*duVec[2]
+    #Thermal force
+    R_T[0] = -beta_0*dT_dVec[0]
+    R_T[1] = -beta_0*dT_dVec[1]
+    R_T[2] = -beta_0*dT_dVec[2]
+   
+  else:
+    #frictional force
+    R_u[0] = -alpha_0*u_para[0] - alpha_1*u_perp[0] + alpha_2*u_chev[0];
+    R_u[1] = -alpha_0*u_para[1] - alpha_1*u_perp[1] + alpha_2*u_chev[1];
+    R_u[2] = -alpha_0*u_para[2] - alpha_1*u_perp[2] + alpha_2*u_chev[2];
+    #Thermal force
+    R_T[0] = -beta_0*TG_para[0] - beta_1*TG_perp[0] - beta_2*TG_chev[0];
+    R_T[1] = -beta_0*TG_para[1] - beta_1*TG_perp[1] - beta_2*TG_chev[1];
+    R_T[2] = -beta_0*TG_para[2] - beta_1*TG_perp[2] - beta_2*TG_chev[2];
+
   #Thermal equilibration
   Q_delta = 3*m_a/m_b*n_a/t_c_a*(T_a-T_b);
   Q_fric  = (R_u[0]+R_T[0])*duVec[0] + (R_u[1]+R_T[1])*duVec[1] + (R_u[2]+R_T[2])*duVec[2] 
@@ -1955,9 +2024,9 @@ def braginskiiSource(Q, QD, ionName, electronName, fieldName, Debye, Larmor, lig
   srcDst_ele[:, :, EdenQfric]  = -Q_fric ;
   srcDst_ele[:, :, EdenQdelta] = -Q_delta ;
   #note here the b is the ion
-  srcDst_ion[:, :, Xmom] = -R_u[0]+R_T[0];
-  srcDst_ion[:, :, Ymom] = -R_u[1]+R_T[1];
-  srcDst_ion[:, :, Zmom] = -R_u[2]+R_T[2];
+  srcDst_ion[:, :, Xmom] = -R_u[0] - R_T[0];
+  srcDst_ion[:, :, Ymom] = -R_u[1] - R_T[1];
+  srcDst_ion[:, :, Zmom] = -R_u[2] - R_T[2];
   srcDst_ion[:, :, EdenQfric]  = Q_fric
   srcDst_ion[:, :, EdenQdelta] = Q_delta 
 
@@ -1968,6 +2037,7 @@ def braginskiiSource(Q, QD, ionName, electronName, fieldName, Debye, Larmor, lig
     if ( (np.isnan(srcDst_ele[i])).any() ):
       pdb.set_trace()
       sys.exit("Source term nan error")#pdb.set_trace()
+  #print(srcDst_ion[:,:,0] + srcDst_ele[:,:,0])
 
   return srcDst_ion, srcDst_ele
 
