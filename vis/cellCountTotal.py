@@ -20,27 +20,10 @@ from get_boxlib import ReadBoxLib, get_files #from get_hdf5_data import ReadHDF5
 import ast
 
 dataFiles = [
-  #"/home/kyriakos/Documents/Code/000_cerberus_dev/githubRelease-cerberus/cerberus/Exec/testing/ScalingStudy", 
-  #"/media/kyriakos/Expansion/333_Alternative_REGIMES/OPTION_44_RES_512_FB_ANISO_CLEAN", 
-  #"/media/kyriakos/Expansion/333_Alternative_REGIMES/OPTION_44_RES_512_FB_ISO_CLEAN"
-
-  #"/media/kyriakos/Expansion/111_Magnetised_BRAGINSKII_RMI/44_X_beta_0p001_IDEAL_RES_2048_ref_4_4_2_2", 
-  #"/media/kyriakos/Expansion/111_Magnetised_BRAGINSKII_RMI/37_X_beta_0p001_INTER_A_RES_2048_ref_4_4_2_2",  
-  #"/media/kyriakos/Expansion/111_Magnetised_BRAGINSKII_RMI/44_X_beta_0p001_INTER_A_RES_2048_ref_4_4_2_2/"
-
-  #"/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-FB-ANISO-Option-16/", 
-  #"/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ANISO-Option-16/", 
-  #"/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTER-ANISO-Option-16/", 
-  #"/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/20220504-Op-16-Clean-Ideal-HLLC/", 
-
-  #"/media/kyriakos/Expansion/111_Magnetised_BRAGINSKII_RMI/44_X_beta_0p001_INTER_A_RES_2048_ref_4_4_2_2/delete1", 
-  #"/media/kyriakos/Expansion/111_Magnetised_BRAGINSKII_RMI/44_X_beta_0p001_INTER_A_RES_2048_ref_4_4_2_2/delete2"
   ]
 
 fileExact = [
-  #"/media/kyriakos/Expansion/111_Magnetised_BRAGINSKII_RMI/44_X_beta_0p001_IDEAL_RES_2048_ref_4_4_2_2/debugGridding/ref_0p95_debug_MLMG.plt00001", 
-  #"/media/kyriakos/Expansion/111_Magnetised_BRAGINSKII_RMI/44_X_beta_0p001_IDEAL_RES_2048_ref_4_4_2_2/debugGridding/ref_0p99_debug_MLMG.plt00001", 
-  "/media/kyriakos/Expansion/111_Magnetised_BRAGINSKII_RMI/44_X_beta_0p001_IDEAL_RES_2048_ref_4_4_2_2/dirty2048/gridChange_SRMI-Li3-option-44_xbeta_0p001_IDEAL_DIRTY.plt01281", 
+  "/media/kyriakos/Expansion/TRMI_IMPLOSION_M2_RES512_NoMag/512_BOSE_IMPLOSION_TRMI_M_3_nonMag.plt29001"
   ]
 
 def calcCellsEachLevel(dataFile):

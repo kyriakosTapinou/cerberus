@@ -167,7 +167,7 @@ Vector<dual> Collisions::collisions(const Vector<dual> &y0,
             dual du2 = 0.0;
             Array<dual,3> du;
             // Check to see if this is an electron fluid, use the ion-electron relations if so 
-            if (q_b < 0) { // ion-electron collisions 
+            if (q_b < 0 && q_a > 0) { // ion-electron collisions 
                 for (int i=0; i<3; ++i) {
                     du[i] = Q_a[vec_idx_a + i] - Q_b[vec_idx_b + i] ;
                     du2 += du[i]*du[i];
@@ -194,7 +194,6 @@ Vector<dual> Collisions::collisions(const Vector<dual> &y0,
                   Abort("Error: Collisions -  ion-electron collision using wrong relatios");
                 }
 
-                Print() << "Ion-ion collisions activated\n";  //TODO delete me 
                 for (int i=0; i<3; ++i) {
                     du[i] = Q_b[vec_idx_b + i] - Q_a[vec_idx_a + i]; // daryl og 
                     du2 += du[i]*du[i];

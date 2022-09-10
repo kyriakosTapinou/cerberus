@@ -218,11 +218,19 @@ def get_vorticity(ch, input_options):#name):
     v = ch.get_flat("y_vel-%s"%name)[1]
     y = x[1]; x = x[0]; dx = x[1] - x[0]; dy = y[1] - y[0]
     
-    du_dy = np.gradient(u, dy, axis=1)
-    dv_dx = np.gradient(v, dx, axis=0)
+    try: # check if gradients given in output data
+      du_dy = ch.get_flat("x_vel-%s-dy"%name)[1]
+      dv_dx =  ch.get_flat("y_vel-%s-dx"%name)[1]
     
-    du_dx = np.gradient(u, dx, axis=0)
-    dv_dy = np.gradient(v, dy, axis=1)
+      du_dx =  ch.get_flat("x_vel-%s-dx"%name)[1]
+      dv_dy =  ch.get_flat("y_vel-%s-dy"%name)[1]
+    except:
+      xxxx
+      du_dy = np.gradient(u, dy, axis=1)
+      dv_dx = np.gradient(v, dx, axis=0)
+    
+      du_dx = np.gradient(u, dx, axis=0)
+      dv_dy = np.gradient(v, dy, axis=1)
 
     omega = dv_dx - du_dy
     if quantity == 'omega':
@@ -290,6 +298,8 @@ def get_pressure(ch, inputs):
 
 def get_single_data(din):
     save_name = get_save_name(din['key'], din['folder'], din['level'], os.path.split(din["dataName"])[1] )
+    braginskiiVorticity = din['braginskiiVorticity']
+
     #print( save_name )
     if os.path.isfile(din['dir_name']+"/" +save_name):
         print(os.path.split(save_name)[1]," already exists")
@@ -303,6 +313,38 @@ def get_single_data(din):
 
     print("Processing: ", os.path.split(din["dataName"])[1]," @ ",rc.time) 
 
+    #### Extract collisional terms
+    if braginskiiVorticity: 
+      print("Viscosu vorticity contribution")
+      x, y, dudt_fluxes, srcDst = get_transportProperties(rc, 
+        ["ions", "electrons"], din['level'], isoOveride=False, useNPROC = 8)  
+      fluxDict = {}; srcDict = {};
+      for name in ['ions', 'electrons']: #delete useless data
+        fluxDict[name] = {}
+        srcDict[name] = {}
+        for key in range(dudt_fluxes[name].shape[-1]):
+          if key in [0, 1]: # 0:Xmom, 1:Ymom
+            fluxDict[name][key] = dudt_fluxes[name][:,:,key]
+        for key in range(srcDst[name].shape[-1]):
+          if key in [0, 1]: # 0:Xmom, 1:Ymom
+            srcDict[name][key] = srcDst[name][:,:,key]
+  
+      del dudt_fluxes, srcDst;
+
+      OC = {}# vorticity vontribution 
+      
+      OC['R_i'] = np.gradient(srcDict['ions'][1], x, axis=0) - \
+            np.gradient(srcDict['ions'][0], y, axis=1)
+      #OR_e = np.gradient(srcDict['electrons'][1], x, axis=0) - \ #same
+      #      np.gradient(srcDict['electrons'][0], y, axis=1)
+      OC['PI_i'] = np.gradient(fluxDict['ions'][1], x, axis=0) - \
+              np.gradient(fluxDict['ions'][0], y, axis=1)
+      OC['PI_e'] = \
+        np.gradient(fluxDict['electrons'][1], x, axis=0) - \
+        np.gradient(fluxDict['electrons'][0], y, axis=1)
+      del srcDict, fluxDict;
+      gc.collect();
+    ####### Loop for each state and interace 
     for name, d in data.items():
       tracerDefined = False
       
@@ -349,15 +391,21 @@ def get_single_data(din):
 
         interface_area = 0.
      
-        if "neutral" not in name:
-          x, y, tau_E, tau_B, tau = get_Lorentz_torque(rc, name)     
-
-        if ("ion" in name) or ("electron" in name):
+        if ("ion" in name) or ("electron" in name): #Lorent contributions
           # sum over the area of the interface
+          x, y, tau_E, tau_B, tau = get_Lorentz_torque(rc, name)     
           tl_E_interface_sum = 0.; tl_E_interface_sum_half = 0.;
           tl_B_interface_sum = 0.; tl_B_interface_sum_half = 0.;
           tl_interface_sum = 0.; tl_interface_sum_half = 0.;
-          
+          #set Collisional sums to zero at the start of each fluid state 
+          ##note the values for intra inter etc are calced already together 
+          t_brag_intra_sum = 0; t_brag_intra_half = 0; #Storage 
+          t_brag_inter_sum = 0; t_brag_inter_half = 0;
+          if 'ion' in name: 
+            ieSign = 1; ieKey = '_i'; 
+          else:
+            ieSign = -1; ieKey = '_i'; 
+
         # changed to accomodate multilpe interface transition regions i.e. 
         # interface_tracking[j,0]= [[x1,x2], [x1,x2]]
 
@@ -375,6 +423,9 @@ def get_single_data(din):
                 tl_E_interface_sum += tau_E[i,j]
                 tl_B_interface_sum += tau_B[i,j]
                 tl_interface_sum += tau[i,j]
+                #TODO Collisionsal contrbution
+                t_brag_intra_sum += OC['PI'+ieKey][i,j]
+                t_brag_inter_sum += ieSign*OC['R'+ieKey][i,j]; 
 
               if j <= int(len(interface_tracking)/2):
                 omega_interface_sum_half += omega[i,j]
@@ -385,6 +436,9 @@ def get_single_data(din):
                   tl_E_interface_sum_half += tau_E[i,j]
                   tl_B_interface_sum_half += tau_B[i,j]
                   tl_interface_sum_half += tau[i,j]
+                  #TODO Collisionsal contrbution
+                  t_brag_intra_half += OC['PI'+ ieKey][i,j]; 
+                  t_brag_inter_half += ieSign*OC['R' + ieKey][i,j];
 
           d["circulation_interface_sum"] = omega_interface_sum*dx*dy 
           d["baroclinic_interface_sum"] = tb_interface_sum*dx*dy
@@ -399,10 +453,14 @@ def get_single_data(din):
             d["curl_Lorentz_E_interface_sum_half"] = tl_E_interface_sum_half*dx*dy
             d["curl_Lorentz_B_interface_sum_half"] = tl_B_interface_sum_half*dx*dy
             d["curl_Lorentz_interfaces_sum_half"] = tl_interface_sum_half*dx*dy
+            d["curl_brag_inter_sum_half"] = t_brag_inter_half*dx*dy
+            d["curl_brag_intra_sum_half"] = t_brag_intra_half*dx*dy
+
             d["curl_Lorentz_E_interface_sum"] = tl_E_interface_sum*dx*dy
             d["curl_Lorentz_B_interface_sum"] = tl_B_interface_sum*dx*dy
             d["curl_Lorentz_interfaces_sum"] = tl_interface_sum*dx*dy
-
+            d["curl_brag_inter_sum"] =   t_brag_inter_sum*dx*dy 
+            d["curl_brag_intra_sum"] =   t_brag_intra_sum*dx*dy
 
         if din["record_contour"] == True:
           #print("Record contour data:", din["dataName"] )
@@ -534,7 +592,9 @@ def get_save_name(key, folder, level, output_file = 0):
       save_name = key + "_step" + step_id + "_level=%i.h5"%level
       return save_name
 
-def get_batch_data(key, folder, level, max_res, window, n_increments, nproc=1, outputType="plt"):
+def get_batch_data(key, folder, level, max_res, window, n_increments, nproc=1, outputType="plt", braginskiiVorticity=True): 
+
+    print("get_batch_data --- note the function relieson ion, electron, neutral, keywords in state names for interface statistics")
     """
     master function for processing data. Organises the individual processing of 
     time steps and creates the folder to store data. 
@@ -563,7 +623,7 @@ def get_batch_data(key, folder, level, max_res, window, n_increments, nproc=1, o
     for f in outputFiles:
       if counter in contour_save: saveContour = True
       else: saveContour = False
-      din.append({"dataName":f, "level":level, "max_res":max_res, "window":window, "record_contour":saveContour, "key":key, "folder":folder, "dir_name":dir_name})
+      din.append({"dataName":f, "level":level, "max_res":max_res, "window":window, "record_contour":saveContour, "key":key, "folder":folder, "dir_name":dir_name, 'braginskiiVorticity':True})
       counter += 1 
     print(f"Begin reading:\t {key}")
     data = []
@@ -1003,13 +1063,31 @@ def get_EM(rc, options):
 #3###############################################################333
 
 def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
+  """
+  function takes as input the data file opened with daryl's post function
+  and extract outs primitives, gradients, then calculates the intra and 
+  inter-species collisional controbutions.
+
+  inputs:
+    ch -  ReadBoxlib object having read data file 
+    names - list of strings e.g. ['ions', 'electrons'] for the states
+    level - gid depth 
+    isoOveride - true or false to foce isotropic 
+    useNPROC - integer number of processor to use
+    
+  outputs:
+    x - numoy array of x points (nodes)
+    y - numpy array of y points (nodes)
+    dudt_fluxes - flux contributions to the cell values (time rate)
+    srcDst - source term contributions to the cell evoltions (time rate)
+  """
 
   print(f"\n\nNote isoOveride set to:{isoOveride}")
   Q = {}
-  print(f"Time is:\t{ch.time}")
+  #print(f"Time is:\t{ch.time}")
   Density=0; Xvel = 1; Yvel=2; Zvel=3; Prs=4; Temp=5; Alpha=6;
   x_D = 0; y_D = 1; z_D = 2; x_B = 3; y_B = 4; z_B = 5; muIdx = 6; epIdx = 7;
-  print("\tExtracting primitives...")
+  #print("\tExtracting primitives...")
   for name in names: # get the ion ane electron prims
     Q[name] = {}
     try:
@@ -1077,10 +1155,11 @@ def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
   for prop in properties:
     try:
       QD[propertiesHandle[prop]] = ch.get(prop)[-1]
-      print(f"\t\tGradient {prop} read")
+      #print(f"\t\tGradient {prop} read")
     except:
       print(f"\t\t-->>Gradient {prop} unavailable")
-  print("\t...extracted\n")
+  #print("\t...extracted\n")
+
   # prepare indivudal component data --- pulled in from 1D code and adapted for 2D
       # needs to be done for every interface - multiprocesses for each row ?
   print("\tViscousTensor and heat flux calc")
@@ -1088,22 +1167,22 @@ def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
   Xmom = 0; Ymom = 1; Zmom = 2; EdenPi = 3; EdenQ = 4
   
   fluxX = {}; fluxY = {}
+  print(x.shape, y.shape)
   for name in names:
-    fluxX[name] = np.zeros((x.shape[0]-1, y.shape[0]-1, EdenQ+1)); #loose cell 0 and -1
-    fluxY[name] = np.zeros((x.shape[0]-1, y.shape[0]-1, EdenQ+1))
+    fluxX[name] = np.zeros((x.shape[0] + 1, y.shape[0] + 1, EdenQ+1)); 
+    fluxY[name] = np.zeros((x.shape[0] + 1, y.shape[0] + 1, EdenQ+1)) 
     # cell i,j will handle the interface between
-    #   fluxX: i, j and i+1, j e.g. the hi flux for cell i,j is fluxX[i,j], 
-    # the low flux for cell i,j is fluxX[i-1,j]
-    #   fluxY: i, j and i, j+1
+    #   fluxX: i-1, j and i, j e.g. the lo flux for corresponding volume cell i,j is fluxX[i,j], 
+    #   fluxY: i, j-1 and i, j
+    # Ghost cell values are neuman = 0 from interior i.e. zero gradients on boundaries 
 
-    # multiprocessing 
-    #======================================================================================
+    #===========================  multiprocessing  ============================
     din = []
-    dy_cell = int((y.shape[0]-1)/2) # number of interfaces in x 
-    dx_cell = int((x.shape[0]-1)/4) # number of interfaces in y
+    dy_cell = int((y.shape[0]+1)/2) # number of interfaces in x  #TODO 
+    dx_cell = int((x.shape[0]+1)/4) # number of interfaces in y  #TODO
   
-    xcell = [i*dx_cell for i in range(4)]; xcell.append(x.shape[0] - 1) # up to last domain bc we cannot get the right hand state of the last cells boundary
-    ycell = [i*dy_cell for i in range(2)]; ycell.append(y.shape[0] - 1)
+    xcell = [i*dx_cell for i in range(4)]; xcell.append(x.shape[0] + 1) # up to last domain bc we cannot get the right hand state of the last cells boundary
+    ycell = [i*dy_cell for i in range(2)]; ycell.append(y.shape[0] + 1) #TODO
     
     #print(f"Full domain nX: {x.shape[0]}\tnY: {y.shape[0]}")   
     din = []
@@ -1115,11 +1194,13 @@ def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
         il = xcell[i]
         jl = ycell[j] # il and ih refer to the cells (in prim array that are hanbfdled 
         iRange = [il, ih-1]; jRange = [jl, jh-1];
+        #Note python auto makes pointer rferences this isnt copyying the primitives lol
         din.append({"Q":Q, "QD":QD, 
           "name":name, "ionName":"ions", "eleName":"electrons", "fieldName":"field", 
           "iRange":iRange, "jRange":jRange, "Debye":dS/c, "Larmor":math.sqrt(beta/2)*dS, 
           "lightspeed":c, "xref":x_ref, "n0ref":n_ref, "mref":m_ref, "rhoref":rho_ref, 
-          "Tref":T_ref, "uref":u_ref, "dx":dx, "isoOveride":isoOveride, "verbosity":1})
+          "Tref":T_ref, "uref":u_ref, "dx":dx, "isoOveride":isoOveride, "verbosity":1, 
+          'xhiDomain':x.shape[0],'yhiDomain':y.shape[0]}) #xhiDomain etc passed as size bc flux index at ends is last index of Q+1
 
     data = []
   
@@ -1139,53 +1220,20 @@ def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
       ih = xcell[i+1]
       for j in range(len(ycell)-1):
         jh = ycell[j+1]
-        #print(f"\tBlock bounds: {xcell[i]}, {ih}\t{ycell[j]}, {jh}")
-  
         fluxX[name][xcell[i]:ih, ycell[j]:jh, :] = data[counter][0]
         fluxY[name][xcell[i]:ih, ycell[j]:jh, :] = data[counter][1]
         counter += 1
-
     #======================================================================================
-    """
-    for j in range(y.shape[0]-1):#TODO replace with multiprocessing 
-      for i in range(x.shape[0]-1):#TODO replace with multiprocessing 
-        # fluxes in the x-direcion        
 
-
-        ViscTens, q_flux = \
-          braginskiiViscousTensorHeatFlux(name, "ions", "electrons", "field", 
-            i, j, 0, 1, 
-            Q, QD, dS/c, math.sqrt(beta/2)*dS, n_ref, x_ref, u_ref, dx, verbosity = 1)  
-        fluxX[i,j,Xmom] += ViscTens[0];
-        fluxX[i,j,Ymom] += ViscTens[3];
-        fluxX[i,j,Zmom] += ViscTens[5];
-        fluxX[i,j,EdenPi] += 0.5*((Q[name][Xvel][i+1,j] + Q[name][Xvel][i,j])*ViscTens[0]+
-                           (Q[name][Yvel][i+1,j] + Q[name][Yvel][i,j])*ViscTens[3]+
-                           (Q[name][Zvel][i+1,j] + Q[name][Zvel][i,j])*ViscTens[5])
-        fluxX[i,j,EdenQ] += q_flux[0];
-        # fluxes in the y-direcion
-        ViscTens, q_flux = \
-          braginskiiViscousTensorHeatFlux(name, "ions", "electrons", "field", 
-            i, j, 1, 1, 
-            Q, QD, dS/c, math.sqrt(beta/2)*dS, n_ref, x_ref, u_ref, dx, verbosity = 1)  
-        fluxY[i,j,Xmom] += ViscTens[3];
-        fluxY[i,j,Ymom] += ViscTens[1];
-        fluxY[i,j,Zmom] += ViscTens[4];
-        fluxY[i,j,EdenPi] += +0.5*((Q[name][Xvel][i,j+1]+Q[name][Xvel][i,j])*ViscTens[3]+
-                (Q[name][Yvel][i,j+1]+Q[name][Yvel][i,j])*ViscTens[1]+
-                (Q[name][Zvel][i,j+1]+Q[name][Zvel][i,j])*ViscTens[4]) 
-
-        fluxY[i,j,EdenQ] += q_flux[1];
-    """
   print("\t\t..Calc done")
   # find max in each region and time 
     # exact flux values 
   dudt_flux = {}
-  dt = 1
+  dt = 1 #Nontrivial time step for contrbution instead of the rate of change 
   print("\tCalculating viscous flux contribution...")
   for name in names:
     # old for loop method
-    dudt_flux[name] = np.zeros((x.shape[0]-2, y.shape[0]-2, EdenQ+1)); # neglect the boarder 
+    dudt_flux[name] = np.zeros((x.shape[0], y.shape[0], EdenQ+1)); # neglect the boarder  #TODO
     """
     for prop in range(EdenQ+1):
       for j in range(1, y.shape[0]-1):#TODO replace with multiprocessing 
@@ -1196,26 +1244,27 @@ def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
           dudt_flux[name][i,j, prop] = dt/dx * ( fluxX[i-1,j,prop] - fluxX[i,j,prop] + \
                                      fluxY[i,j-1,prop] - fluxY[i,j,prop])
     """
-    dUfluxX = dt/dx*(fluxX[name][0:-1, 1:  , :] - fluxX[name][1:, 1:, :])
+    #dUfluxX = dt/dx*(fluxX[name][0:-1, 1:  , :] - fluxX[name][1:, 1:, :])
+    dUfluxX = dt/dx*(fluxX[name][0:-1, :-1  , :] - fluxX[name][1:, :-1, :])
     #dUfluxY = dt/dx*(fluxX[name][1:,   0:-1, :] - fluxX[name][1:, 1:, :])
-    dUfluxY = dt/dx*(fluxY[name][1:,   0:-1, :] - fluxY[name][1:, 1:, :])
+    dUfluxY = dt/dx*(fluxY[name][:-1,   0:-1, :] - fluxY[name][:-1, 1:, :])
     dudt_flux[name][:,:, :] = dUfluxX + dUfluxY
   print("\t\t..Calc done")
   
   # source term contributions 
   print("\tCalculating src term contribution...neglect the boardering cells")
-  # here we exlcuse the boarder as to match the flux registers controbution to all the interior
+  # here we exlcude the boarder as to match the flux registers controbution to all the interior
   # cells but not the boarder. 
-  srcDst = {"electrons":np.zeros((x.shape[0]-2, y.shape[0]-2, EdenQ+1)), 
-            "ions":np.zeros((x.shape[0]-2, y.shape[0]-2, EdenQ+1))}
+  srcDst = {"electrons":np.zeros((x.shape[0], y.shape[0], EdenQ+1)), 
+            "ions":np.zeros((x.shape[0], y.shape[0], EdenQ+1))} #TODO
 
   #break domain into chunks 
   #print(f"i and j components of domain are: {x.shape[0]} {y.shape[0]}")
-  dy_cell = int((y.shape[0]-2)/2)
-  dx_cell = int((x.shape[0]-2)/4)
+  dy_cell = int((y.shape[0])/2) #TODO
+  dx_cell = int((x.shape[0])/4) #TODO
 
-  xcell = [i*dx_cell for i in range(4)]; xcell.append(x.shape[0]-2)
-  ycell = [i*dy_cell for i in range(2)]; ycell.append(y.shape[0]-2)
+  xcell = [i*dx_cell for i in range(4)]; xcell.append(x.shape[0])#TODO
+  ycell = [i*dy_cell for i in range(2)]; ycell.append(y.shape[0])#TODO
   
   din = []
   for i in range(len(xcell)-1):
@@ -1238,11 +1287,13 @@ def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
 
       #print(f"\txcells: {xcells}\tycells: {ycells}")
       
-      din.append({"xcells":xcells, "ycells":ycells, "Q":Qin, "QD":QDin, "ionName":"ions", 
-                  "eleName":"electrons", "fieldName":"field", "Debye":dS/c, 
-                  "Larmor":math.sqrt(beta/2)*dS, "lightspeed":c, "xref":x_ref, "n0ref":n_ref, 
-                  "mref":m_ref, "rhoref":rho_ref, "Tref":T_ref, "uref":u_ref, "dx":dx, 
-                  "isoOveride":isoOveride, "verbosity":1})
+      din.append({"xcells":xcells, "ycells":ycells, "Q":Qin, "QD":QDin, 
+        "ionName":"ions", "eleName":"electrons", "fieldName":"field", 
+        "Debye":dS/c, "Larmor":math.sqrt(beta/2)*dS, "lightspeed":c, 
+        "xref":x_ref, "n0ref":n_ref, "mref":m_ref, "rhoref":rho_ref, 
+        "Tref":T_ref, "uref":u_ref, "dx":dx, "isoOveride":isoOveride, 
+        "verbosity":1})
+
   data = []
 
   nproc = useNPROC
@@ -1266,8 +1317,7 @@ def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
       srcDst["ions"][xcell[i]:ih, ycell[j]:jh, :] = data[counter]["ions"]
       srcDst["electrons"][xcell[i]:ih, ycell[j]:jh, :] = data[counter]["electrons"]
       counter += 1
-
-  return x[1:-1], y[1:-1], dudt_flux, srcDst
+  return x, y, dudt_flux, srcDst
 
 def braginskiiViscousWrapper(din):#name, ionName, eleName, emName, iRange, jRange,
                               #Q, QD, Debye, Larmor, n0_ref, x_ref, u_ref, dX, verbosity = 1):
@@ -1275,7 +1325,8 @@ def braginskiiViscousWrapper(din):#name, ionName, eleName, emName, iRange, jRang
   name = din["name"]; iRange = din["iRange"]; jRange = din["jRange"];
   Q = din["Q"]; QD = din["QD"]
   isoOveride = din["isoOveride"];
-  
+  xhiDomain = din['xhiDomain']; yhiDomain = din['yhiDomain']
+
   #print("\n\n####Viscous fluxes on flud:\t", name)
 
   Xmom = 0; Ymom = 1; Zmom = 2; EdenPi = 3; EdenQ = 4
@@ -1284,55 +1335,106 @@ def braginskiiViscousWrapper(din):#name, ionName, eleName, emName, iRange, jRang
   nFluxesX = iRange[1] - iRange[0] + 1; nFluxesY = jRange[1] - jRange[0] + 1; 
   fluxX = np.zeros((nFluxesX, nFluxesY, EdenQ+1)); 
   fluxY = np.zeros((nFluxesX, nFluxesY, EdenQ+1))
-  for i in range(iRange[0], iRange[1]+1): # swapped i and j orders -  shouldn't make a difference but #TODO check 
+  # note flux register loops below, not cell
+  for i in range(iRange[0], iRange[1]+1): # swapped i and j orders -  shouldn't make a difference but #TODO check  
     for j in range(jRange[0], jRange[1]+1):# 
       #mapping from global domain to local block indexing 
+      if i == xhiDomain and j == yhiDomain:
+        #print("Corner skipped ", i,j)
+        continue
+
       iloc = i - iRange[0]; jloc = j - jRange[0]
-      ViscTens, q_flux = \
-        braginskiiViscousTensorHeatFlux(name, "ions", "electrons", "field", i, j, 0, 1, 
-        din["Q"], din["QD"], din["Debye"], din["Larmor"], din["n0ref"], din["xref"], 
-        din["uref"], din["dx"], isoOveride, din["verbosity"])
-        # Q, QD, dS/c, math.sqrt(beta/2)*dS, n_ref, x_ref, u_ref, dx, verbosity = 1)
 
-      fluxX[iloc,jloc,Xmom] += ViscTens[0];
-      fluxX[iloc,jloc,Ymom] += ViscTens[3];
-      fluxX[iloc,jloc,Zmom] += ViscTens[5];
-      fluxX[iloc,jloc,EdenPi] += 0.5*((Q[name][Xvel][i+1,j] + Q[name][Xvel][i,j])*ViscTens[0]+
-                         (Q[name][Yvel][i+1,j] + Q[name][Yvel][i,j])*ViscTens[3]+
-                         (Q[name][Zvel][i+1,j] + Q[name][Zvel][i,j])*ViscTens[5])
-      fluxX[iloc,jloc,EdenQ] += q_flux[0];
+      # fluxes in the x-direcion
+      if (j != yhiDomain):
+        ViscTens, q_flux = \
+          braginskiiViscousTensorHeatFlux(name, "ions", "electrons", "field", i, j, 0, 1,
+          xhiDomain, yhiDomain,
+          din["Q"], din["QD"], din["Debye"], din["Larmor"], din["n0ref"], din["xref"], 
+          din["uref"], din["dx"], isoOveride, din["verbosity"])
+          # Q, QD, dS/c, math.sqrt(beta/2)*dS, n_ref, x_ref, u_ref, dx, verbosity = 1)
+  
+        ##  if dimFlux == 0: # in the x-dimension
+        ixl = i - 1; ixh = i ;
+        iyl = j; iyh = j;
+        #special index for ghost cell /interior matching 
+        if i == 0: #xlo interface of ghost and first cell of domain or xhi interface of last interior and ghost 
+          ixl = i; ixh = i; 
+        elif  i == xhiDomain:
+          ixl = i-1; ixh=i-1
+  
+        if j == 0:
+          iyl = j; iyh = j; 
+        elif j == yhiDomain: 
+          iyl = j-1; iyh = j-1; 
+  
+        fluxX[iloc,jloc,Xmom] += ViscTens[0];
+        fluxX[iloc,jloc,Ymom] += ViscTens[3];
+        fluxX[iloc,jloc,Zmom] += ViscTens[5];
+        fluxX[iloc,jloc,EdenPi] += 0.5*((Q[name][Xvel][ixh,iyh] + Q[name][Xvel][ixl,iyl])*ViscTens[0]+
+                           (Q[name][Yvel][ixh,iyh] + Q[name][Yvel][ixl,iyl])*ViscTens[3]+
+                           (Q[name][Zvel][ixh,iyh] + Q[name][Zvel][ixl,iyl])*ViscTens[5])
+        fluxX[iloc,jloc,EdenQ] += q_flux[0];
+  
       # fluxes in the y-direcion
-      ViscTens, q_flux = \
-        braginskiiViscousTensorHeatFlux(name, "ions", "electrons", "field", i, j, 1, 1, 
-        din["Q"], din["QD"], din["Debye"], din["Larmor"], din["n0ref"], din["xref"], 
-        din["uref"], din["dx"], din["verbosity"])
-          #Q, QD, dS/c, math.sqrt(beta/2)*dS, n_ref, x_ref, u_ref, dx, verbosity = 1)  
-
-      fluxY[iloc,jloc,Xmom] += ViscTens[3];
-      fluxY[iloc,jloc,Ymom] += ViscTens[1];
-      fluxY[iloc,jloc,Zmom] += ViscTens[4];
-      fluxY[iloc,jloc,EdenPi] += +0.5*((Q[name][Xvel][i,j+1]+Q[name][Xvel][i,j])*ViscTens[3]+
-              (Q[name][Yvel][i,j+1]+Q[name][Yvel][i,j])*ViscTens[1]+
-              (Q[name][Zvel][i,j+1]+Q[name][Zvel][i,j])*ViscTens[4]) 
-
-      fluxY[iloc,jloc,EdenQ] += q_flux[1];
+      if (i != xhiDomain):
+        ViscTens, q_flux = \
+          braginskiiViscousTensorHeatFlux(name, "ions", "electrons", "field", i, j, 1, 1, 
+          xhiDomain, yhiDomain,
+          din["Q"], din["QD"], din["Debye"], din["Larmor"], din["n0ref"], din["xref"], 
+          din["uref"], din["dx"], din["verbosity"])
+            #Q, QD, dS/c, math.sqrt(beta/2)*dS, n_ref, x_ref, u_ref, dx, verbosity = 1)  
+  
+        #else: # in the y dimension 
+        ixl = i; ixh = i; 
+        iyl = j - 1; iyh = j;
+        if i == 0: #xlo interface of ghost and first cell of domain or xhi interface of last interior and ghost 
+          ixl = i; ixh = i; 
+        elif i == xhiDomain:
+          ixl = i-1; ixh = i-1; 
+  
+        if j == 0: 
+          iyl = j; iyh = j; 
+        elif j == yhiDomain:
+          iyl = j-1; iyh = j-1; 
+  
+        fluxY[iloc,jloc,Xmom] += ViscTens[3];
+        fluxY[iloc,jloc,Ymom] += ViscTens[1];
+        fluxY[iloc,jloc,Zmom] += ViscTens[4];
+        fluxY[iloc,jloc,EdenPi] += +0.5*((Q[name][Xvel][ixh,iyh]+Q[name][Xvel][ixl,iyl])*ViscTens[3]+
+                (Q[name][Yvel][ixh,iyh]+Q[name][Yvel][ixl,iyl])*ViscTens[1]+
+                (Q[name][Zvel][ixh,iyh]+Q[name][Zvel][ixl,iyl])*ViscTens[4]) 
+  
+        fluxY[iloc,jloc,EdenQ] += q_flux[1];
   return fluxX, fluxY
 
 def braginskiiViscousTensorHeatFlux(name, ionName, eleName, emName, i, j, dimFlux, dim,
+                              xhiDomain, yhiDomain, 
                               Q, QD, Debye, Larmor, n0_ref, x_ref, u_ref, dX, 
                               isoOveride = False, verbosity = 1):
   Density=0; Xvel = 1; Yvel=2; Zvel=3; Prs=4; Temp=5; Alpha=6;
   x_D = 0; y_D = 1; z_D = 2; x_B = 3; y_B = 4; z_B = 5; muIdx = 6; epIdx = 7;
-
-  #print("\n\nViscous fluxes on flud:\t", name)
-  # note stateL and stateR are the indexes in the dimension of interest
+  #print("Viscous fluxes on flud:\t", name)
+  #print("\t", i, j)
+  ##mak the interface index play nice with the volume cell index 
   if dimFlux == 0: # in the x-dimension
-    xl = i; xh = xl+1;
-    yl = j; yh = yl 
-  else: # in the y dimension 
-    xl = i; xh = xl
-    yl = j; yh = yl+1;
+    xl = i - 1; xh = i;
+    yl = j; yh = j
+  elif dimFlux ==1 : # in the y dimension 
+    xl = i; xh = i; 
+    yl = j - 1; yh = j
 
+  if i == 0 : #xlo interface of ghost and first cell of domain or xhi interface of last interior and ghost 
+    xl = i; xh = i; # set the ghost cell value to the interior cell value 
+  elif i == xhiDomain:
+    xl = i-1; xh = i-1; # set the ghost cell value to the interior cell value 
+
+  if j == 0: 
+    yl = j; yh = j; 
+  elif j == yhiDomain:
+    yl = j-1; yh = j-1; 
+
+  ###TODO if we are on the boundary we are using neuman for the fluxes 
   ViscTens = np.zeros((7)); 
 
   EffectiveZero = 1e-14;
@@ -1472,37 +1574,55 @@ def braginskiiViscousTensorHeatFlux(name, ionName, eleName, emName, i, j, dimFlu
     if dim == 0: # 1D
       drho_dy=0; du_dy=0; dv_dy=0; dw_dy=0; dp_dy=0; dT_dy=0; 
     elif dim == 1: # 2D # find the derivatives in the dimensions off the flux dimension -  hard coded for x direction flux 
+      # if gradeints aren't avaialble from inputs then we need a rectangle stencile on the itnerface
+      if j == 0:
+        yyl = 0; yyh = j+1; 
+      elif j == yhiDomain-1: 
+        yyl = j-1; yyh = j; 
+      else:
+        yyl = j-1; yyh = j+1; 
+
       try:
         dT_dy = 0.5*(QD["T" + species + "dy"][xl,yl]  + QD["T" + species + "dy"][xh,yh]) 
       except:
-        dT_dy = (Q[name][Temp][xh,yl+1]+Q[name][Temp][xl,yl+1]-Q[name][Temp][xh,yl-1]-Q[name][Temp][xl,yl-1])/4/dX;
+        dT_dy = (Q[name][Temp][xh,yyh]+Q[name][Temp][xl,yyh]-Q[name][Temp][xh,yyl]-Q[name][Temp][xl,yyl])/4/dX;
+
       try:
         du_dy = 0.5*(QD["U" + species + "dy"][xl,yl]  + QD["U" + species + "dy"][xh,yh]) 
         dv_dy = 0.5*(QD["V" + species + "dy"][xl,yl]  + QD["V" + species + "dy"][xh,yh]) 
       except:
-        du_dy = (Q[name][Xvel][xh,yl+1]+Q[name][Xvel][xl,yl+1]-Q[name][Xvel][xh,yl-1]-\
-                Q[name][Xvel][xl,yl-1])/4/dX;
-        dv_dy = (Q[name][Yvel][xh,yl+1]+Q[name][Yvel][xl,yl+1]-Q[name][Yvel][xh,yl-1]-\
-                Q[name][Yvel][xl,yl-1])/4/dX;
-      dw_dy = (Q[name][Zvel][xh,yl+1]+Q[name][Zvel][xl,yl+1]-Q[name][Zvel][xh,yl-1]-\
-              Q[name][Zvel][xl,yl-1])/4/dX;
+        du_dy = (Q[name][Xvel][xh,yyh]+Q[name][Xvel][xl,yyh]-Q[name][Xvel][xh,yyl]-\
+                Q[name][Xvel][xl,yyl])/4/dX;
+        dv_dy = (Q[name][Yvel][xh,yyh]+Q[name][Yvel][xl,yyh]-Q[name][Yvel][xh,yyl]-\
+                Q[name][Yvel][xl,yyl])/4/dX;
+      #print(f"yyh: {yyh}\tyyl: {yyl}")
+      dw_dy = (Q[name][Zvel][xh,yyl]+Q[name][Zvel][xl,yyh]-Q[name][Zvel][xh,yyl]-\
+              Q[name][Zvel][xl,yyl])/4/dX;
 
   if dimFlux ==1:
+    # if gradeints aren't avaialble from inputs then we need a rectangle stencile on the itnerface
+    if i == 0:
+      xxl = 0; xxh = i+1; 
+    elif i == xhiDomain-1: 
+      xxl = i-1; xxh = i; 
+    else:
+      xxl = i-1; xxh = i+1; 
+
     try:
       dT_dx = 0.5*(QD["T" + species + "dx"][xl,yl]  + QD["T" + species + "dx"][xh,yh]) 
     except:
-      dT_dx = (Q[ionName][Temp][xl+1,yh] + Q[ionName][Temp][xl+1,yl] - Q[ionName][Temp][xl-1,yh] - Q[ionName][Temp][xl-1,yl])/4/dX;
+      dT_dx = (Q[ionName][Temp][xxh,yh] + Q[ionName][Temp][xxh,yl] - Q[ionName][Temp][xxl,yh] - Q[ionName][Temp][xxl,yl])/4/dX;
 
     try:
       du_dx = 0.5*(QD["U" + species + "dx"][xl,yl]  + QD["U" + species + "dx"][xh,yh]) 
       dv_dx = 0.5*(QD["V" + species + "dx"][xl,yl]  + QD["V" + species + "dx"][xh,yh])
     except:
-      du_dx = (Q[ionName][Xvel][xl+1,yh] + Q[ionName][Xvel][xl+1,yl] -\
-              Q[ionName][Xvel][xl-1,yh] - Q[ionName][Xvel][xl-1,yl])/4/dX;
-      dv_dx = (Q[ionName][Yvel][xl+1,yh] + Q[ionName][Yvel][xl+1,yl] -\
-              Q[ionName][Yvel][xl-1,yh] - Q[ionName][Yvel][xl-1,yl])/4/dX;
-    dw_dx = (Q[ionName][Zvel][xl+1,yh] + Q[ionName][Zvel][xl+1,yl] -\
-            Q[ionName][Zvel][xl-1,yh] - Q[ionName][Zvel][xl-1,yl])/4/dX;
+      du_dx = (Q[ionName][Xvel][xxh,yh] + Q[ionName][Xvel][xxh,yl] -\
+              Q[ionName][Xvel][xxl,yh] - Q[ionName][Xvel][xxl,yl])/4/dX;
+      dv_dx = (Q[ionName][Yvel][xxh,yh] + Q[ionName][Yvel][xxh,yl] -\
+              Q[ionName][Yvel][xxl,yh] - Q[ionName][Yvel][xxl,yl])/4/dX;
+    dw_dx = (Q[ionName][Zvel][xxh,yh] + Q[ionName][Zvel][xxh,yl] -\
+            Q[ionName][Zvel][xxl,yh] - Q[ionName][Zvel][xxl,yl])/4/dX;
     try:
       dT_dy = 0.5*(QD["T" + species + "dy"][xl,yl]  + QD["T" + species + "dy"][xh,yh]) 
     except:
@@ -1636,19 +1756,26 @@ def braginskiiViscousTensorHeatFlux(name, ionName, eleName, emName, i, j, dimFlu
   else:# generic case of non zero and non cartesian z orientated field 
 
     # Multiplying Q' (Transpose) by W (StressStrain)
+    """
     for i_disp in range(3):
         for j_disp in range(3):
             for k_disp in range(3):
                 WorkingMatrix[i_disp,j_disp] += TransT[i_disp,k_disp]*Strain[k_disp,j_disp];
     #TODO replace with just matmul when checks complete:            
     if (np.matmul( TransT, Strain) != WorkingMatrix).any(): sys.exit("matrix multiplcation error:TransT*Strain")
+    """
+    WorkingMatrix = np.matmul( TransT, Strain)
+
     # Multiplying Q'W by Q
+    """
     for i_disp in range(3): 
         for j_disp in range(3):
             for k_disp in range(3):
               StrainTrans[i_disp,j_disp] += WorkingMatrix[i_disp,k_disp] * Trans[k_disp,j_disp];
    
     if (np.matmul(WorkingMatrix, Trans) != StrainTrans).any(): sys.exit("matrix multiplcation error: QtWQ")
+    """
+    StrainTrans = np.matmul(WorkingMatrix, Trans)
   
     #Populate visc stress tensor in cartesian normal frame
     ViscStressTrans[0,0]=-1/2*eta0*\
@@ -1687,19 +1814,26 @@ def braginskiiViscousTensorHeatFlux(name, ionName, eleName, emName, i, j, dimFlu
             ViscStress[i_disp,j_disp] = 0.;
     
     # Multiplying Q  Trans  by PI' (ViscStressTrans)
+    """
     for i_disp in range(3):
       for j_disp in range(3):
         for k_disp in range(3):
           WorkingMatrix[i_disp,j_disp] += Trans[i_disp,k_disp]*ViscStressTrans[k_disp,j_disp];
-        
+     
     if (np.matmul(Trans, ViscStressTrans) != WorkingMatrix).any(): pdb.set_trace(); sys.exit("matrix multiplcationis fucked")
+    """
+    WorkingMatrix = np.matmul(Trans, ViscStressTrans)
+
     # Multiplying Q*PI' by Q^T
+    """
     for i_disp in range(3):
       for j_disp in range(3):
         for k_disp in range(3):
-          ViscStress[i_disp,j_disp] += WorkingMatrix[i_disp,k_disp] * TransT[k_disp,j_disp];
-    
+          ViscStress[i_disp,j_disp] += WorkingMatrix[i_disp,k_disp] * TransT[k_disp,j_disp]; 
     if (np.matmul(WorkingMatrix, TransT) != ViscStress).any(): pdb.set_trace();sys.exit("matrix multiplcationis fucked")
+    """
+    ViscStress = np.matmul(WorkingMatrix, TransT)
+
     #Storing
     #NOTE STORAGE ACCORDING TO THE TAUXX, TAUYY, TAUZZ, TAUXY OR TAUYX,
     # TAUYZ OR TAUZY, TAUXZ OR TAUZX
@@ -1795,7 +1929,7 @@ def braginskiiSource(Q, QD, ionName, electronName, fieldName, Debye, Larmor, lig
 
   # NOTE that below here everything was designed to be a cell based operation, have to check the operations that van be vectorised and those which cannot
 
-  print(f"dimensions of B:\t{B.shape}")
+  #print(f"dimensions of B:\t{B.shape}")
 
   #TODO Vectorise the magnetic field sorting
   if ((B < 0.0).any()):
@@ -1884,7 +2018,7 @@ def braginskiiSource(Q, QD, ionName, electronName, fieldName, Debye, Larmor, lig
     dT_dVec[0] = QD['Tedx'] # is this the handle used? dont think so 
     dT_dVec[1] = QD['Tedy']
     dT_dVec[2] = QD['Tedy']*0.
-    print("temp gradients used in sources")
+    #print("temp gradients used in sources")
   except:
     dT_dVec = {}
     dT_dVec[0] = np.gradient(primEle[Temp], dx, axis = 1);
@@ -2000,7 +2134,8 @@ def braginskiiSource(Q, QD, ionName, electronName, fieldName, Debye, Larmor, lig
 
   #Thermal equilibration
   Q_delta = 3*m_a/m_b*n_a/t_c_a*(T_a-T_b);
-  Q_fric  = (R_u[0]+R_T[0])*duVec[0] + (R_u[1]+R_T[1])*duVec[1] + (R_u[2]+R_T[2])*duVec[2] 
+  #Q_fric  = (R_u[0]+R_T[0])*duVec[0] + (R_u[1]+R_T[1])*duVec[1] + (R_u[2]+R_T[2])*duVec[2] 
+  Q_fric  = (R_u[0]+R_T[0])*u_b + (R_u[1]+R_T[1])*v_b + (R_u[2]+R_T[2])*w_b
 
   Q_i = Q_delta  + Q_fric
   Q_e = -Q_delta - Q_fric ;

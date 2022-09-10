@@ -28,8 +28,12 @@ from get_hdf5_data import ReadHDF5 # used for the HRMI
 ###################################################################################
 #                  do stuff 
 ###################################################################################
-dataDir = "/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-FB-ANISO-Option-16"
-processedDir = "/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-FB-ANISO-Option-16/SRMI-OP-16-Res-2048-FB-ANISO_level=-1.h5"
+dataDir = "/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048"
+
+#"/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-FB-ANISO-Option-16"
+processedDir = "/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/SRMI-OP-44-Res-2048-FB-ANISO-beta-infin_level=-1.h5"
+
+#"/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-FB-ANISO-Option-16/SRMI-OP-16-Res-2048-FB-ANISO_level=-1.h5"
 
 processedFiles = get_files(processedDir, include=[".h5"], get_all=False) 
 useNprocs = 6
@@ -81,6 +85,6 @@ for name in ['electron', 'ion', 'diffStart', 'diffEnd']:
 ax1.legend()
 ax2.legend()
 ax2.set_ylim(-0.003, 0.003)
-fig.savefig("interface_offsets.png")
+fig.savefig("20220826_SRMI44_FBA_beta_infin_interface_offsets.png")
 
 

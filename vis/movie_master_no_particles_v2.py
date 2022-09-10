@@ -236,15 +236,15 @@ def subPlot(axes, fig, gs, xn, yn, nr, nc, val, val_min, val_max, val_label, use
 
 def plot2(frame, data, output_name):
     #print("Plot start")
-    #xn, yn, rhoi, rhoi_min, rhoi_max, label_rhoi, time, rhoi_useCmap =\
-    #  extractPlotData(frame, data, "rho-ions", r"$\rho_i$", getTime=True)
-    #xn_rhoe, yn_rhoe, rhoe, rhoe_min, rhoe_max, label_rhoe, dummy, rhoe_useCmap = \
-    #  extractPlotData(frame, data, "rho-electrons", r"$\rho_e$", getTime=False)
-    """
+    xn, yn, rhoi, rhoi_min, rhoi_max, label_rhoi, time, rhoi_useCmap =\
+      extractPlotData(frame, data, "rho-ions", r"$\rho_i$", getTime=True)
+    xn_rhoe, yn_rhoe, rhoe, rhoe_min, rhoe_max, label_rhoe, dummy, rhoe_useCmap = \
+      extractPlotData(frame, data, "rho-electrons", r"$\rho_e$", getTime=False)
     xn, yn, omegai, omegai_min, omegai_max, label_omegai, time, omegai_useCmap = \
       extractPlotData(frame, data, "omega-ions", r"$\omega_i$", getTime=True, signedMaxMin=True)
     xn_omegae, yn_omegae, omegae, omegae_min, omegae_max, label_omegae, dummy, omegae_useCmap = \
       extractPlotData(frame,data, "omega-electrons", r"$\omega_e$", getTime=False, signedMaxMin=True)
+    """
     xn_momi, yn_momi, momi, momi_min, momi_max, label_momi, dummy, momi_useCmap = \
       extractPlotData(frame, data, "mom-ions", r"$\rho v_i$", getTime=False, signedMaxMin=False)
     xn_mome, yn_mome, mome, mome_min, mome_max, label_mome, dummy, mome_useCmap = \
@@ -261,7 +261,6 @@ def plot2(frame, data, output_name):
       extractPlotData(frame, data, "By", r"$B_y$", getTime=False, signedMaxMin=True)
     xn_Bz, yn_Bz, Bz, Bz_min, Bz_max, label_Bz, dummy, Bz_useCmap = \
       extractPlotData(frame, data, "Bz", r"$B_z$", getTime=False, signedMaxMin=True)
-    """
     xn, yn, Exdx, Exdx_min, Exdx_max, label_Exdx, time, Exdx_useCmap = \
       extractPlotData(frame, data, "Exdx", r"$dE_x/dx$", getTime=True, signedMaxMin=True)
     xn, yn, Exdy, Exdy_min, Exdy_max, label_Exdy, time, Exdy_useCmap = \
@@ -282,19 +281,17 @@ def plot2(frame, data, output_name):
 
     xn_dive, yn_dive, dive, dive_min, dive_max, label_dive, dummy, dive_useCmap = extractPlotData(frame, data, "divE_error", r"$\nabla\cdot E - rho...$", getTime=False,signedMaxMin=True)
     xn_divb, yn_divb, divb, divb_min, divb_max, label_divb, dummy, divb_useCmap = extractPlotData(frame, data, "divB_error", r"$\nabla B$", getTime=False,signedMaxMin=True)
-
     #xn_Jz, yn_Jz, Jz, Jz_min, Jz_max, label_Jz, dummy, Jz_useCmap = extractPlotData(frame, data, "Jz", r"$J_z$", getTime=False, signedMaxMin=True)
     #xn_Jy, yn_Jy, Jy, Jy_min, Jy_max, label_Jy, dummy, Jy_useCmap = extractPlotData(frame, data, "Jy", r"$J_y$", getTime=False, signedMaxMin=True)
     #xn_Jx, yn_Jx, Jx, Jx_min, Jx_max, label_Jx, dummy, Jx_useCmap = extractPlotData(frame, data, "Jx", r"$J_x$", getTime=False, signedMaxMin=True)
 
-    #xn_rhoEM, yn_rhoEM, rhoEM, rhoEM_min, rhoEM_max, label_rhoEM, dummy, useCmap = extractPlotData(frame, data, "rhoE_EM", r"$\rho_{E,EM}$", getTime=False)
-    #xn_rc, yn_rc, rc, rc_min, rc_max, label_rc, dummy, rc_useCmap = extractPlotData(frame, data, "rc", r"$\rho_c$", getTime=False, signedMaxMin=True)
+    #xn_rhoEM, yn_rhoEM, rhoEM, rhoEM_min, rhoEM_max, label_rhoEM, dummy, rhoEM_useCmap = extractPlotData(frame, data, "rhoE_EM", r"$\rho_{E,EM}$", getTime=False)
     """
+    xn_rc, yn_rc, rc, rc_min, rc_max, label_rc, dummy, rc_useCmap = extractPlotData(frame, data, "rc", r"$\rho_c$", getTime=False, signedMaxMin=True)
     xn_Lix, yn_Lix, Lix, Lix_min, Lix_max, label_Lix, dummy, Lix_useCmap = extractPlotData(frame, data, "Lorentz-ion-x", r"$\mathcal{L}_{i,x}$", getTime=False, signedMaxMin=True)
     xn_Liy, yn_Liy, Liy, Liy_min, Liy_max, label_Liy, dummy, Liy_useCmap = extractPlotData(frame, data, "Lorentz-ion-y", r"$\mathcal{L}_{i,y}$", getTime=False, signedMaxMin=True)
     xn_Lex, yn_Lex, Lex, Lex_min, Lex_max, label_Lex, dummy, Lex_useCmap = extractPlotData(frame, data, "Lorentz-ele-x", r"$\mathcal{L}_{e,x}$", getTime=False, signedMaxMin=True)
     xn_Ley, yn_Ley, Ley, Ley_min, Ley_max, label_Ley, dummy, Ley_useCmap = extractPlotData(frame, data, "Lorentz-ele-y", r"$\mathcal{L}_{e,y}$", getTime=False, signedMaxMin=True)
-    """
 
     limits = frame["q"]["xy_limits"]
     yn, xn = np.meshgrid(yn, xn)
@@ -310,18 +307,13 @@ def plot2(frame, data, output_name):
     #gs = gridspec.GridSpec(ncols=3, nrows=3, figure=fig) #, hspace=0.1) #### on local 
 
     #print("Pre plot")
-    #subPlot(axes, fig, gs, xn, yn, 0, 0, rhoi, rhoi_min, rhoi_max, label_rhoi, rhoi_useCmap)
-    #subPlot(axes, fig, gs, xn, yn, 0, 1, rhoe, rhoe_min, rhoe_max, label_rhoe, rhoe_useCmap)
-    #subPlot(axes,fig, gs, xn, yn, 0, 0, omegai, omegai_min, omegai_max, label_omegai, omegai_useCmap)
-    #subPlot(axes,fig, gs, xn, yn, 0, 1, omegae, omegae_min, omegae_max, label_omegae, omegae_useCmap)
-
-    if False:
-      print("Hard coded limits on rho")
-      subPlot(axes, fig, gs, xn, yn, 0, 0, rhoi, rhoi_min, 12, label_rhoi, useCmap)
-      subPlot(axes, fig, gs, xn, yn, 0, 1, rhoe, rhoe_min, 0.12, label_rhoe, useCmap)
-
-    #subPlot(axes, fig, gs, xn, yn, 0, 2, momi, momi_min, momi_max, label_momi, momi_useCmap)
-    #subPlot(axes, fig, gs, xn, yn, 0, 0, mome, mome_min, mome_max, label_mome, mome_useCmap)
+    subPlot(axes, fig, gs, xn, yn, 0, 0, rhoi, rhoi_min, rhoi_max, label_rhoi, rhoi_useCmap)
+    subPlot(axes, fig, gs, xn, yn, 0, 1, rhoe, rhoe_min, rhoe_max, label_rhoe, rhoe_useCmap)
+    subPlot(axes,fig, gs, xn, yn, 1, 0, omegai, omegai_min, omegai_max, label_omegai, omegai_useCmap)
+    subPlot(axes,fig, gs, xn, yn, 1, 1, omegae, omegae_min, omegae_max, label_omegae, omegae_useCmap)
+    """
+    subPlot(axes, fig, gs, xn, yn, 0, 2, momi, momi_min, momi_max, label_momi, momi_useCmap)
+    subPlot(axes, fig, gs, xn, yn, 0, 0, mome, mome_min, mome_max, label_mome, mome_useCmap)
     subPlot(axes, fig, gs, xn, yn, 0, 0, Exdx, Exdx_min, Exdx_max, label_Exdx, Exdx_useCmap)    
     subPlot(axes, fig, gs, xn, yn, 0, 1, Exdy, Exdy_min, Exdy_max, label_Exdy, Exdy_useCmap)
     subPlot(axes, fig, gs, xn, yn, 0, 2, Eydy, Eydy_min, Eydy_max, label_Eydy, Eydy_useCmap)
@@ -330,29 +322,28 @@ def plot2(frame, data, output_name):
     subPlot(axes, fig, gs, xn, yn, 1, 2, Bydx, Bydx_min, Bydx_max, label_Bydx, Bydx_useCmap)    
     subPlot(axes, fig, gs, xn, yn, 2, 0, Bydy, Bydy_min, Bydy_max, label_Bydy, Bydy_useCmap)
 
-    """
     subPlot(axes, fig, gs, xn, yn, 0, 1, Ex, Ex_min, Ex_max, label_Ex, Ex_useCmap)
     subPlot(axes, fig, gs, xn, yn, 0, 2, Ey, Ey_min, Ey_max, label_Ey, Ey_useCmap)
     subPlot(axes, fig, gs, xn, yn, 1, 0, Bx, Bx_min, Bx_max, label_Bx, Bx_useCmap)
     subPlot(axes, fig, gs, xn, yn, 1, 1, By, By_min, By_max, label_By, By_useCmap)
     subPlot(axes, fig, gs, xn, yn, 1, 2, Bz, Bz_min, Bz_max, label_Bz, Bz_useCmap)
+    #subPlot(axes, fig, gs, xn, yn, 0, 1, Jx, Jx_min, Jx_max, label_Jx, Jx_useCmap)
+    #subPlot(axes, fig, gs, xn, yn, 1, 1, Jy, Jy_min, Jy_max, label_Jy, Jy_useCmap)
+    #subPlot(axes, fig, gs, xn, yn, 2, 1, Jz, Jz_min, Jz_max, label_Jz, Jz_useCmap)
+    #subPlot(axes, fig, gs, xn, yn, 2, 0, dive, dive_min, dive_max, label_dive, dive_useCmap)
+    #subPlot(axes, fig, gs, xn, yn, 1, 1, rhoEM , rhoEM_min, rhoEM_max, label_rhoEM, rhoEM_useCmap)
     """
-    #subPlot(axes, fig, gs, xn, yn, 0, 1, Jx, Jx_min, Jx_max, label_Jx, useCmap)
-    #subPlot(axes, fig, gs, xn, yn, 1, 1, Jy, Jy_min, Jy_max, label_Jy, useCmap)
-    #subPlot(axes, fig, gs, xn, yn, 2, 1, Jz, Jz_min, Jz_max, label_Jz, useCmap)
-    #subPlot(axes, fig, gs, xn, yn, 2, 0, dive, dive_min, dive_max, label_dive, useCmap)
-    #subPlot(axes, fig, gs, xn, yn, 1, 1, rhoEM , rhoEM_min, rhoEM_max, label_rhoEM, useCmap)
-    #subPlot(axes, fig, gs, xn, yn, 2, 2, rc, rc_min, rc_max, label_rc, rc_useCmap)
-    subPlot(axes, fig, gs, xn, yn, 2, 1, dive, dive_min, dive_max, label_dive, dive_useCmap)
-    subPlot(axes, fig, gs, xn, yn, 2, 2, divb, divb_min, divb_max, label_divb, divb_useCmap)
-    """
-    subPlot(axes, fig, gs, xn, yn, 1, 0, Lix, Lix_min, Lix_max, label_Lix, Lix_useCmap)
-    subPlot(axes, fig, gs, xn, yn, 2, 0, Liy, Liy_min, Liy_max, label_Liy, Liy_useCmap)
-    subPlot(axes, fig, gs, xn, yn, 1, 1, Lex, Lex_min, Lex_max, label_Lex, Lex_useCmap)
-    subPlot(axes, fig, gs, xn, yn, 2, 1, Ley, Ley_min, Ley_max, label_Ley, Ley_useCmap)
-    """
+    subPlot(axes, fig, gs, xn, yn, 2, 2, rc, rc_min, rc_max, label_rc, rc_useCmap)
+    #subPlot(axes, fig, gs, xn, yn, 2, 1, dive, dive_min, dive_max, label_dive, dive_useCmap)
+    #subPlot(axes, fig, gs, xn, yn, 2, 2, divb, divb_min, divb_max, label_divb, divb_useCmap)
     
-    if True: # overlay mask 
+    subPlot(axes, fig, gs, xn, yn, 2, 0, Lix, Lix_min, Lix_max, label_Lix, Lix_useCmap)
+    subPlot(axes, fig, gs, xn, yn, 0, 2, Liy, Liy_min, Liy_max, label_Liy, Liy_useCmap)
+    subPlot(axes, fig, gs, xn, yn, 2, 1, Lex, Lex_min, Lex_max, label_Lex, Lex_useCmap)
+    subPlot(axes, fig, gs, xn, yn, 1, 2, Ley, Ley_min, Ley_max, label_Ley, Ley_useCmap)
+    
+    
+    if False: # overlay mask 
       # get mask and overlay 
       xn_MskI, yn_MskI, MskI, MskI_min, MskI_max, label_MskI, dummy, MskI_useCmap = extractPlotData(frame, data, "mask-ion", r"$interface_i$", getTime=False, signedMaxMin=False)
       xn_MskE, yn_MskE, MskE, MskE_min, MskE_max, label_MskE, dummy, MskE_useCmap = extractPlotData(frame, data, "mask-ele", r"$interface_e$", getTime=False, signedMaxMin=False)
@@ -390,27 +381,27 @@ if 1:
 
 
     q["get"] = [
-        #{"func":get_mass_density, "tag":"rho-ions", "component":"ions"},
-        #{"func":get_mass_density, "tag":"rho-electrons", "component":"electrons"},
-        #{"func":get_vorticity_wrapper, "tag":"omega-electrons",   
-        #                               "name":"electrons", "quantity":"omega"},
-        #{"func":get_vorticity_wrapper, "tag":"omega-ions",   
-        #                               "name":"ions", "quantity":"omega"},
-        #{"func":get_Lorentz_wrapper, "tag":"Lorentz-ion-x", "level":q["level"],
-        #                               "name":"ions", "quantity":"L_x_total"},
-        #{"func":get_Lorentz_wrapper, "tag":"Lorentz-ion-y",  "level":q["level"], 
-        #                               "name":"ions", "quantity":"L_y_total"},
-        #{"func":get_Lorentz_wrapper, "tag":"Lorentz-ele-x",   "level":q["level"],
-        #                               "name":"electrons", "quantity":"L_x_total"},
-        #{"func":get_Lorentz_wrapper, "tag":"Lorentz-ele-y",   "level":q["level"],
-        #                               "name":"electrons", "quantity":"L_y_total"},
+        {"func":get_mass_density, "tag":"rho-ions", "component":"ions"},
+        {"func":get_mass_density, "tag":"rho-electrons", "component":"electrons"},
+        {"func":get_vorticity_wrapper, "tag":"omega-electrons",   
+                                       "name":"electrons", "quantity":"omega"},
+        {"func":get_vorticity_wrapper, "tag":"omega-ions",   
+                                       "name":"ions", "quantity":"omega"},
+        {"func":get_Lorentz_wrapper, "tag":"Lorentz-ion-x", "level":q["level"],
+                                       "name":"ions", "quantity":"L_x_total"},
+        {"func":get_Lorentz_wrapper, "tag":"Lorentz-ion-y",  "level":q["level"], 
+                                       "name":"ions", "quantity":"L_y_total"},
+        {"func":get_Lorentz_wrapper, "tag":"Lorentz-ele-x",   "level":q["level"],
+                                       "name":"electrons", "quantity":"L_x_total"},
+        {"func":get_Lorentz_wrapper, "tag":"Lorentz-ele-y",   "level":q["level"],
+                                       "name":"electrons", "quantity":"L_y_total"},
         #{"func":get_mom_density, "tag":"mom-ions", "component":"ions"},
         #{"func":get_mom_density, "tag":"mom-electrons", "component":"electrons"},
         
         #{"func":get_Jz, "tag":"Jz"},
-        #{"func":get_charge_density, "tag":"rc"},
-        {"func":get_interface_mask, "tag":"mask-ion", "component":"ions"},
-        {"func":get_interface_mask, "tag":"mask-ele", "component":"electrons"},
+        {"func":get_charge_density, "tag":"rc"},
+        #{"func":get_interface_mask, "tag":"mask-ion", "component":"ions"},
+        #{"func":get_interface_mask, "tag":"mask-ele", "component":"electrons"},
         #{"func":get_Jx, "tag":"Jx"},
         #{"func":get_Jy, "tag":"Jy"},
         #{"func":get_EM, "tag":"Ex", "component":"x_D"},
@@ -418,23 +409,23 @@ if 1:
         #{"func":get_EM, "tag":"Bx", "component":"x_B"},
         #{"func":get_EM, "tag":"By", "component":"y_B"},
         #{"func":get_EM, "tag":"Bz", "component":"z_B"},
-        {"func":get_EM_grad, "tag":"Bxdx", "component":"x_B", "direction":'x'},
-        {"func":get_EM_grad, "tag":"Bxdy", "component":"x_B", "direction":'y'},
-        {"func":get_EM_grad, "tag":"Bydx", "component":"y_B", "direction":'x'},
-        {"func":get_EM_grad, "tag":"Bydy", "component":"y_B", "direction":'y'},
+        #{"func":get_EM_grad, "tag":"Bxdx", "component":"x_B", "direction":'x'},
+        #{"func":get_EM_grad, "tag":"Bxdy", "component":"x_B", "direction":'y'},
+        #{"func":get_EM_grad, "tag":"Bydx", "component":"y_B", "direction":'x'},
+        #{"func":get_EM_grad, "tag":"Bydy", "component":"y_B", "direction":'y'},
         #{"func":get_EM_grad, "tag":"Bzdx", "component":"z_B", "direction":'x'},
         #{"func":get_EM_grad, "tag":"Bzdy", "component":"z_B", "direction":'y'},
-        {"func":get_EM_grad, "tag":"Exdx", "component":"x_D", "direction":'x'},
-        {"func":get_EM_grad, "tag":"Exdy", "component":"x_D", "direction":'y'},
+        #{"func":get_EM_grad, "tag":"Exdx", "component":"x_D", "direction":'x'},
+        #{"func":get_EM_grad, "tag":"Exdy", "component":"x_D", "direction":'y'},
         #{"func":get_EM_grad, "tag":"Eydx", "component":"y_E", "direction":'x'},
-        {"func":get_EM_grad, "tag":"Eydy", "component":"y_D", "direction":'y'},
+        #{"func":get_EM_grad, "tag":"Eydy", "component":"y_D", "direction":'y'},
 
         #{"func":get_number_density, "tag":"nd-ions", "component":"ions"},
         #{"func":get_number_density, "tag":"nd-electrons", "component":"electrons"},
         #{"func":get_particles, "tag":"particles-ion", "get_streak":True, "component":"ion"},
         #{"func":get_particles, "tag":"particles-electron", "get_streak":True, "component":"electron"},
-        {"func":get_E_error, "tag":"divE_error", "component":""},
-        {"func":get_B_error, "tag":"divB_error", "component":""},
+        #{"func":get_E_error, "tag":"divE_error", "component":""},
+        #{"func":get_B_error, "tag":"divB_error", "component":""},
         #{"func":get_rhoE_EM, "tag":"rhoE_EM", "component":""},
     ]
 

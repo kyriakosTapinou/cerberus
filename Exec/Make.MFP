@@ -1,4 +1,5 @@
 EBASE := MFP.
+#EBASE := MFP_collisionsNoEoption.
 #EBASE := MFP_energyCorrection.
 
 DIM ?= 2

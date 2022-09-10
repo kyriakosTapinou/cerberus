@@ -708,12 +708,16 @@ if __name__ == "__main__":
 #("SRMI-OP-16-Res-512-FB-ISO", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-FB-Isotropic/SRMI-Option-16-Res-512-FB-Isotropic/") ,
 #("SRMI-OP-16-Res-512-FB-ANISO-ISO", "/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_SRMI-Option-16-Res-512-FB-Anisotropic/") 
 #("SRMI-OP-16-Res-2048-FB-ANISO-ISO", "/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/SRMI-Option-16-Res-2048-FB-Anisotropic")
-("SRMI-OP-16-Res-2048-INTER-ANISO", "/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTER-ISO-Option-16")
+#("SRMI-OP-16-Res-2048-INTER-ISO", "/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTER-ISO-Option-16")
+### PAPER TWO INTER ISO 
+("SRMI-OP-16-Res-2048-INTER-ISO", "/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_INTER_ISO-Option_16")
+
 ]
 
     #"/media/kyriakos/Expansion/000_MAGNUS_SUPERCOMPUTER_BACKUP/ktapinou/SRMI-Option-16-Res-2048-Intra-Anisotropic",]
 
   view =  [[-0.4, 0.0], [1.4, 1.0]] #
+  view =  [[-0.3, 0.0], [1.3, 1.0]] #
   # for ds = 10
   scale_lst_10 = [1, 1.25e-2, 1, 1e-2, 1, 1] 
   # for ds = 1
@@ -745,6 +749,7 @@ if __name__ == "__main__":
 #[0.1, 0.2, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]; 
       label_append = dataDir[0] ; x_l = 0; x_h = -1
       label_prefix = '20220721_SRMI_OPTION-16'
+      label_prefix = '20220831_SRMI_OPTION-16'
       filter_values = [12]*len(time_points)
       CannyShockDetector(dataDir[1], species_name, -1, label_prefix, label_append, time_points,\
                          view, scale_lst_10, filter_values, 3, y_half=False, \

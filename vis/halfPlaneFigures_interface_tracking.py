@@ -86,11 +86,12 @@ def get_interface(ch, name):
 
 
 ################################################ INPUTS ########################################
-dataDir = "/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-FB-ANISO-Option-16"
+#dataDir = "/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-FB-ANISO-Option-16"
+dataDir = "/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16"
 labelAppend = "SRMI_16_FB_ANISO"
 
-dataDir = "/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTER-ISO-Option-16"
-labelAppend = "SRMI_16_INTER_ISO_PERTURBATION_EARLY_IONS"
+#dataDir = "/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTER-ISO-Option-16"
+#labelAppend = "SRMI_16_INTER_ISO_PERTURBATION_EARLY_IONS"
 
 level = -1
 nameOne = "ions"
@@ -98,8 +99,9 @@ nameTwo = "electrons"
 
 ############################################ PARAMATERS ########################################
 #### plot some time series of velocity 
-timeSeriesSelect = [0.05, 0.075, 0.1, 0.125] # [0.2, 0.4, 0.8, 1.0] #[0.64, 0.72, 0.85, 1.0]
-# [0.4, 0.45, 0.5, 0.525 ] #development times 
+timeSeriesSelect = [0.2, 0.4, 0.8, 1.0]  # [0.64, 0.72, 0.85, 1.0] #[0.4, 0.45, 0.5, 0.525 ] #development times 
+ 
+#[0.05, 0.075, 0.1, 0.125] # 
  
 #### set the aspect ratio etc of the figure
 fig_x = 6.7
@@ -110,8 +112,8 @@ view_original =  [[-0.2, 0.0], [1.6, 1.0]]
 view = copy.deepcopy(view_original)
 
 ### zoom settings
-zoomHeight = 0.25 #0.25
-zoomHack = True
+zoomHeight = 0.5 #0.25 #0.25
+zoomHack = False
 if zoomHack:
   zoomHeightHack = 0.05
   zoomLabel = zoomHeightHack
@@ -172,7 +174,7 @@ for nFile in nFiles:
     viewZoomUpper = copy.deepcopy(view_original)
     viewZoomUpper[0][0] = round(interfaceStart - zoomHeight/2, 3)
     viewZoomUpper[1][0] = round(interfaceStart + zoomHeight/2, 3)
-    if False: #bias to the right side for 0.5 zoom height 
+    if True: #bias to the right side for 0.5 zoom height 
       viewZoomUpper[0][0] = round(interfaceStart - 0.05, 3) #zoomHeight/2, 3)
       viewZoomUpper[1][0] = round(interfaceStart + (zoomHeight - 0.05), 3) #zoomHeight/2, 3)
      
@@ -209,7 +211,7 @@ for nFile in nFiles:
 
       del rhoCi, Jxi, Jyi, Jzi, rhoCe, Jxe, Jye, Jze;
 
-    if False: # get lower plane charge density      
+    if True: # get lower plane charge density      
       xy, rhoCi, Jxi, Jyi, Jzi = phmmfp.get_charge_number_density(rcLower, 
                                   nameOne, returnMany = False) 
       xy, rhoCe, Jxe, Jye, Jze = phmmfp.get_charge_number_density(rcLower, 
@@ -217,7 +219,7 @@ for nFile in nFiles:
       rhoC = rhoCi + rhoCe
       del rhoCi, Jxi, Jyi, Jzi, rhoCe, Jxe, Jye, Jze;
 
-    if True: # lower plan  yD
+    if False: # lower plan  yD
       xyLower, yD = rcLower.get("y_D-field"); 
       xyLower, yD = rcLower.get("y_D-field"); 
 
@@ -225,17 +227,17 @@ for nFile in nFiles:
     yLower, xLower = np.meshgrid(yLower, xLower) 
 
     forceJmag = 1.0 # 1.1
-    forceRhoI = 9.4 #7.3 #7.4
+    forceRhoI = 7.3 #7.4 #9.4 #
     forceRhoE = 0.07
     forceRhoC = 1.3 #1.4 # 1.5  
     forceYD = 0.14
     for (x, y, value, rr, cmapValue, zeroMin, forceValue, cbLabel) in \
       [
-       #(xUpper, yUpper, Jmag, 0, mpl.cm.Oranges, True, forceJmag, r"$| J |$"), # current den
+       #(xUpper, yUpper, Jmag, 0, mpl.cm.Oranges, True, forceJmag, r"| $J$ |"), # current den
        (xUpper, yUpper, rhoUpper, 0, mpl.cm.Greens, True, forceRhoI, r"$\rho_i$"), # current den
        #(xUpper, yUpper, rhoTwoUpper, 0, mpl.cm.Greens, True, forceRhoE, r"$\rho_e$"), # current den
-       (xLower, yLower, yD, 1, mpl.cm.bwr, False, forceYD, r"$E_y$")
-       #(xLower, yLower, rhoC, 1, mpl.cm.bwr, False, forceRhoC, r"$\rho_c$")
+       #(xLower, yLower, yD, 1, mpl.cm.bwr, False, forceYD, r"$E_y$")
+       (xLower, yLower, rhoC, 1, mpl.cm.bwr, False, forceRhoC, r"$\rho_c$")
       ]:
       # plot the value for each time period
       ax.append(fig.add_subplot(gs[rr,cc]))
@@ -314,8 +316,9 @@ for nFile in nFiles:
     if cc == 0: ax[-1].set_ylabel(handle)
     """
     cc += 1
-  
+
+#  20220727_SRMI_16_FB_ANISO_zoom_0p05_evolution_DLI_J_rhoc
 #fig.subplots_adjust(wspace=0.01, hspace=0.0)
 plt.show()
-fig.savefig("20220728_" + labelAppend + "_zoom_" + str(zoomLabel).replace('.','p') +
+fig.savefig("20220831_" + labelAppend + "_zoom_" + str(zoomLabel).replace('.','p') +
             ".png", dpi=600)

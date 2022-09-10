@@ -61,21 +61,21 @@ def tilePcolormeshNormalise(i, j, i_last, x, y, val, name_ij, fig, gs, ax_i, div
   if i == i_last:
     norm_ij = mpl.colors.Normalize(vmin=vminValue, vmax=attr_gcl)
     cb_ij = mpl.colorbar.ColorbarBase(cax_ij, orientation="horizontal",cmap=cmapValue, norm=norm_ij, 
-      extend="both", ticks=[vminValue, vminValue, attr_gcl], format='%.3f')
-    cb_ij.ax.tick_params(labelsize=7) 
+      extend="both", ticks=[vminValue, vminValue, attr_gcl], format='%.2f')
+    cb_ij.ax.tick_params(labelsize=8) 
 
   #ax_i[name_ij].set_aspect(1)
   #ax_i[name_ij].axis('off') 
   ax_i[name_ij].set_xticks([]); ax_i[name_ij].set_yticks([])
   ax_i[name_ij].set_xlim([view[0][0], view[1][0]]);  ax_i[name_ij].set_ylim([view[0][1], view[1][1]])
-  ax_i[name_ij].text(0.05, 0.95, label_ij, fontsize=12, horizontalalignment='right',verticalalignment='top',transform=ax_i[name_ij].transAxes, color="k")
+  ax_i[name_ij].text(0.25, 0.95, label_ij, fontsize=12, horizontalalignment='right',verticalalignment='top',transform=ax_i[name_ij].transAxes, color="k")
   if j == 0:
     ax_i[name_ij].set_ylabel('t=%.3f'%time_ij, fontsize=12, color="k")
   if i==0:
     ax_i[name_ij].set_title(column_heading, fontsize=12)
-  ax_i[name_ij].text(0.95, 0.05,r'[%.3f, %.3f]'%(val.min(), val.max()), fontsize=10, 
-    horizontalalignment='right', verticalalignment='bottom',transform=ax_i[name_ij].transAxes, 
-    color="k")
+  #ax_i[name_ij].text(0.95, 0.05,r'[%.3f, %.3f]'%(val.min(), val.max()), fontsize=10, 
+  #  horizontalalignment='right', verticalalignment='bottom',transform=ax_i[name_ij].transAxes, 
+  #  color="k")
 
   return 
 
@@ -282,9 +282,16 @@ def plot_ScenariosPrimitive(dataFileList, outputType, raw_data_attr, levelList, 
       else: 
         grid_i = j; grid_j = i
       if func_normalise_contours: 
-        tilePcolormeshNormalise(grid_i, grid_j, n_frames-1, x_attr[i], y_attr[i],attr[attr_name][i], 
+        if False and (("INTER" in label_data[i]) or ("FB" in label_data[i])) and \
+           (attr_name in ['z_B-field', 'x-current', 'y-current']):
+          print("\n####Note hard coded saturation ln 286")
+          plotSpecial = attr[attr_name][i]*1e2; specialLabel =  r"$\times 10^{2}$"
+        else:
+          plotSpecial = attr[attr_name][i]; specialLabel = ""
+
+        tilePcolormeshNormalise(grid_i, grid_j, n_frames-1, x_attr[i], y_attr[i], plotSpecial, #attr[attr_name][i], 
           attr_name, fig, gs,  ax[i], divider[i][attr_name], cax[i][attr_name], 
-          norm[i][attr_name], cb[i][attr_name], attr_gcl[attr_name], view, "", #label_prop[j], 
+          norm[i][attr_name], cb[i][attr_name], attr_gcl[attr_name], view, specialLabel, #label_prop[j], 
           attr_t[i], "("+columnLetter[j] + ") " + label_prop[j])
       else:
         tilePcolormesh(grid_i, grid_j, n_frames-1, x_attr[i],y_attr[i], attr[attr_name][i], 
@@ -294,11 +301,9 @@ def plot_ScenariosPrimitive(dataFileList, outputType, raw_data_attr, levelList, 
       if IDI_contour and "Lorentz" in attr_name :
         #ax[i][attr_name].pcolormesh(
         #  x_tracer, y_tracer, DI_contour['ions'][i], cmap='gray', alpha=1., vmin=0, vmax=1.)
-        ax[i][attr_name].contour(x_tracer[i], y_tracer[i], DI_contour['ions'][i], colors='gray', 
-                                     corner_mask=True, alpha=0.1)
+        ax[i][attr_name].contour(x_tracer[i], y_tracer[i], DI_contour['ions'][i], [0.05, 0.95], colors='gray', linewidths=0.5, corner_mask=True, alpha=0.1)
       elif EDI_contour:
-        ax[i][attr_name].contour(x_tracer[i], y_tracer[i], DI_contour['electrons'][i],colors='gray', 
-                                     corner_mask=True, alpha=0.1)
+        ax[i][attr_name].contour(x_tracer[i], y_tracer[i], DI_contour['electrons'][i], [0.05, 0.95], colors='gray', linewidths=0.5, corner_mask=True, alpha=0.1)
 
       # Label the y axis wth the data key 
       if (j == 0): ax[i][attr_name].set_ylabel(label_data[i], fontsize=12, color="k")
@@ -335,12 +340,15 @@ def compareInterfaceStatistics(fluid, key, date, reducedPlot, areaOnly, circulat
     plot_labels = [ r"$\Gamma_z$",r"$\.\Gamma_{z, total}$", r"$\eta$", r"$\.\eta$"]
 
     figure_nR = 2; figure_nC = 2;
-    plot_limits = [[-0.01, 0.20], [-0.5, 3.0], [0.1, 0.45], [0., 0.65]] #plot_limits_dS_0p1_reduced 
+    #plot_limits = [[-0.01, 0.20], [-0.5, 3.0], [0.1, 0.45], [0., 0.65]] 
+    #plot_limits = [[-0.001, 0.02], [-0.1, 2.5], [0.125, 0.35], [0., 0.35]] # ions op44
+    plot_limits = [[-0.001, 0.02], [-20., 18.], [0.125, 0.35], [0., 0.35]] # ions op44
   elif areaOnly:
     oneD_properties = ["interface_area"]
     plot_properties = ["interface_area"]
     plot_labels = [ r"$A_{int}$"]
     plot_limits = [ [0., 0.08] ]
+    #plot_limits = [[0.004, 0.012] ] #[ [0., 0.08] ]
     figure_nR = 1; figure_nC = 1;
   elif circulationComponentsOnly:
     oneD_properties = ["tau_sc_interface_sum_half", "baroclinic_interface_sum_half", "curl_Lorentz_E_interface_sum_half", "curl_Lorentz_B_interface_sum_half"]
@@ -609,9 +617,9 @@ prepare_data = False # look for existing data file (use dictionary name assigned
                     # here), create new file or use the existing file.
 plot = True # to plot or not to plot, that is the question...
 
-plot_interface_stats = False # plot interface statistics 
-plot_scenarios_primitive = True # not implemented 
-plot_interface_thickness = False 
+plot_interface_stats = True # plot interface statistics 
+plot_scenarios_primitive = False # not implemented 
+plot_interface_thickness = False
 plot_scenarios_eden_series = False # not implemented 
 
 plot_HRMI = True
@@ -626,7 +634,9 @@ useNprocs = 1
 
 max_res = 2048 # not used just elgacy variable
 view =  [[-0.4, 0.0], [1.4, 1.0]] # what windo of data to view 
-view =  [[0.3, 0.0], [1.5, 1.0]] # view for t=1
+#view =  [[0.3, 0.0], [1.5, 1.0]] # view for t=1
+#view =  [[-0.2, 0.0], [1.1, 1.0]] # view for t=0.56 #[[0.0, 0.0], [0.9, 1.0]] # view for t=0.56
+
 window = view ; # no point having more data than needed window =[[-2.0, 0.0], [2.0, 1.0]] 
 n_time_slices = 5 # number of time increments for contour plots 
 time_slices = range(n_time_slices) #[0, 9] # which indexes in the data_index list (calculated later) to be used, range(n_time_slices) means use all
@@ -649,7 +659,7 @@ if __name__ == '__main__':
 #"SRMI-OP-16-Res-512-FB-ISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-FB-Isotropic/SRMI-Option-16-Res-512-FB-Isotropic/", -1), 
 #"SRMI-OP-16-Res-512-FB-ANISO-ISO":("/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_SRMI-Option-16-Res-512-FB-Anisotropic/", -1), 
 
-#
+
 #"SRMI-OP-16-Res-2048-INTRA-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/SRMI-Option-16-Res-2048-INTRA-Anisotropic/", -1), 
 #"SRMI-OP-16-Res-2048-FB-ANISO-CLEAN":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/SRMI-Option-16-Res-2048-FB-Anisotropic/", -1), 
 #"SRMI-OP-16-Res-2048-FB-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Op-16-Res-2048-Clean-Full-Brag-Isotropic/", -1), ###suspect
@@ -657,15 +667,29 @@ if __name__ == '__main__':
 #"SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Op-16-Clean-Inter-Anisotropic/", -1), 
 #"SRMI-OP-16-Res-2048-INTRA-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/20220427-Op-16-Clean-Intra-Isotropic-HLLC/", -1), 
 
-"SRMI-OP-16-Res-2048-IDEAL":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/20220504-Op-16-Clean-Ideal-HLLC/", -1), 
 # z correction 
-"SRMI-OP-16-Res-2048-INTRA-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ANISO-Option-16/", -1), 
-"SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-FB-ANISO-Option-16/", -1), 
+#"SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-FB-ANISO-Option-16/", -1), 
 #"SRMI-OP-16-Res-2048-FB-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-FB-ISO-OPTION-16/", -1), ###suspect
 #"SRMI-OP-16-Res-2048-INTER-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTER-ISO-Option-16/", -1), 
-"SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTER-ANISO-Option-16/", -1), 
-#"SRMI-OP-16-Res-2048-INTRA-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ISO-Option-16/", -1), 
+#"SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTER-ANISO-Option-16/", -1), 
 
+#### option 16 Collisions  --- PAPER TWO
+#"SRMI-OP-16-Res-2048-IDEAL":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/20220504-Op-16-Clean-Ideal-HLLC/", -1), 
+#"SRMI-OP-16-Res-2048-INTRA-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ISO-Option-16/", -1), 
+#"SRMI-OP-16-Res-2048-INTER-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_INTER_ISO-Option_16", -1), 
+#"SRMI-OP-16-Res-2048-FB-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ISO-Option_16", -1),
+
+#"SRMI-OP-16-Res-2048-INTRA-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ANISO-Option-16/", -1), 
+#"SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_INTER_ANISO-Option_16", -1), 
+#"SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1), 
+
+#### option 44 bitches  --- PAPER THREE
+"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
+"SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", -1), 
+"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
+"SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1), 
+"SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
+"SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1), 
 #'PHM_HRMI_p0.5_ny2048':('/home/kyriakos/Documents/000_Species_RMI_Scenario_Results/000_R18_Scenario_Results/PHM_HRMI_p0.5_ny2048', -1), 
 #'PHM_HRMI_p1_ny2048':('/home/kyriakos/Documents/000_Species_RMI_Scenario_Results/000_R18_Scenario_Results/PHM_HRMI_p1_ny2048', -1)
 }
@@ -692,41 +716,6 @@ if __name__ == '__main__':
     colors = ['g', 'k', 'b', 'm', 'r', 'y']
     #### must match the keys used for the data 
     #dS_marker = {:'+', :'x', 
-    """
-    dS_marker = {
-"SRMI-OP-16-Res-512-IDEAL-CLEAN":"None",
-"SRMI-OP-16-Res-512-INTRA-ANISO":"x",
-"SRMI-OP-16-Res-512-INTRA-ISO-":"None",
-"SRMI-OP-16-Res-512-INTER-ANISO":"x",
-"SRMI-OP-16-Res-512-INTER-ISO":"None",
-"SRMI-OP-16-Res-512-FB-ISO":"None",
-"SRMI-OP-16-Res-512-FB-ANISO-ISO":"x", 
-'PHM_HRMI_p0.5_ny2048':'None',
-'PHM_HRMI_p1_ny2048':'None',
-}
-
-    case_prefix = {"SRMI-OP-16-Res-512-IDEAL-CLEAN":"IDL",
-"SRMI-OP-16-Res-512-INTRA-ANISO":"INTRA-A",
-"SRMI-OP-16-Res-512-INTRA-ISO-":"INTRA-I",
-"SRMI-OP-16-Res-512-INTER-ANISO":"INTER-A",
-"SRMI-OP-16-Res-512-INTER-ISO":"INTER-I",
-"SRMI-OP-16-Res-512-FB-ISO":"FB-I",
-"SRMI-OP-16-Res-512-FB-ANISO-ISO":"FB-I", 
-'PHM_HRMI_p0.5_ny2048':'P=0.5',
-'PHM_HRMI_p1_ny2048':'P=1',
-}
-
-    case_colors = {"SRMI-OP-16-Res-512-IDEAL-CLEAN":"k",
-"SRMI-OP-16-Res-512-INTRA-ANISO":"b",
-"SRMI-OP-16-Res-512-INTRA-ISO-":"b",
-"SRMI-OP-16-Res-512-INTER-ANISO":"g",
-"SRMI-OP-16-Res-512-INTER-ISO":"g",
-"SRMI-OP-16-Res-512-FB-ISO":"r",
-"SRMI-OP-16-Res-512-FB-ANISO-ISO":"r",
-'PHM_HRMI_p0.5_ny2048':'m',
-'PHM_HRMI_p1_ny2048':'y'
-}
-    """
     dS_marker = {
 "SRMI-OP-16-Res-512-IDEAL-CLEAN":"None",
 "SRMI-OP-16-Res-2048-IDEAL":"None",
@@ -738,6 +727,13 @@ if __name__ == '__main__':
 "SRMI-OP-16-Res-2048-FB-ANISO":"x", 
 'PHM_HRMI_p0.5_ny2048':'None',
 'PHM_HRMI_p1_ny2048':'None',
+
+"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":"o", 
+"SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":"None", 
+"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":"o", 
+"SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":"None", 
+"SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":"o", 
+"SRMI-OP-44-Res-2048-FB-ISO-beta-infin":"None", 
 }
 
     case_prefix = {
@@ -751,6 +747,13 @@ if __name__ == '__main__':
 "SRMI-OP-16-Res-2048-FB-ANISO":"FB-A", 
 'PHM_HRMI_p0.5_ny2048':'P=0.5',
 'PHM_HRMI_p1_ny2048':'P=1',
+
+"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":"FBA " + r"$\beta=1\times 10^{-3}$", 
+"SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":"FBI " + r"$\beta=1\times 10^{-3}$", 
+"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":"FBA " + r"$\beta=1\times 10^{-2}$", 
+"SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":"FBI " + r"$\beta=1\times 10^{-2}$", 
+"SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":"FBA " + r"$\beta=\infty$", 
+"SRMI-OP-44-Res-2048-FB-ISO-beta-infin":"FBI " + r"$\beta=\infty$", 
 }
 
     case_colors = {
@@ -763,7 +766,15 @@ if __name__ == '__main__':
 "SRMI-OP-16-Res-2048-FB-ISO":"r",
 "SRMI-OP-16-Res-2048-FB-ANISO":"r",
 'PHM_HRMI_p0.5_ny2048':'m',
-'PHM_HRMI_p1_ny2048':'y'
+'PHM_HRMI_p1_ny2048':'y',
+
+"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":'r', 
+"SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":'r', 
+"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":'b', 
+"SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":'b', 
+"SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":'k', 
+"SRMI-OP-44-Res-2048-FB-ISO-beta-infin":'k', 
+
 }
 
 
@@ -806,7 +817,8 @@ if __name__ == '__main__':
             processedFiles[key] = get_files(dirName, include=[".h5"], get_all=False) 
           
           else:# standard boxlib files
-            if True: # in the sim folder 
+            print("Ensure the files are in the simDir or adjacent directory and check line 820")
+            if False: # in the sim folder 
               if simDir[-1] == "/": dirName = simDir + dirName # where is the processed files in relation to the sim output
               else: dirName = simDir + "/" + dirName
   
@@ -830,20 +842,22 @@ if __name__ == '__main__':
       #Fluid properties 
       #label_prop = [r"$\rho_i$", r"$\rho_{q}$", r"$\omega_{i}$"] #
       #raw_data_attr_names = ['rho-ions', 'rho-charge', 'vorticity-ions']
-      label_prop = [r"$\rho_i$", r"$\rho_e$", r"$T_{i}$", r"$T_{e}$"] #
-      raw_data_attr_names = ['rho-ions', 'rho-electrons','temperature-ions', 'temperature-electrons']
+      #label_prop = [r"$\rho_i$", r"$\rho_e$", r"$T_{i}$", r"$T_{e}$"] #
+      #raw_data_attr_names = ['rho-ions', 'rho-electrons','temperature-ions', 'temperature-electrons']
 
       # r"$\omega_{i}$", r"$\rho_{q}$", r"$T_e$", r"$T_i$", r"$\varrho_i$", r"$\omega_{i}$"
       #r"$\rho_{E,e}$", r"$\rho_{E,i}$", r"$\rho_{E, EM}$"]  r"$\rho_i$", r"$L_{x,i}$", 
 
-      #EM properties 
-      #raw_data_attr_names = ['rho_E-electrons', 'rho_E-ions', "rho_E-EM", 'vorticity-ion', 
+      #Mix properties 
+      label_prop = [r"$\rho_i$", r"$\omega_{i}$", r"$L_{y,i}$", r"$\rho_e$", r"$\omega_{e}$", r"$L_{y,e}$"] #
+      raw_data_attr_names = ['rho-ions', 'vorticity-ions', 'Lorentz-y-ions', 'rho-electrons', 'vorticity-electrons', 'Lorentz-y-electrons']
+      #['rho_E-electrons', 'rho_E-ions', "rho_E-EM", 'vorticity-ion', 
       # 'rho-charge', 'temperature-electron', 'temperature-ion', 'tracer-ion']
       #'temperature-ions' 'vorticity-ions'
       levelList = []
-      for timeInput in [1.0]: 
-        #label_output = "20220621-Braginskii"+key+"t-%.1f-rho-EM-Jxy_"%(timeInput)
-        label_output = "20220804_Braginskii-ANISO_Z-corrected_t-%.1f_rho-temp_"%(timeInput)
+      for timeInput in [0.2, 0.5, 0.7, 1.0]: #0.2, 0.3, 0.4, 0.5, 1.0]: 
+        label_output = "20220904-Braginskii"+key+"t-%.1f-rho-omega-Lrtz_"%(timeInput)
+        #label_output = "20220831_Braginskii-ANISO_Z_Q_Corrected_t-%.1f_rho-temp_"%(timeInput)
         input_files = []; level_list = []; ylabel_list = []; view_list = []
     
         cases_keys = [i for i in cases.keys()] #cases.keys()
@@ -855,13 +869,16 @@ if __name__ == '__main__':
               cases_sorted.append( (key, cases[key]) )  
             cases_sorted.sort()
         else: 
-          optionIndexes = {16:0, 18:10, 19:20, 21:30}                                          
-          options = [16, 18, 19, 20, 21]
-          scenarioIndexes = {'IDEAL':0, 'INTRA-ISO':1, 'INTRA-ANISO':2, 'INTER-ISO':3, 
-                              'INTER-ANISO':4, 'FB-ISO':5, 'FB-ANISO':6}
+          optionIndexes = {16:0, 18:10, 19:20, 21:30, 44:40}                                          
+          options = [44] #options = [16, 18, 19, 20, 21, 44]
+          scenarioIndexes = {"FB-ISO-beta-infin":0, "FB-ANISO-beta-infin":1, "FB-ANISO-beta-0p01":2, "FB-ISO-beta-0p01":3, "FB-ISO-beta-0p001":4, "FB-ANISO-beta-0p001":5} 
+ 
+                              #{'IDEAL':0, 'INTRA-ISO':1, 'INTRA-ANISO':2, 'INTER-ISO':3, 
+                              #'INTER-ANISO':4, 'FB-ISO':5, 'FB-ANISO':6}
                               #'INTER-DIRTY':5, 'FB-DIRTY':6, 'INTRA-ISO-MAG-Z':7, 
                               #'INTRA-ANISO-MAG-Z':8}
-          scenarios = ['IDEAL', 'INTRA-ISO', 'INTRA-ANISO', 'INTER-ISO', 'INTER-ANISO', 'FB-ISO', 'FB-ANISO']
+          scenarios = ["FB-ISO-beta-infin", "FB-ANISO-beta-infin", "FB-ANISO-beta-0p01", "FB-ISO-beta-0p01", "FB-ISO-beta-0p001", "FB-ANISO-beta-0p001"] 
+          #scenarios = ['IDEAL', 'INTRA-ISO', 'INTRA-ANISO', 'INTER-ISO', 'INTER-ANISO', 'FB-ISO', 'FB-ANISO']
                       #'INTER-DIRTY', 'FB-DIRTY', 'INTRA-ISO-MAG-Z', 'INTRA-ANISO-MAG-Z']
           for key in cases:
             optionIndex = -1; scenarioIndex = -1
@@ -894,7 +911,7 @@ if __name__ == '__main__':
           FTF_inputs['fileNames'] = outputFiles[key]
           FTF_inputs['level'] = 0 # set to zero to minimise memory usage - we only need time data 
           FTF_inputs['window'] = view
-          if True: ### 
+          if False: ### 
             print("\n\nhardocoded time search overide for last frame")
             input_files.append( outputFiles[key][-1])
           else:
@@ -905,13 +922,17 @@ if __name__ == '__main__':
           level_list.append(level)
   
         view_list = [view]*len(cases_sorted); 
-        if False:
-          label_data = ["S16-IDEAL", "S16-INTRA-ISO", "S16-INTRA-ANISO", "S16-INTER-ISO", 
-                        "S16-INTER-ISO", "S16-FB-ISO", "S16-FB-ANIISO"]
+        if True:
+          #label_data = ["S16-IDEAL", "S16-INTRA-ISO", "S16-INTRA-ANISO", "S16-INTER-ISO", 
+          #              "S16-INTER-ISO", "S16-FB-ISO", "S16-FB-ANIISO"]
+          label_data = [r"$FBI-\beta=\infty$", r"$FBA-\beta=\infty$", r"$FBA-\beta=0.01$", r"$FBI-\beta=0.01$", r"$FBI-\beta=0.001$", r"$FBA-\beta=0.001$"] 
+          #label_data = ["IDEAL", "INTRA-ISO", "INTRA-ANISO", "INTER-ISO", 
+                        #"INTER-ISO", "FB-ISO", "FB-ANIISO"]
         elif False:
           label_data = ["S16-IDEAL", "S16-INTRA-ISO", "S16-INTER-ISO", "S16-FB-ISO"]
-        elif True: 
-          label_data = ["S16-IDEAL", "S16-INTRA-ANISO", "S16-INTER-ANISO", "S16-FB-ANISO"]
+        elif False: 
+          label_data = [#"S16-IDEAL", 
+                       "S16-INTRA-ANISO", "S16-INTER-ANISO", "S16-FB-ANISO"]
 
         plot_ScenariosPrimitive(input_files, [outputKeyword], raw_data_attr_names, level_list, 
           label_prop, label_data, label_output, view_list)
@@ -919,15 +940,25 @@ if __name__ == '__main__':
       # ======================= Interface statistics ===============================#
     if plot_interface_stats:
       print('\nPlotting comparison of interface statistics')
-      date = "20220804"
-      label_append = "IONS_comparison_16-Braginskii_RES_2048"
-      ###   
-      reducedPlot = True# only plotting the overall circ, circ gen, growth rate, and 
+      date = "20220904"
+      label_append = "Interface_Statistics_IONS_comparison_44-Magnetised_RES_2048"
+      # "IONS_comparison_44-Braginskii_RES_2048_noHydro"
+      reducedPlot = True # True # only plotting the overall circ, circ gen, growth rate, and 
       areaOnly = False
       circulationComponentsOnly = False 
 
       wspacing = 0.3; hspacing = 0.1; 
-      compareInterfaceStatistics("ions", key, date, 
+      """compareInterfaceStatistics("ions", key, date, 
+        reducedPlot, areaOnly, circulationComponentsOnly,
+        cases, processedFiles, wspacing, hspacing, label_append, useNprocs=useNprocs)
+      """
+      # second plot 
+      date = "20220904"
+      #label_append = "ION_interface_area_comparison_44-Magnetised_RES_2048"
+      label_append = "Interface_Statistics_ELECTRONS_comparison_44-Magnetised_RES_2048"
+      #label_append = "ION_interface_area_comparison_44-Braginskii_RES_2048_noHydro"
+      reducedPlot = True ; areaOnly = False
+      compareInterfaceStatistics("electrons", key, date, 
         reducedPlot, areaOnly, circulationComponentsOnly,
         cases, processedFiles, wspacing, hspacing, label_append, useNprocs=useNprocs)
 
