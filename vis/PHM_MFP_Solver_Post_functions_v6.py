@@ -317,17 +317,17 @@ def get_single_data(din):
     if braginskiiVorticity: 
       print("Viscosu vorticity contribution")
       x, y, dudt_fluxes, srcDst = get_transportProperties(rc, 
-        ["ions", "electrons"], din['level'], isoOveride=False, useNPROC = 8)  
+        ["ions", "electrons"], din['level'], isoOveride=False, useNPROC = 8)
       fluxDict = {}; srcDict = {};
       for name in ['ions', 'electrons']: #delete useless data
         fluxDict[name] = {}
         srcDict[name] = {}
         for key in range(dudt_fluxes[name].shape[-1]):
           if key in [0, 1]: # 0:Xmom, 1:Ymom
-            fluxDict[name][key] = dudt_fluxes[name][:,:,key]
+            fluxDict[name][key] = np.copy(dudt_fluxes[name][:,:,key])
         for key in range(srcDst[name].shape[-1]):
           if key in [0, 1]: # 0:Xmom, 1:Ymom
-            srcDict[name][key] = srcDst[name][:,:,key]
+            srcDict[name][key] = np.copy(srcDst[name][:,:,key])
   
       del dudt_fluxes, srcDst;
 
@@ -337,13 +337,15 @@ def get_single_data(din):
             np.gradient(srcDict['ions'][0], y, axis=1)
       #OR_e = np.gradient(srcDict['electrons'][1], x, axis=0) - \ #same
       #      np.gradient(srcDict['electrons'][0], y, axis=1)
+      del srcDict; gc.collect()
+
       OC['PI_i'] = np.gradient(fluxDict['ions'][1], x, axis=0) - \
               np.gradient(fluxDict['ions'][0], y, axis=1)
       OC['PI_e'] = \
         np.gradient(fluxDict['electrons'][1], x, axis=0) - \
         np.gradient(fluxDict['electrons'][0], y, axis=1)
-      del srcDict, fluxDict;
-      gc.collect();
+      del fluxDict; gc.collect();
+
     ####### Loop for each state and interace 
     for name, d in data.items():
       tracerDefined = False
@@ -1178,11 +1180,19 @@ def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
 
     #===========================  multiprocessing  ============================
     din = []
-    dy_cell = int((y.shape[0]+1)/2) # number of interfaces in x  #TODO 
-    dx_cell = int((x.shape[0]+1)/4) # number of interfaces in y  #TODO
+    ### decide the partitions in data 
+    if useNPROC == 1: print("Warning --- get_transport is written for parallel, 1 cpu is inefficient")
+    
+    if usePROC == 24:
+      ny = 4; nx = 6
+    else:
+      ny = 2; nx = 4; 
+     
+    dy_cell = int((y.shape[0]+1)/ny) # number of interfaces in x  #TODO 
+    dx_cell = int((x.shape[0]+1)/nx) # number of interfaces in y  #TODO
   
-    xcell = [i*dx_cell for i in range(4)]; xcell.append(x.shape[0] + 1) # up to last domain bc we cannot get the right hand state of the last cells boundary
-    ycell = [i*dy_cell for i in range(2)]; ycell.append(y.shape[0] + 1) #TODO
+    xcell =[i*dx_cell for i in range(nx)]; xcell.append(x.shape[0] + 1) # up to last domain bc we cannot get the right hand state of the last cells boundary
+    ycell =[i*dy_cell for i in range(ny)]; ycell.append(y.shape[0] + 1) #TODO
     
     #print(f"Full domain nX: {x.shape[0]}\tnY: {y.shape[0]}")   
     din = []
@@ -1260,11 +1270,11 @@ def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
 
   #break domain into chunks 
   #print(f"i and j components of domain are: {x.shape[0]} {y.shape[0]}")
-  dy_cell = int((y.shape[0])/2) #TODO
-  dx_cell = int((x.shape[0])/4) #TODO
+  dy_cell = int((y.shape[0])/ny) #TODO
+  dx_cell = int((x.shape[0])/nx) #TODO
 
-  xcell = [i*dx_cell for i in range(4)]; xcell.append(x.shape[0])#TODO
-  ycell = [i*dy_cell for i in range(2)]; ycell.append(y.shape[0])#TODO
+  xcell = [i*dx_cell for i in range(nx)]; xcell.append(x.shape[0])#TODO
+  ycell = [i*dy_cell for i in range(ny)]; ycell.append(y.shape[0])#TODO
   
   din = []
   for i in range(len(xcell)-1):

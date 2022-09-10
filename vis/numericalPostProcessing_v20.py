@@ -415,11 +415,11 @@ def interfaceStatistics(fluid, key, date, simDir, level, grid_i, grid_j,
   if type(int_tsc_half) == list:
     for i in range(len(int_DGDT_half)):
       int_DGDT_half[i] = int_tsc_half[i] + int_b_half[i] + int_L_E_half[i] \
-        + int_L_B_half[i] - int_brag_intra_half[i] + int_brag_inter_half[i]
+        + int_L_B_half[i] + int_brag_intra_half[i] + int_brag_inter_half[i]
                         
   else:
       int_total_odot_half = int_tsc_half + int_tc_half + int_b_half + \
-       int_L_E_half+int_L_B_half - int_brag_intra_half+int_brag_inter_half
+       int_L_E_half+int_L_B_half + int_brag_intra_half+int_brag_inter_half
      #int_DGDT_half = int_tsc_half + int_b_half + int_L_E_half + int_L_B_half
 
   teta, eta   = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="y_avg_int_width", cumsum=False, nproc=useNproc)
@@ -456,9 +456,9 @@ def interfaceStatistics(fluid, key, date, simDir, level, grid_i, grid_j,
   tp.append([tl, int_L_B_half, 
     {"color":'m', "ls":":", "lw":lw, "label":r"$\dot\Gamma_{L,B}$"}, ax2])
   tp.append([tbrag, int_brag_inter_half, 
-    {"color":'b', "ls":"-", "lw":lw, "label":r"$\dot\Gamma_{Visc}$"}, ax2])
+    {"color":'b', "ls":"-", "lw":lw, "label":r"$\dot\Gamma_{Drag}$"}, ax2])
   tp.append([tbrag, int_brag_intra_half, 
-    {"color":'b', "ls":"--", "lw":lw, "label":r"$\dot\Gamma_{Drag}$"}, ax2])
+    {"color":'b', "ls":"--", "lw":lw, "label":r"$\dot\Gamma_{Visc}$"}, ax2])
 
   tp.append([tl, int_DGDT_half,{"color":color, "ls":"-", "lw":lw, 
     "marker":"o", "ms":ms, "label":r"$\Sigma\dot\Gamma_{z,half}$"}, ax2])
@@ -699,6 +699,7 @@ if __name__ == '__main__':
 #option 44
 #"SRMI-OP-16-Res-512-DUMMY-beta-0p01":("/media/kyriakos/Expansion/000_testingCollisionalVorticityContribution/dummy_512_data_Set", 3)
 "testDelete_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", 4), 
+"testDelete_SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", 4), 
                   }
   """
 "SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
