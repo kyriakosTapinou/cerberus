@@ -21,7 +21,8 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from multiprocessing import Pool
 
-def graphData(dataFile, level, window, view, nameOutput, timeTitle, saturationFactor):
+def graphData(dataFile, level, window, view, nameOutput, timeTitle, saturationFactor, plotVorticityCollisional=False):
+
   ch = ReadBoxLib(dataFile, level, window)
   
   xyRho, rho = ch.get("rho-ions")
@@ -31,6 +32,7 @@ def graphData(dataFile, level, window, view, nameOutput, timeTitle, saturationFa
   fig_x = 8.2  #6.7
   wspacing = 0.5 #0.01; 
   hspacing = 0.4 #0.01
+  
   fig_x, fig_y = phmmfp.get_figure_size(fig_x, 4, 4, 
                    1.*xyRho[1].shape[0]/xyRho[0].shape[0], wspacing, hspacing, 1)
 
@@ -48,9 +50,63 @@ def graphData(dataFile, level, window, view, nameOutput, timeTitle, saturationFa
   t1 = time.time()
   print("Calculating transport properties...")
   x, y, dudt_fluxes, srcDst = phmmfp.get_transportProperties(ch, ["ions", "electrons"], level,
-                                                             isoOveride=False, useNPROC = 6)
+    isoOveride=False, useNPROC = 6)
   print("...calculated")
   print(f"\nTook {time.time()-t1} to extract transport effects\n")
+  ch = ReadBoxLib(dataFile, level, window)
+  pdb.set_trace()
+  constOC = (2/ch.data['beta']/ch.data['skin_depth']**2)
+  ######=================
+  if plotVorticityCollisional:
+      fluxDict = {}; srcDict = {};
+      for name in ['ions', 'electrons']: #delete useless data
+        fluxDict[name] = {}
+        srcDict[name] = {}
+        # divide by density 
+        deleteMe = ch.get("rho-%s"%name)[-1]
+
+        for key in range(dudt_fluxes[name].shape[-1]):
+          if key in [0, 1]: # 0:Xmom, 1:Ymom
+            fluxDict[name][key] = np.copy(dudt_fluxes[name][:,:,key])/deleteMe*constOC
+        for key in range(srcDst[name].shape[-1]):
+          if key in [0, 1]: # 0:Xmom, 1:Ymom
+            srcDict[name][key] = np.copy(srcDst[name][:,:,key])/deleteMe*constOC
+      #del dudt_fluxes, srcDst, deleteMe;
+      OC = {}# vorticity vontribution 
+      #TODO Change the axis since the web page i was on seems to say axis=0 takes gradient acrosos rows???
+      OC['R_i'] = np.gradient(srcDict['ions'][1], x, axis=0) - \
+            np.gradient(srcDict['ions'][0], y, axis=1)
+      OC['R_e'] = np.gradient(srcDict['electrons'][1], x, axis=0) - \
+            np.gradient(srcDict['electrons'][0], y, axis=1)
+      del srcDict; gc.collect()
+      OC['PI_i'] = np.gradient(fluxDict['ions'][1], x, axis=0) - \
+              np.gradient(fluxDict['ions'][0], y, axis=1)
+      OC['PI_e'] = \
+        np.gradient(fluxDict['electrons'][1], x, axis=0) - \
+        np.gradient(fluxDict['electrons'][0], y, axis=1)
+      del fluxDict, deleteMe; gc.collect();
+      
+      ## dirty plot 
+      fig2 = plt.figure(figsize=(8, 8))
+      gs2 = gridspec.GridSpec(2, 2, wspace=0.05, hspace=0.05)
+      ax2 = fig2.add_subplot(gs2[0,0])
+      #maxVal = max(abs(
+      ax2.pcolormesh(x, y, OC['PI_e'], cmap='bwr')
+
+      ax2 = fig2.add_subplot(gs2[0,1])
+      #maxVal = max(abs(
+      ax2.pcolormesh(x, y, OC['PI_i'], cmap='bwr')
+
+      ax2 = fig2.add_subplot(gs2[1,0])
+      #maxVal = max(abs(
+      ax2.pcolormesh(x, y, OC['PI_e'], cmap='bwr')
+
+      ax2 = fig2.add_subplot(gs2[1,1])
+      #maxVal = max(abs(
+      ax2.pcolormesh(x, y, OC['PI_i'], cmap='bwr')
+      fig2.show()
+      pdb.set_trace()
+  ######=================
 
   if False:
     print("Calculating anisotropic transport properties...")
@@ -83,7 +139,9 @@ def graphData(dataFile, level, window, view, nameOutput, timeTitle, saturationFa
 
   labelIntra = [r"$\rho v_X$", r"$\rho v_Y$", r"$\varepsilon_\pi$", r"$\varepsilon_q$"]
   labelInter = [r"$R_{U,X}$", r"$R_{U,Y}$", r"$\varepsilon_{R}$", r"$\varepsilon_Q$"]
+  labelVorticity = [r"$\nabla \times \partial_k \Pi_{k, e}$", r"$\nabla \times \partial_k \Pi_{k, i}$", r"$\nabla \times R_{i}$", r"$\nabla \times R_{e}$"]
   axes_map = {0:0, 1:1, 3:2, 4:3} #prop:axes
+  axesVort_map = {"PI_e":0, "PI_i":1, "R_e":2, "R_i":3}  
 
   title = [r"$Intra_e$", r"$Intra_i$", r"$Inter_e$", r"$Inter_i$"]
 
@@ -96,6 +154,7 @@ def graphData(dataFile, level, window, view, nameOutput, timeTitle, saturationFa
     #(3, "ions", r"$Inter_i Aniso$", srcDstA)
     #(2, "electrons", r"$Inter_e Iso$", srcDst),
     #(3, "electrons", r"$Inter_e Aniso$", srcDstA)
+    (3, "ions", r"$\dot\omega_z$", OC, labelVorticity),
     ]
     #maxVal[name]=0; minVal[name] = 0
 
@@ -234,7 +293,7 @@ if __name__ == "__main__":
 
     view = [[xl, xh], [yl, yh]]
 
-    level = -2
+    level = -4
     print("Search function")
     if True:  
       data_index = [-1]
@@ -245,7 +304,7 @@ if __name__ == "__main__":
     saturationFactor = 1
     for (i, di) in enumerate(data_index):
       dataFile = dataFiles[di]
-      nameOutput = "20220729_TransportInfluence_anisotropic_" + name + "_t_" + str(FTF_inputs['times_wanted'][i]).replace(".","p")
+      nameOutput = "testDelete_20220913_TransportInfluence_anisotropic_" + name + "_t_" + str(FTF_inputs['times_wanted'][i]).replace(".","p")
       timeTitle = str(FTF_inputs['times_wanted'][i])
       graphData(dataFile, level, FTF_inputs['window'], view, nameOutput, timeTitle, 
-                saturationFactor)
+                saturationFactor, plotVorticityCollisional=True)

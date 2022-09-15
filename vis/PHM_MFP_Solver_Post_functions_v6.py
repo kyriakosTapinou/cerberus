@@ -307,6 +307,8 @@ def get_single_data(din):
 
     rc = ReadBoxLib(din["dataName"], max_level=din["level"], limits=din["window"]) 
     #interface info     
+    constOC = (2/rc.data['beta']/rc.data['skin_depth']**2)
+     
     data = {}
     for name in rc.names:
         if 'field' not in name: data[name] = {} # ignore field state 
@@ -315,28 +317,34 @@ def get_single_data(din):
 
     #### Extract collisional terms
     if braginskiiVorticity: 
-      print("Viscosu vorticity contribution")
+      #print("Viscous vorticity contribution")
+      #TODO Change the axis since the web page i was on seems to say axis=0     takes gradient acrosos rows???
       x, y, dudt_fluxes, srcDst = get_transportProperties(rc, 
-        ["ions", "electrons"], din['level'], isoOveride=False, useNPROC = 8)
+        ["ions", "electrons"], din['level'], isoOveride=False, useNPROC = 6)
+
+      rc = ReadBoxLib(din["dataName"], max_level=din["level"], limits=din["window"]) #reopen after operatons ar done for the remaineder
       fluxDict = {}; srcDict = {};
       for name in ['ions', 'electrons']: #delete useless data
         fluxDict[name] = {}
         srcDict[name] = {}
+        # divide by density 
+        rhoName = rc.get("rho-%s"%name)[-1]
+
         for key in range(dudt_fluxes[name].shape[-1]):
           if key in [0, 1]: # 0:Xmom, 1:Ymom
-            fluxDict[name][key] = np.copy(dudt_fluxes[name][:,:,key])
+            fluxDict[name][key] = np.copy(dudt_fluxes[name][:,:,key])/rhoName*constOC
         for key in range(srcDst[name].shape[-1]):
           if key in [0, 1]: # 0:Xmom, 1:Ymom
-            srcDict[name][key] = np.copy(srcDst[name][:,:,key])
-  
-      del dudt_fluxes, srcDst;
+            srcDict[name][key] = np.copy(srcDst[name][:,:,key])/rhoName*constOC
+      
+      del dudt_fluxes, srcDst, rhoName, constOC;
 
       OC = {}# vorticity vontribution 
-      
+      #TODO changed axis round 
       OC['R_i'] = np.gradient(srcDict['ions'][1], x, axis=0) - \
             np.gradient(srcDict['ions'][0], y, axis=1)
-      #OR_e = np.gradient(srcDict['electrons'][1], x, axis=0) - \ #same
-      #      np.gradient(srcDict['electrons'][0], y, axis=1)
+      OC['R_e'] = np.gradient(srcDict['electrons'][1], x, axis=0) - \
+            np.gradient(srcDict['electrons'][0], y, axis=1)
       del srcDict; gc.collect()
 
       OC['PI_i'] = np.gradient(fluxDict['ions'][1], x, axis=0) - \
@@ -403,10 +411,8 @@ def get_single_data(din):
           ##note the values for intra inter etc are calced already together 
           t_brag_intra_sum = 0; t_brag_intra_half = 0; #Storage 
           t_brag_inter_sum = 0; t_brag_inter_half = 0;
-          if 'ion' in name: 
-            ieSign = 1; ieKey = '_i'; 
-          else:
-            ieSign = -1; ieKey = '_i'; 
+          if 'ion' in name: ieKey = '_i'; 
+          else: ieKey = '_e'; 
 
         # changed to accomodate multilpe interface transition regions i.e. 
         # interface_tracking[j,0]= [[x1,x2], [x1,x2]]
@@ -427,7 +433,7 @@ def get_single_data(din):
                 tl_interface_sum += tau[i,j]
                 #TODO Collisionsal contrbution
                 t_brag_intra_sum += OC['PI'+ieKey][i,j]
-                t_brag_inter_sum += ieSign*OC['R'+ieKey][i,j]; 
+                t_brag_inter_sum += OC['R'+ieKey][i,j]; 
 
               if j <= int(len(interface_tracking)/2):
                 omega_interface_sum_half += omega[i,j]
@@ -440,7 +446,7 @@ def get_single_data(din):
                   tl_interface_sum_half += tau[i,j]
                   #TODO Collisionsal contrbution
                   t_brag_intra_half += OC['PI'+ ieKey][i,j]; 
-                  t_brag_inter_half += ieSign*OC['R' + ieKey][i,j];
+                  t_brag_inter_half += OC['R' + ieKey][i,j];
 
           d["circulation_interface_sum"] = omega_interface_sum*dx*dy 
           d["baroclinic_interface_sum"] = tb_interface_sum*dx*dy
@@ -1084,13 +1090,13 @@ def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
     srcDst - source term contributions to the cell evoltions (time rate)
   """
 
-  print(f"\n\nNote isoOveride set to:{isoOveride}")
+  print(f"\tNote isoOveride set to:{isoOveride}")
   Q = {}
   #print(f"Time is:\t{ch.time}")
   Density=0; Xvel = 1; Yvel=2; Zvel=3; Prs=4; Temp=5; Alpha=6;
   x_D = 0; y_D = 1; z_D = 2; x_B = 3; y_B = 4; z_B = 5; muIdx = 6; epIdx = 7;
   #print("\tExtracting primitives...")
-  for name in names: # get the ion ane electron prims
+  for name in names: # get the ion and electron prims
     Q[name] = {}
     try:
       x, Q[name][Density] = ch.get("rho-%s"%name)
@@ -1132,10 +1138,10 @@ def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
 
   # check if primitives that we have access to the cerberus gradients - super important 
   QD = {} #gradients of primitives 
-  properties = ['x_D-field-dx', 'x_D-field-dy', 
-                'y_D-field-dx', 'y_D-field-dy', 
-                'x_B-field-dx', 'y_B-field-dx', 'y_B-field-dy', 'z_B-field-dx', 'z_B-field-dy',
-                'p-electrons-dx', 'p-electrons-dy', 'p-ions-dx', 'p-ions-dy', 
+  properties = [#'x_D-field-dx', 'x_D-field-dy', 
+                #'y_D-field-dx', 'y_D-field-dy', 
+                #'x_B-field-dx', 'y_B-field-dx', 'y_B-field-dy', 'z_B-field-dx', 'z_B-field-dy',
+                #'p-electrons-dx', 'p-electrons-dy', 'p-ions-dx', 'p-ions-dy', 
                 'x_vel-ions-dx', 'y_vel-ions-dx', 'x_vel-ions-dy', 'y_vel-ions-dy', 
                 'x_vel-electrons-dx', 'y_vel-electrons-dx', 
                 'x_vel-electrons-dy', 'y_vel-electrons-dy', 
@@ -1161,15 +1167,17 @@ def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
     except:
       print(f"\t\t-->>Gradient {prop} unavailable")
   #print("\t...extracted\n")
+  ch.close() # clsoe this bith 
+  del ch; gc.collect()
 
   # prepare indivudal component data --- pulled in from 1D code and adapted for 2D
       # needs to be done for every interface - multiprocesses for each row ?
-  print("\tViscousTensor and heat flux calc")
+  #print("\tViscousTensor and heat flux calc")
   X = 0; Y=1; Z=2;
   Xmom = 0; Ymom = 1; Zmom = 2; EdenPi = 3; EdenQ = 4
   
   fluxX = {}; fluxY = {}
-  print(x.shape, y.shape)
+  #print(x.shape, y.shape)
   for name in names:
     fluxX[name] = np.zeros((x.shape[0] + 1, y.shape[0] + 1, EdenQ+1)); 
     fluxY[name] = np.zeros((x.shape[0] + 1, y.shape[0] + 1, EdenQ+1)) 
@@ -1183,7 +1191,7 @@ def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
     ### decide the partitions in data 
     if useNPROC == 1: print("Warning --- get_transport is written for parallel, 1 cpu is inefficient")
     
-    if usePROC == 24:
+    if useNPROC == 24:
       ny = 4; nx = 6
     else:
       ny = 2; nx = 4; 
@@ -1204,7 +1212,7 @@ def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
         il = xcell[i]
         jl = ycell[j] # il and ih refer to the cells (in prim array that are hanbfdled 
         iRange = [il, ih-1]; jRange = [jl, jh-1];
-        #Note python auto makes pointer rferences this isnt copyying the primitives lol
+        #Note python auto makes pointer rferences this isnt copyying the primitives  ---- moight ot be the case for multiprocess  
         din.append({"Q":Q, "QD":QD, 
           "name":name, "ionName":"ions", "eleName":"electrons", "fieldName":"field", 
           "iRange":iRange, "jRange":jRange, "Debye":dS/c, "Larmor":math.sqrt(beta/2)*dS, 
@@ -1235,12 +1243,12 @@ def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
         counter += 1
     #======================================================================================
 
-  print("\t\t..Calc done")
+  #print("\t\t..Calc done")
   # find max in each region and time 
     # exact flux values 
   dudt_flux = {}
   dt = 1 #Nontrivial time step for contrbution instead of the rate of change 
-  print("\tCalculating viscous flux contribution...")
+  #print("\tCalculating viscous flux contribution...")
   for name in names:
     # old for loop method
     dudt_flux[name] = np.zeros((x.shape[0], y.shape[0], EdenQ+1)); # neglect the boarder  #TODO
@@ -1259,10 +1267,10 @@ def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
     #dUfluxY = dt/dx*(fluxX[name][1:,   0:-1, :] - fluxX[name][1:, 1:, :])
     dUfluxY = dt/dx*(fluxY[name][:-1,   0:-1, :] - fluxY[name][:-1, 1:, :])
     dudt_flux[name][:,:, :] = dUfluxX + dUfluxY
-  print("\t\t..Calc done")
+  #print("\t\t..Calc done")
   
   # source term contributions 
-  print("\tCalculating src term contribution...neglect the boardering cells")
+  #print("\tCalculating src term contribution...neglect the boardering cells")
   # here we exlcude the boarder as to match the flux registers controbution to all the interior
   # cells but not the boarder. 
   srcDst = {"electrons":np.zeros((x.shape[0], y.shape[0], EdenQ+1)), 
