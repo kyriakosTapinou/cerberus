@@ -204,6 +204,20 @@ def get_Lorentz_torque(ch, name):
       print('np.sum(tau)',np.sum(tau))
       print('np.sum(tau_E)+...',np.sum(tau_E) + np.sum(tau_B))
       xxxx
+
+    if True: #non constnat q and m values 
+      dyq = np.gradient(charge, y, axis=1)
+      dyminv = np.gradient(mass**-1, y, axis=1)
+      dxq = np.gradient(charge, x, axis=0)
+      dxminv = np.gradient(mass**-1, x, axis=0)
+      tauE_qm = np.sqrt(2/beta)/dS*\
+        ((mass**-1*dxq + charge*dxminv)*Ey - \
+          (mass**-1*dyq - charge*dyminv)*Ex )
+      tauB_qm = np.sqrt(2/beta)/dS*\
+        ((mass**-1*dxq + charge*dxminv)*(w*Bx - u*Bz) -\
+          (mass**-1*dyq - charge*dyminv)*(v*Bz - w*By) )
+      return x, y, tau_E + tauE_qm, tau_B+tauB_qm, tau
+    else: print("\tWarning Lorentz torque m, q assumed constant")
     return x, y, tau_E, tau_B, tau
 
 def get_vorticity(ch, input_options):#name):
@@ -307,7 +321,7 @@ def get_single_data(din):
 
     rc = ReadBoxLib(din["dataName"], max_level=din["level"], limits=din["window"]) 
     #interface info     
-    constOC = (2/rc.data['beta']/rc.data['skin_depth']**2)
+    constOC = (2/rc.data['beta']/rc.data['skin_depth']**2)**0.5
      
     data = {}
     for name in rc.names:
@@ -320,15 +334,33 @@ def get_single_data(din):
       #print("Viscous vorticity contribution")
       #TODO Change the axis since the web page i was on seems to say axis=0     takes gradient acrosos rows???
       x, y, dudt_fluxes, srcDst = get_transportProperties(rc, 
-        ["ions", "electrons"], din['level'], isoOveride=False, useNPROC = 6)
+        ["ions", "electrons"], din['level'], isoOveride=False, useNPROC=7)
 
       rc = ReadBoxLib(din["dataName"], max_level=din["level"], limits=din["window"]) #reopen after operatons ar done for the remaineder
-      fluxDict = {}; srcDict = {};
+      fluxDict = {}; srcDict = {}; OC = {}# vorticity vontribution 
       for name in ['ions', 'electrons']: #delete useless data
         fluxDict[name] = {}
         srcDict[name] = {}
         # divide by density 
         rhoName = rc.get("rho-%s"%name)[-1]
+
+        if 'ion' in name: nameStr = '_i_'
+        elif 'electron' in name: nameStr = "_e_"
+
+        dxrhoinv = np.gradient(rhoName**-1, x, axis=0)
+        dyrhoinv = np.gradient(rhoName**-1, y, axis=1)
+
+        if True: 
+          OC['R'+nameStr+'rho'] = constOC*\
+          (dxrhoinv*(srcDst[name][:,:,1]) - dyrhoinv*(srcDst[name][:,:,0]))
+  
+          OC['PI'+nameStr+'rho'] = constOC*\
+          (dxrhoinv*(dudt_fluxes[name][:,:,1]) -\
+           dyrhoinv*(dudt_fluxes[name][:,:,0]))
+        else:
+          print("\tCollisional vorticity assuming rho const ")
+          OC['R'+nameStr+'rho'] = np.zeros(srcDst[name][:,:,0].shape)  
+          OC['PI'+nameStr+'rho'] = np.zeros(dudt_fluxes[name][:,:,1].shape)
 
         for key in range(dudt_fluxes[name].shape[-1]):
           if key in [0, 1]: # 0:Xmom, 1:Ymom
@@ -336,11 +368,8 @@ def get_single_data(din):
         for key in range(srcDst[name].shape[-1]):
           if key in [0, 1]: # 0:Xmom, 1:Ymom
             srcDict[name][key] = np.copy(srcDst[name][:,:,key])/rhoName*constOC
-      
       del dudt_fluxes, srcDst, rhoName, constOC;
 
-      OC = {}# vorticity vontribution 
-      #TODO changed axis round 
       OC['R_i'] = np.gradient(srcDict['ions'][1], x, axis=0) - \
             np.gradient(srcDict['ions'][0], y, axis=1)
       OC['R_e'] = np.gradient(srcDict['electrons'][1], x, axis=0) - \
@@ -354,6 +383,8 @@ def get_single_data(din):
         np.gradient(fluxDict['electrons'][0], y, axis=1)
       del fluxDict; gc.collect();
 
+      #if rc.time > 0. and True: pdb.set_trace()
+      
     ####### Loop for each state and interace 
     for name, d in data.items():
       tracerDefined = False
@@ -432,8 +463,10 @@ def get_single_data(din):
                 tl_B_interface_sum += tau_B[i,j]
                 tl_interface_sum += tau[i,j]
                 #TODO Collisionsal contrbution
-                t_brag_intra_sum += OC['PI'+ieKey][i,j]
-                t_brag_inter_sum += OC['R'+ieKey][i,j]; 
+                t_brag_intra_sum += OC['PI'+ieKey][i,j] + \
+                  OC['PI'+ieKey+'_rho'][i,j]
+                t_brag_inter_sum += OC['R'+ieKey][i,j] + \
+                  OC['R'+ieKey+'_rho'][i,j]; 
 
               if j <= int(len(interface_tracking)/2):
                 omega_interface_sum_half += omega[i,j]
@@ -445,8 +478,10 @@ def get_single_data(din):
                   tl_B_interface_sum_half += tau_B[i,j]
                   tl_interface_sum_half += tau[i,j]
                   #TODO Collisionsal contrbution
-                  t_brag_intra_half += OC['PI'+ ieKey][i,j]; 
-                  t_brag_inter_half += OC['R' + ieKey][i,j];
+                  t_brag_intra_half += OC['PI'+ ieKey][i,j]+ \
+                  OC['PI'+ieKey+'_rho'][i,j]; 
+                  t_brag_inter_half += OC['R' + ieKey][i,j]+ \
+                  OC['R'+ieKey+'_rho'][i,j];
 
           d["circulation_interface_sum"] = omega_interface_sum*dx*dy 
           d["baroclinic_interface_sum"] = tb_interface_sum*dx*dy

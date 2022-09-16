@@ -339,7 +339,7 @@ def interfaceStatistics(fluid, key, date, simDir, level, grid_i, grid_j,
   useNproc = nproc; # how many processes to spawn 
   processedSimDir = phmmfp.get_save_name(key, simDir, level)
 
-  if False: # in the sim folder 
+  if True: # in the sim folder 
     print("\n###Line 343 Assuming processed files are in the simulation files directory, not in the parent directory.")
     if simDir[-1] == "/": processedSimDir = simDir + processedSimDir 
     else: processedSimDir = simDir + "/" + processedSimDir
@@ -510,7 +510,7 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
   processedSimDir = phmmfp.get_save_name(key, simDir, level)
   simFiles = get_files(simDir, include=['plt'], get_all=False)
 
-  if False: # in the sim folder 
+  if True: # in the sim folder 
     print("\n###Line 514 Assuming processed files are in the simulation files directory, not in the parent directory.")
     if simDir[-1] == "/": processedSimDir = simDir + processedSimDir 
     else: processedSimDir = simDir + "/" + processedSimDir
@@ -672,7 +672,7 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
 ###################################################################################
 #                               Parameter settings                                #
 ###################################################################################
-prepare_data = True # look for existing data file (use dictionary name assigned 
+prepare_data = False# look for existing data directory (dependent on handle)
                     # here), create new file or use the existing file.
 plot = True ; # to plot or not to plot, that is the question...
 
@@ -712,18 +712,19 @@ if __name__ == '__main__':
 
 #option 44
 #"SRMI-OP-16-Res-512-DUMMY-beta-0p01":("/media/kyriakos/Expansion/000_testingCollisionalVorticityContribution/dummy_512_data_Set", 3)
-"testDelete_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", 2), 
+#"testDelete_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", 4), 
 #"testDelete_SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", 4), 
 
-# "SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
+#"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
 # "SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", -1),
+"SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
+#"SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1), 
+#"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
+#"SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1), 
+
                  }
   """
  
-"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
-"SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1), 
-"SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
-"SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1), 
   """
 
 ###################################################################################
@@ -799,16 +800,16 @@ if __name__ == '__main__':
       # ======================= Interface statistics ===============================#
       if plot_interface_stats:
         print('\nPlotting interface statistics')
-        date = "20220913_IONS"
+        date = "20220916_IONS"
         interfaceStatistics("ions", key, date, simDir, level, 2, 2, nproc=4)
 
-        date = "20220913_ELECTRONS"
+        date = "20220916_ELECTRONS"
         interfaceStatistics("electrons", key, date, simDir, level, 2, 2, nproc=4)
 
 
       if plot_ion_electron_interface_comparison:
 
-        date = "20220913_ION_ELECTRON_COMPARISON"
+        date = "20220916_ION_ELECTRON_COMPARISON"
         fluids = ["ions", "electrons"]
         ionElectronInterfaceStatistics(fluids, key, date, simDir, level, 2, 2, nproc=8)
 
