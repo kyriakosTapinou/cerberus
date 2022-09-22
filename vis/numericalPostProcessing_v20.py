@@ -344,7 +344,7 @@ def interfaceStatistics(fluid, key, date, simDir, level, grid_i, grid_j,
     if simDir[-1] == "/": processedSimDir = simDir + processedSimDir 
     else: processedSimDir = simDir + "/" + processedSimDir
     print(f"\t{dir_name}")
-
+  else: print("\n###Line 347 Assuming processed files are in the parent directory.")
   simFiles = get_files(simDir, include=['plt'], get_all=False)
   processed_files = get_files(processedSimDir, include=['.h5'], get_all=False)
 
@@ -402,10 +402,10 @@ def interfaceStatistics(fluid, key, date, simDir, level, grid_i, grid_j,
   if type(int_tsc) == list:
     for i in range(len(int_DGDT_full)):
       int_DGDT_full[i] = int_tsc[i] + int_b[i] + int_L_E[i] + int_L_B[i] +\
-                         int_brag_inter[i] - int_brag_intra[i]
+                         int_brag_inter[i] + int_brag_intra[i]
   else:
     int_DGDT_full = int_tsc + int_b + int_L_E + int_L_B +\
-                         int_brag_inter - int_brag_intra
+                         int_brag_inter + int_brag_intra
     #int_total_odot = int_tsc + int_tc + int_b + int_L_E + int_L_B
 
   t, int_circ_half = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="circulation_interface_sum_half", cumsum=False, nproc=useNproc)  #vorticity_int_sum
@@ -515,6 +515,7 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
     if simDir[-1] == "/": processedSimDir = simDir + processedSimDir 
     else: processedSimDir = simDir + "/" + processedSimDir
     print(f"\t{dir_name}")
+  else: print("\n###Line 518 Assuming processed files are in the parent directory.")
 
   processed_files = get_files(processedSimDir, include=['.h5'], get_all=False)
 
@@ -562,7 +563,7 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
   tp = []; data = {}
   components =["circulation_interface", "tau_sc_interface", #"tau_conv_interface_sum", 
                "baroclinic_interface", "curl_Lorentz_E_interface", "curl_Lorentz_B_interface", #"interface_area"
-              ]
+              "curl_brag_inter", "curl_brag_intra"]
 
   sumAp = "_sum"; halfAp = "_sum_half";
 
@@ -571,7 +572,6 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
   for fluid in fluids:
     for comp in components:
       t, data[comp, sumAp, fluid]  = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity=comp+sumAp,  cumsum=False, nproc=useNproc)  
-
       t, data[comp, halfAp, fluid] = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity=comp+halfAp, cumsum=False, nproc=useNproc)  
       
     for ap in [sumAp, halfAp]:
@@ -579,12 +579,13 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
       if type(data[comp, sumAp, fluid]) == list:
         for i in range(len(data[comp, sumAp, fluid])): # just loop through all the time entries 
           data["int_DGDT", ap, fluid][i] = data["tau_sc_interface", ap, fluid][i] + data["baroclinic_interface", ap, fluid][i] \
-                                           + data["curl_Lorentz_E_interface", ap, fluid][i] + data["curl_Lorentz_B_interface", ap, fluid][i] 
+            + data["curl_Lorentz_E_interface", ap, fluid][i] + data["curl_Lorentz_B_interface", ap, fluid][i] \
+            + data["curl_brag_inter", ap, fluid][i] + data["curl_brag_intra", ap, fluid][i] 
                                               #int_tsc[i] + int_b[i] + int_L_E[i] + int_L_B[i]
       else:
           data["int_DGDT", ap, fluid] = data["tau_sc_interface", ap, fluid] + data["baroclinic_interface", ap, fluid] \
-                                        + data["curl_Lorentz_E_interface", ap, fluid] + data["curl_Lorentz_B_interface", ap, fluid] 
-
+            + data["curl_Lorentz_E_interface", ap, fluid] + data["curl_Lorentz_B_interface", ap, fluid] \
+            + data["curl_brag_inter", ap, fluid] + data["curl_brag_intra", ap, fluid] 
         #int_DGDT_full = int_tsc + int_b + int_L_E + int_L_B
       #int_total_odot = int_tsc + int_tc + int_b + int_L_E + int_L_B
     t, data["eta", fluid] =  phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="y_avg_int_width", cumsum=False, nproc=useNproc)
@@ -630,8 +631,9 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
   tp.append([t, data["baroclinic_interface", halfAp, "ions"], {"color":'c', "ls":ionLine, "lw":lw, "marker":ionMarker, "ms":ms, "label":r"$\dot\Gamma_{baro.}$" }, ax1])
   tp.append([t, data["curl_Lorentz_E_interface", halfAp, "ions"], {"color":'tab:orange', "ls":ionLine, "lw":lw, "marker":ionMarker, "ms":ms, "label":r"$\dot\Gamma_{L,E}$"}, ax1])
   tp.append([t, data["curl_Lorentz_B_interface", halfAp, "ions"], {"color":'m', "ls":ionLine, "lw":lw, "marker":ionMarker, "ms":ms,  "label":r"$\dot\Gamma_{L,B}$"}, ax1])
-    
-  # ion sources
+  tp.append([t, data["curl_brag_intra", halfAp, "ions"], {"color":'b', "ls":ionLine, "lw":lw, "marker":ionMarker, "ms":ms,  "label":r"$\dot\Gamma_{Visc}$"}, ax1])
+  tp.append([t, data["curl_brag_inter", halfAp, "ions"], {"color":'b', "ls":"-", "lw":lw, "marker":ionMarker, "ms":ms,  "label":r"$\dot\Gamma_{Drag}$"}, ax1])    
+  # electron sources
   ionMarker = "None"; ionLine = "--"
   eleMarker = "None"; eleLine = "--"
   tp.append([t, data["int_DGDT", halfAp, "electrons"], {"color":color, "ls":eleLine, "lw":lw, "marker":eleMarker, "ms":ms, "label":r"$\Sigma\dot\Gamma_{z,half}$"}, ax2])
@@ -639,7 +641,9 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
   tp.append([t, data["baroclinic_interface", halfAp, "electrons"], {"color":'c', "ls":eleLine, "lw":lw, "marker":eleMarker, "ms":ms, "label":r"$\dot\Gamma_{baro.}$" }, ax2])
   tp.append([t, data["curl_Lorentz_E_interface", halfAp, "electrons"], {"color":'tab:orange', "ls":eleLine, "lw":lw, "marker":eleMarker, "ms":ms, "label":r"$\dot\Gamma_{L,E}$"}, ax2])
   tp.append([t, data["curl_Lorentz_B_interface", halfAp, "electrons"], {"color":'m', "ls":eleLine, "lw":lw, "marker":eleMarker, "ms":ms,  "label":r"$\dot\Gamma_{L,B}$"}, ax2])
-
+  tp.append([t, data["curl_brag_intra", halfAp, "electrons"], {"color":'b', "ls":eleLine, "lw":lw, "marker":eleMarker, "ms":ms,  "label":r"$\dot\Gamma_{Visc}$"}, ax2])
+  tp.append([t, data["curl_brag_inter", halfAp, "electrons"], {"color":'b', "ls":"-", "lw":lw, "marker":eleMarker, "ms":ms,  "label":r"$\dot\Gamma_{Drag}$"}, ax2])
+ 
   ### growth and amplitude 
   ionMarker = "None";
   eleMarker = "None";
@@ -662,9 +666,9 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
   name = date+"_Interface_Statistics_" + key + "lvl%i"%(level)
   name = name.replace(".","p")
   name += ".png"
-  plt.show()
+  #plt.show()
   fig.savefig(name, format='png', dpi=600, bbox_inches='tight')
-  print("saved ",name)
+  print("Figure saved:\t",name)
   plt.close(fig)
   return 
 
@@ -672,13 +676,13 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
 ###################################################################################
 #                               Parameter settings                                #
 ###################################################################################
-prepare_data = False# look for existing data directory (dependent on handle)
+prepare_data = False # look for existing data directory (dependent on handle)
                     # here), create new file or use the existing file.
 plot = True ; # to plot or not to plot, that is the question...
 
 consVarComparison = False; 
-plot_interface_stats = True # plot interface statistics 
-plot_ion_electron_interface_comparison = False
+plot_interface_stats = False # plot interface statistics 
+plot_ion_electron_interface_comparison = True
 
 max_res = 2048 # mas resolution used --- debug 
 print("View changed from standard")
@@ -708,17 +712,24 @@ if __name__ == '__main__':
 #"SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-FB-ANISO-Option-16", -1)
 
 ###Z_Q_Corrected
+#"gradMQRHO_SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1)
 #"SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1)
 
 #option 44
 #"SRMI-OP-16-Res-512-DUMMY-beta-0p01":("/media/kyriakos/Expansion/000_testingCollisionalVorticityContribution/dummy_512_data_Set", 3)
-#"testDelete_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", 4), 
-#"testDelete_SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", 4), 
 
 #"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
 # "SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", -1),
-"SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
+
+#"SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
 #"SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1), 
+
+"gradMGRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
+"gradMQRHO_SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1), 
+
+"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
+"gradMQRHO_SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1), 
+
 #"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
 #"SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1), 
 
@@ -800,10 +811,10 @@ if __name__ == '__main__':
       # ======================= Interface statistics ===============================#
       if plot_interface_stats:
         print('\nPlotting interface statistics')
-        date = "20220916_IONS"
+        date = "20220919_negativePi_IONS_gradMQRHO"
         interfaceStatistics("ions", key, date, simDir, level, 2, 2, nproc=4)
 
-        date = "20220916_ELECTRONS"
+        date = "20220919_negativePi_ELECTRONS_gradMQRHO"
         interfaceStatistics("electrons", key, date, simDir, level, 2, 2, nproc=4)
 
 

@@ -339,6 +339,7 @@ def get_single_data(din):
       rc = ReadBoxLib(din["dataName"], max_level=din["level"], limits=din["window"]) #reopen after operatons ar done for the remaineder
       fluxDict = {}; srcDict = {}; OC = {}# vorticity vontribution 
       for name in ['ions', 'electrons']: #delete useless data
+        print("constOC Value: ", constOC)
         fluxDict[name] = {}
         srcDict[name] = {}
         # divide by density 
@@ -368,7 +369,8 @@ def get_single_data(din):
         for key in range(srcDst[name].shape[-1]):
           if key in [0, 1]: # 0:Xmom, 1:Ymom
             srcDict[name][key] = np.copy(srcDst[name][:,:,key])/rhoName*constOC
-      del dudt_fluxes, srcDst, rhoName, constOC;
+        del rhoName
+      del dudt_fluxes, srcDst, constOC; gc.collect()
 
       OC['R_i'] = np.gradient(srcDict['ions'][1], x, axis=0) - \
             np.gradient(srcDict['ions'][0], y, axis=1)
@@ -1664,18 +1666,18 @@ def braginskiiViscousTensorHeatFlux(name, ionName, eleName, emName, i, j, dimFlu
     try:
       dT_dx = 0.5*(QD["T" + species + "dx"][xl,yl]  + QD["T" + species + "dx"][xh,yh]) 
     except:
-      dT_dx = (Q[ionName][Temp][xxh,yh] + Q[ionName][Temp][xxh,yl] - Q[ionName][Temp][xxl,yh] - Q[ionName][Temp][xxl,yl])/4/dX;
+      dT_dx = (Q[name][Temp][xxh,yh] + Q[name][Temp][xxh,yl] - Q[name][Temp][xxl,yh] - Q[name][Temp][xxl,yl])/4/dX;
 
     try:
       du_dx = 0.5*(QD["U" + species + "dx"][xl,yl]  + QD["U" + species + "dx"][xh,yh]) 
       dv_dx = 0.5*(QD["V" + species + "dx"][xl,yl]  + QD["V" + species + "dx"][xh,yh])
     except:
-      du_dx = (Q[ionName][Xvel][xxh,yh] + Q[ionName][Xvel][xxh,yl] -\
-              Q[ionName][Xvel][xxl,yh] - Q[ionName][Xvel][xxl,yl])/4/dX;
-      dv_dx = (Q[ionName][Yvel][xxh,yh] + Q[ionName][Yvel][xxh,yl] -\
-              Q[ionName][Yvel][xxl,yh] - Q[ionName][Yvel][xxl,yl])/4/dX;
-    dw_dx = (Q[ionName][Zvel][xxh,yh] + Q[ionName][Zvel][xxh,yl] -\
-            Q[ionName][Zvel][xxl,yh] - Q[ionName][Zvel][xxl,yl])/4/dX;
+      du_dx = (Q[name][Xvel][xxh,yh] + Q[name][Xvel][xxh,yl] -\
+              Q[name][Xvel][xxl,yh] - Q[name][Xvel][xxl,yl])/4/dX;
+      dv_dx = (Q[name][Yvel][xxh,yh] + Q[name][Yvel][xxh,yl] -\
+              Q[name][Yvel][xxl,yh] - Q[name][Yvel][xxl,yl])/4/dX;
+    dw_dx = (Q[name][Zvel][xxh,yh] + Q[name][Zvel][xxh,yl] -\
+            Q[name][Zvel][xxl,yh] - Q[name][Zvel][xxl,yl])/4/dX;
     try:
       dT_dy = 0.5*(QD["T" + species + "dy"][xl,yl]  + QD["T" + species + "dy"][xh,yh]) 
     except:

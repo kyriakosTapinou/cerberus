@@ -56,6 +56,7 @@ def tilePcolormeshNormalise(i, j, i_last, x, y, val, name_ij, fig, gs, ax_i, div
   else:
     vminValue = 0. #0.5*attr_gcl[name_ij]; 
     vmidValue = 0.5*attr_gcl; cmapValue = mpl.cm.Greens #"Greens" #magma_r";
+    if 'temp' in name_ij: cmapValue = mpl.cm.Oranges
 
   ax_i[name_ij].pcolormesh(x, y, val, vmin = vminValue, vmax = attr_gcl, cmap=cmapValue)
   if i == i_last:
@@ -298,7 +299,7 @@ def plot_ScenariosPrimitive(dataFileList, outputType, raw_data_attr, levelList, 
           attr_name, fig, gs, ax[i], divider[i][attr_name], cax[i][attr_name], 
           norm[i][attr_name], cb[i][attr_name], attr_gcl[attr_name], view, label_prop[j], 
           attr_t[i], columnLetter[j])
-      if IDI_contour and "Lorentz" in attr_name :
+      if IDI_contour:# and "Lorentz" in attr_name :
         #ax[i][attr_name].pcolormesh(
         #  x_tracer, y_tracer, DI_contour['ions'][i], cmap='gray', alpha=1., vmin=0, vmax=1.)
         ax[i][attr_name].contour(x_tracer[i], y_tracer[i], DI_contour['ions'][i], [0.05, 0.95], colors='gray', linewidths=0.5, corner_mask=True, alpha=0.1)
@@ -617,8 +618,8 @@ prepare_data = False # look for existing data file (use dictionary name assigned
                     # here), create new file or use the existing file.
 plot = True # to plot or not to plot, that is the question...
 
-plot_interface_stats = True # plot interface statistics 
-plot_scenarios_primitive = False # not implemented 
+plot_interface_stats = False # plot interface statistics 
+plot_scenarios_primitive = True # not implemented 
 plot_interface_thickness = False
 plot_scenarios_eden_series = False # not implemented 
 
@@ -633,8 +634,8 @@ plot_21 = False
 useNprocs = 1
 
 max_res = 2048 # not used just elgacy variable
-view =  [[-0.4, 0.0], [1.4, 1.0]] # what windo of data to view 
-#view =  [[0.3, 0.0], [1.5, 1.0]] # view for t=1
+#view =  [[-0.4, 0.0], [1.4, 1.0]] # what windo of data to view 
+view =  [[0.3, 0.0], [1.5, 1.0]] # view for t=1
 #view =  [[-0.2, 0.0], [1.1, 1.0]] # view for t=0.56 #[[0.0, 0.0], [0.9, 1.0]] # view for t=0.56
 
 window = view ; # no point having more data than needed window =[[-2.0, 0.0], [2.0, 1.0]] 
@@ -684,11 +685,13 @@ if __name__ == '__main__':
 #"SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1), 
 
 #### option 44 bitches  --- PAPER THREE
-"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
+#"gradMGRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1),
+#"gradMQRHO_SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1),
+#"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
 "SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", -1), 
-"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
+#"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
 "SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1), 
-"SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
+#"SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
 "SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1), 
 #'PHM_HRMI_p0.5_ny2048':('/home/kyriakos/Documents/000_Species_RMI_Scenario_Results/000_R18_Scenario_Results/PHM_HRMI_p0.5_ny2048', -1), 
 #'PHM_HRMI_p1_ny2048':('/home/kyriakos/Documents/000_Species_RMI_Scenario_Results/000_R18_Scenario_Results/PHM_HRMI_p1_ny2048', -1)
@@ -842,21 +845,22 @@ if __name__ == '__main__':
       #Fluid properties 
       #label_prop = [r"$\rho_i$", r"$\rho_{q}$", r"$\omega_{i}$"] #
       #raw_data_attr_names = ['rho-ions', 'rho-charge', 'vorticity-ions']
-      #label_prop = [r"$\rho_i$", r"$\rho_e$", r"$T_{i}$", r"$T_{e}$"] #
-      #raw_data_attr_names = ['rho-ions', 'rho-electrons','temperature-ions', 'temperature-electrons']
+      label_prop = [r"$\rho_i$", r"$\rho_e$", r"$T_{i}$", r"$T_{e}$"] #
+      raw_data_attr_names = ['rho-ions', 'rho-electrons','temperature-ions', 'temperature-electrons']
 
       # r"$\omega_{i}$", r"$\rho_{q}$", r"$T_e$", r"$T_i$", r"$\varrho_i$", r"$\omega_{i}$"
       #r"$\rho_{E,e}$", r"$\rho_{E,i}$", r"$\rho_{E, EM}$"]  r"$\rho_i$", r"$L_{x,i}$", 
 
       #Mix properties 
-      label_prop = [r"$\rho_i$", r"$\omega_{i}$", r"$L_{y,i}$", r"$\rho_e$", r"$\omega_{e}$", r"$L_{y,e}$"] #
-      raw_data_attr_names = ['rho-ions', 'vorticity-ions', 'Lorentz-y-ions', 'rho-electrons', 'vorticity-electrons', 'Lorentz-y-electrons']
+      #label_prop = [r"$\rho_i$", r"$\omega_{i}$", r"$L_{y,i}$", r"$\rho_e$", r"$\omega_{e}$", r"$L_{y,e}$"] #
+      #raw_data_attr_names = ['rho-ions', 'vorticity-ions', 'Lorentz-y-ions', 'rho-electrons', 'vorticity-electrons', 'Lorentz-y-electrons']
       #['rho_E-electrons', 'rho_E-ions', "rho_E-EM", 'vorticity-ion', 
       # 'rho-charge', 'temperature-electron', 'temperature-ion', 'tracer-ion']
       #'temperature-ions' 'vorticity-ions'
       levelList = []
-      for timeInput in [0.2, 0.5, 0.7, 1.0]: #0.2, 0.3, 0.4, 0.5, 1.0]: 
-        label_output = "20220904-Braginskii"+key+"t-%.1f-rho-omega-Lrtz_"%(timeInput)
+      for timeInput in [1.]: #[0.2, 0.5, 0.7, 1.0]: #0.2, 0.3, 0.4, 0.5, 1.0]: 
+        label_output = "20220918-Braginskii_Isotropic_44_Xbeta_t-%.1f-rho-T_"%(timeInput)
+        #label_output = "20220918-Braginskii_Isotropic_44_Xbeta"+key+"t-%.1f-rho-omega-Lrtz_"%(timeInput)
         #label_output = "20220831_Braginskii-ANISO_Z_Q_Corrected_t-%.1f_rho-temp_"%(timeInput)
         input_files = []; level_list = []; ylabel_list = []; view_list = []
     
@@ -911,7 +915,7 @@ if __name__ == '__main__':
           FTF_inputs['fileNames'] = outputFiles[key]
           FTF_inputs['level'] = 0 # set to zero to minimise memory usage - we only need time data 
           FTF_inputs['window'] = view
-          if False: ### 
+          if  True: ### 
             print("\n\nhardocoded time search overide for last frame")
             input_files.append( outputFiles[key][-1])
           else:
