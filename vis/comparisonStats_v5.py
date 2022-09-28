@@ -324,13 +324,19 @@ def plot_ScenariosPrimitive(dataFileList, outputType, raw_data_attr, levelList, 
 def compareInterfaceStatistics(fluid, key, date, reducedPlot, areaOnly, circulationComponentsOnly,
       cases, processedFiles, wspacing, hspacing, label_append, useNprocs):
   ### the line styles and colours associated with each property
-  data_lines = {"circulation_interface_sum_half":'dashed',"tau_sc_interface_sum_half":'dashed', "baroclinic_interface_sum_half":'dashed', "curl_Lorentz_E_interface_sum_half":'dashed', "curl_Lorentz_B_interface_sum_half":'dashed', 'int_DGDT_sum_half':'dashed', "circulation_interface_sum_half":'dashed', "interface_area":'dashed', "y_avg_int_width":'dashed', "global_int_width":'solid', "growth_rate":'dashed', "global_growth_rate":'solid'}
+  data_lines = {"circulation_interface_sum_half":'dashed',"tau_sc_interface_sum_half":'dashed', 
+    "baroclinic_interface_sum_half":'dashed', "curl_Lorentz_E_interface_sum_half":'dashed', 
+    "curl_Lorentz_B_interface_sum_half":'dashed', 'int_DGDT_sum_half':'dashed', "circulation_interface_sum_half":'dashed', 
+    "interface_area":'dashed', "y_avg_int_width":'dashed', "global_int_width":'solid', "growth_rate":'dashed', 
+    "global_growth_rate":'solid', "curl_brag_inter_sum_half":"-", "curl_brag_intra_sum_half":"--"}
 
   data_markers = {"circulation_interface_sum_half":'None',"tau_sc_interface_sum_half":'x', "baroclinic_interface_sum_half":'+', "curl_Lorentz_E_interface_sum_half":'x', "curl_Lorentz_B_interface_sum_half":'+', 'int_DGDT_sum_half':'None', "interface_area":'None', "y_avg_int_width":'None', "global_int_width":'None', "growth_rate":'None', "global_growth_rate":'None'}
 
-  data_labels = {"circulation_interface_sum_half":'', "tau_sc_interface_sum_half":r"$\dot\Gamma_{comp.}-$", "baroclinic_interface_sum_half":r"$\dot\Gamma_{baro.}-$", 
-                 "curl_Lorentz_E_interface_sum_half":r"$\dot\Gamma_{L,E}-$", "curl_Lorentz_B_interface_sum_half":r"$\dot\Gamma_{L,B}-$", "interface_area":'',
-                 "y_avg_int_width":'', "global_int_width":'Gbl-',"growth_rate":'', "global_growth_rate":'Gbl-', 'int_DGDT_sum_half':''}
+  data_labels = {"circulation_interface_sum_half":'', "tau_sc_interface_sum_half":r"$\dot\Gamma_{comp.}-$", 
+    "baroclinic_interface_sum_half":r"$\dot\Gamma_{baro.}-$", "curl_Lorentz_E_interface_sum_half":r"$\dot\Gamma_{L,E}-$", 
+    "curl_Lorentz_B_interface_sum_half":r"$\dot\Gamma_{L,B}-$", "interface_area":'', "y_avg_int_width":'', 
+    "global_int_width":'Gbl-',"growth_rate":'', "global_growth_rate":'Gbl-', 'int_DGDT_sum_half':'', 
+    "curl_brag_inter_sum_half":r"$\dot\Gamma_{Drag}-$", "curl_brag_intra_sum_half":r"$\dot\Gamma_{Visc}-$"}
 
   plot_properties = ["circulation_interface_sum_half", "tau_sc_interface_sum_half", "baroclinic_interface_sum_half", "curl_Lorentz_E_interface_sum_half", "curl_Lorentz_B_interface_sum_half", "y_avg_int_width", "growth_rate", 'int_DGDT_sum_half']
 
@@ -349,15 +355,17 @@ def compareInterfaceStatistics(fluid, key, date, reducedPlot, areaOnly, circulat
     plot_properties = ["interface_area"]
     plot_labels = [ r"$A_{int}$"]
     plot_limits = [ [0., 0.08] ]
-    #plot_limits = [[0.004, 0.012] ] #[ [0., 0.08] ]
+    plot_limits = [[0.004, 0.01] ] #[ [0., 0.08] ]
     figure_nR = 1; figure_nC = 1;
   elif circulationComponentsOnly:
-    oneD_properties = ["tau_sc_interface_sum_half", "baroclinic_interface_sum_half", "curl_Lorentz_E_interface_sum_half", "curl_Lorentz_B_interface_sum_half"]
-    plot_properties = ["tau_sc_interface_sum_half", "baroclinic_interface_sum_half", "curl_Lorentz_E_interface_sum_half", "curl_Lorentz_B_interface_sum_half"]
+    oneD_properties = ["tau_sc_interface_sum_half", "baroclinic_interface_sum_half", "curl_Lorentz_E_interface_sum_half", "curl_Lorentz_B_interface_sum_half", "curl_brag_inter_sum_half", "curl_brag_intra_sum_half"]
+    plot_properties = ["tau_sc_interface_sum_half", "baroclinic_interface_sum_half", "curl_Lorentz_E_interface_sum_half", "curl_Lorentz_B_interface_sum_half", "curl_brag_inter_sum_half", "curl_brag_intra_sum_half"]
     plot_labels = [r"$\dot \Gamma_{z, fluid}$", r"$\dot \Gamma_{z, EM}$"]
     figure_nR = 1; figure_nC = 2;
-    plot_limits = [[-0.35, 1.5], [-0.6, 0.6]]
-    data_markers = {"circulation_interface_sum_half":'None',"tau_sc_interface_sum_half":'None', "baroclinic_interface_sum_half":'x', "curl_Lorentz_E_interface_sum_half":'None', "curl_Lorentz_B_interface_sum_half":'x', 'int_DGDT_sum_half':'None', "interface_area":'None', "y_avg_int_width":'None', "global_int_width":'None', "growth_rate":'None', "global_growth_rate":'None'}
+    #plot_limits = [[-0.35, 1.5], [-0.6, 0.6]]
+    plot_limits = [[-2.5, 1.5], [-.5, .5]]
+    if "electron" in fluid: plot_limits = [[-7.5, 18.0], [-15., 8.0]]
+    data_markers = {"circulation_interface_sum_half":'None',"tau_sc_interface_sum_half":'None', "baroclinic_interface_sum_half":'x', "curl_Lorentz_E_interface_sum_half":'None', "curl_Lorentz_B_interface_sum_half":'x', 'int_DGDT_sum_half':'None', "interface_area":'None', "y_avg_int_width":'None', "global_int_width":'None', "growth_rate":'None', "global_growth_rate":'None', "curl_brag_inter_sum_half":"2", "curl_brag_intra_sum_half":"+"}
   else:
     plot_labels = [ r"$\Gamma_z$",r"$\dot \Gamma_{z, total}$",r"$\dot \Gamma_{z, fluid}$", 
                     r"$\dot \Gamma_{z, EM}$", r"$\eta$", r"$\dot \eta$"]
@@ -394,7 +402,9 @@ def compareInterfaceStatistics(fluid, key, date, reducedPlot, areaOnly, circulat
     plot_axes = {"tau_sc_interface_sum_half":axes[0], 
                  "baroclinic_interface_sum_half":axes[0], 
                  "curl_Lorentz_E_interface_sum_half":axes[1], 
-                 "curl_Lorentz_B_interface_sum_half":axes[1]
+                 "curl_Lorentz_B_interface_sum_half":axes[1],
+                 "curl_brag_inter_sum_half":axes[0], 
+                 "curl_brag_intra_sum_half":axes[0]
                 }
   else:
     plot_axes = {"circulation_interface_sum_half":axes[0], 
@@ -461,6 +471,7 @@ def compareInterfaceStatistics(fluid, key, date, reducedPlot, areaOnly, circulat
         else:
           use_marker = data_markers[prop]
         """
+        if circulationComponentsOnly: use_marker = data_markers[prop]
         print(f"{prop}\t{key}\t{use_marker}")
         plot_axes[prop].plot(t_data[prop, key], interface_data[prop,key], color=use_color, linestyle=use_ls, marker=use_marker, linewidth=use_lw, markersize=use_ms, label=use_label)
         #plot_axes[prop].set_aspect(1)
@@ -618,8 +629,8 @@ prepare_data = False # look for existing data file (use dictionary name assigned
                     # here), create new file or use the existing file.
 plot = True # to plot or not to plot, that is the question...
 
-plot_interface_stats = False # plot interface statistics 
-plot_scenarios_primitive = True # not implemented 
+plot_interface_stats = True # plot interface statistics 
+plot_scenarios_primitive = False # not implemented 
 plot_interface_thickness = False
 plot_scenarios_eden_series = False # not implemented 
 
@@ -685,14 +696,16 @@ if __name__ == '__main__':
 #"SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1), 
 
 #### option 44 bitches  --- PAPER THREE
-#"gradMGRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1),
+"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
+"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
+"gradMGRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1),
 #"gradMQRHO_SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1),
 #"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
-"SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", -1), 
+#"SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", -1), 
 #"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
-"SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1), 
+#"SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1), 
 #"SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
-"SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1), 
+#"SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1), 
 #'PHM_HRMI_p0.5_ny2048':('/home/kyriakos/Documents/000_Species_RMI_Scenario_Results/000_R18_Scenario_Results/PHM_HRMI_p0.5_ny2048', -1), 
 #'PHM_HRMI_p1_ny2048':('/home/kyriakos/Documents/000_Species_RMI_Scenario_Results/000_R18_Scenario_Results/PHM_HRMI_p1_ny2048', -1)
 }
@@ -719,6 +732,7 @@ if __name__ == '__main__':
     colors = ['g', 'k', 'b', 'm', 'r', 'y']
     #### must match the keys used for the data 
     #dS_marker = {:'+', :'x', 
+
     dS_marker = {
 "SRMI-OP-16-Res-512-IDEAL-CLEAN":"None",
 "SRMI-OP-16-Res-2048-IDEAL":"None",
@@ -737,6 +751,9 @@ if __name__ == '__main__':
 "SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":"None", 
 "SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":"o", 
 "SRMI-OP-44-Res-2048-FB-ISO-beta-infin":"None", 
+"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":"o",
+"gradMGRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":"o",
+"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":"o",
 }
 
     case_prefix = {
@@ -757,6 +774,9 @@ if __name__ == '__main__':
 "SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":"FBI " + r"$\beta=1\times 10^{-2}$", 
 "SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":"FBA " + r"$\beta=\infty$", 
 "SRMI-OP-44-Res-2048-FB-ISO-beta-infin":"FBI " + r"$\beta=\infty$", 
+"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":"FBA " + r"$\beta=0.01$", 
+"gradMGRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":"FBA " + r"$\beta=\infty$", 
+"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":"FBA " + r"$\beta=0.001$", 
 }
 
     case_colors = {
@@ -777,7 +797,9 @@ if __name__ == '__main__':
 "SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":'b', 
 "SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":'k', 
 "SRMI-OP-44-Res-2048-FB-ISO-beta-infin":'k', 
-
+"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":"b", 
+"gradMGRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":"k", 
+"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":"m", 
 }
 
 
@@ -821,7 +843,7 @@ if __name__ == '__main__':
           
           else:# standard boxlib files
             print("Ensure the files are in the simDir or adjacent directory and check line 820")
-            if False: # in the sim folder 
+            if True: # in the sim folder 
               if simDir[-1] == "/": dirName = simDir + dirName # where is the processed files in relation to the sim output
               else: dirName = simDir + "/" + dirName
   
@@ -944,24 +966,22 @@ if __name__ == '__main__':
       # ======================= Interface statistics ===============================#
     if plot_interface_stats:
       print('\nPlotting comparison of interface statistics')
-      date = "20220904"
+      date = "20220922"
       label_append = "Interface_Statistics_IONS_comparison_44-Magnetised_RES_2048"
       # "IONS_comparison_44-Braginskii_RES_2048_noHydro"
-      reducedPlot = True # True # only plotting the overall circ, circ gen, growth rate, and 
+      reducedPlot = False  # True # only plotting the overall circ, circ gen, growth rate, and 
       areaOnly = False
-      circulationComponentsOnly = False 
+      circulationComponentsOnly = True 
 
-      wspacing = 0.3; hspacing = 0.1; 
-      """compareInterfaceStatistics("ions", key, date, 
-        reducedPlot, areaOnly, circulationComponentsOnly,
-        cases, processedFiles, wspacing, hspacing, label_append, useNprocs=useNprocs)
-      """
-      # second plot 
-      date = "20220904"
       #label_append = "ION_interface_area_comparison_44-Magnetised_RES_2048"
+      wspacing = 0.3; hspacing = 0.1; 
+      compareInterfaceStatistics("ions", key, date, reducedPlot, areaOnly, 
+        circulationComponentsOnly, cases, processedFiles, wspacing, hspacing, 
+        label_append, useNprocs=useNprocs)
+      # second plot 
+      #label_append = "ELECTRON_interface_area_comparison_44-Magnetised_RES_2048"
       label_append = "Interface_Statistics_ELECTRONS_comparison_44-Magnetised_RES_2048"
       #label_append = "ION_interface_area_comparison_44-Braginskii_RES_2048_noHydro"
-      reducedPlot = True ; areaOnly = False
       compareInterfaceStatistics("electrons", key, date, 
         reducedPlot, areaOnly, circulationComponentsOnly,
         cases, processedFiles, wspacing, hspacing, label_append, useNprocs=useNprocs)

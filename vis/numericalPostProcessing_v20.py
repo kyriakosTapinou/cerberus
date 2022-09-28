@@ -66,12 +66,14 @@ def tilePcolormeshNormalise(i, j, i_last, x, y, val, name_ij, fig, gs, ax_i, div
                       bbox_to_anchor=(0., -0.125, 1,1), bbox_transform=ax_i[name_ij].transAxes, 
                       borderpad=0) #div_ij.append_axes("bottom", size="3%", pad=0.05)
 
-  saturateDensity = True; print("Staurating density plot")
-  if "_D-field" in name_ij or "_B-field" in name_ij:
+  saturateDensity = False; 
+  if "_D-field" in name_ij or "_B-field" in name_ij or  "vorticity" in name_ij:
     vminValue = -attr_gcl; vmidValue = 0.; cmapValue = mpl.cm.bwr #"bwr";
   elif 'rho-electrons' in name_ij and saturateDensity : 
+    print("Saturating density plot")
     attr_gcl = 0.035; vminValue = 0.025; vmidValue = 0.5* (0.035+0.025); cmapValue = mpl.cm.Greens #"Greens" #magma_r";
   elif 'rho-ions' in name_ij and saturateDensity : 
+    print("Saturating density plot")
     attr_gcl = 3.5; vminValue = 2.5; vmidValue = 0.5*(2.5+3.5); cmapValue = mpl.cm.Greens # "Greens" #magma_r";
   elif '_vel-' in name_ij and saturateDensity : 
     vminValue = -attr_gcl; vmidValue = 0.; cmapValue = mpl.cm.bwr # "bwr";
@@ -132,8 +134,8 @@ def tilePcolormesh(i, j, i_last, x, y, val, name_ij, fig, gs, ax_i, div_ij, cax_
   return 
 
 def plot_raw_data_attribute(key, outputType, raw_data_attr, level, label_axis, label_output, 
-                            dataDir, data_index, n_time_slices, time_slices, view,
-                            range_low=0., range_high=1., t_low=0, t_high=0, t_dt = 0.0025 ):
+  dataDir, data_index, n_time_slices, time_slices, view,
+  range_low=0., range_high=1., t_low=0, t_high=0, t_dt = 0.0025 ):
   """
   Function to output plots of single or multiple raw properties on contour plots. Extended to 
   include some specialist properties 
@@ -191,16 +193,23 @@ def plot_raw_data_attribute(key, outputType, raw_data_attr, level, label_axis, l
     for attr_name in raw_data_attr:
       rc = ReadBoxLib(dataFiles[data_index[time_slices[i]]], level, view)
 
-      try:
-        x_attr, attr[attr_name][i] = rc.get_flat(attr_name); 
-      except: 
-        x_attr, attr[attr_name][i] = rc.get(attr_name); 
-      y_attr = x_attr[1]; x_attr = x_attr[0];
-
-      if 'tracer' in attr_name:
-        attr[attr_name][i] = rc.get_flat('alpha-%s'%attr_name[7:])[1]
-      attr_t[i] = rc.data['time']; dS[i] = rc.data["skin_depth"]; c[i] = rc.data["lightspeed"]; 
-      debye[i] = dS[i]/c[i];
+      if "vorticity" in attr_name :# for special names 
+        dim = attr_name.split("-")[-1]; mapDim = {'x':0, 'y':1, 'z':2}
+        name = attr_name.split("-")[1]
+        options = {'name':name, 'quantity':'omega', 'dim':mapDim[dim]}
+        del name, dim;
+        x_attr,y_attr,attr[attr_name][i] =phmmfp.get_vorticity(rc, options)
+      else: # for true raw data properties 
+        try:
+          x_attr, attr[attr_name][i] = rc.get_flat(attr_name); 
+        except: 
+          x_attr, attr[attr_name][i] = rc.get(attr_name); 
+        y_attr = x_attr[1]; x_attr = x_attr[0];
+  
+        if 'tracer' in attr_name:
+          attr[attr_name][i] = rc.get_flat('alpha-%s'%attr_name[7:])[1]
+    attr_t[i] = rc.data['time']; dS[i] = rc.data["skin_depth"]; 
+    c[i] = rc.data["lightspeed"]; debye[i] = dS[i]/c[i];
   
     ### ===== Interface =====
     for (i,name) in enumerate(contourNames):
@@ -237,7 +246,9 @@ def plot_raw_data_attribute(key, outputType, raw_data_attr, level, label_axis, l
 
   for attr_name in raw_data_attr:
     attr_gcl[attr_name] = max( abs( min([attr[attr_name][i].min() for i in range(len(time_slices))])), abs( max([attr[attr_name][i].max() for i in range(len(time_slices))])))
-    if '_D-field' in attr_name or '_B-field' in attr_name: attr_gcl[attr_name] = 0.1*attr_gcl[attr_name]
+    if '_D-field' in attr_name or '_B-field' in attr_name or 'vorticity' in attr_name:
+      attr_gcl[attr_name] = 0.01*attr_gcl[attr_name]
+      print("Hard coded saturation 245")
 
   for i in range(len(time_slices)):
     ax[i] = {}; divider[i] = {}; cax[i] = {}; norm[i] = {}; cb[i] = {}; big[i] = {}; 
@@ -676,12 +687,12 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
 ###################################################################################
 #                               Parameter settings                                #
 ###################################################################################
-prepare_data = False # look for existing data directory (dependent on handle)
+prepare_data = True # look for existing data directory (dependent on handle)
                     # here), create new file or use the existing file.
-plot = True ; # to plot or not to plot, that is the question...
+plot = False ; # to plot or not to plot, that is the question...
 
 consVarComparison = False; 
-plot_interface_stats = False # plot interface statistics 
+plot_interface_stats = True # plot interface statistics 
 plot_ion_electron_interface_comparison = True
 
 max_res = 2048 # mas resolution used --- debug 
@@ -689,7 +700,7 @@ print("View changed from standard")
 #view =  [[-0.4, 0.0], [1.4, 1.0]] # what windo of data to view 
 view =  [[-0.2, 0.0], [1.15, 1.0]] # what windo of data to view 
 window = view ; # no point having more data than needed window =[[-2.0, 0.0], [2.0, 1.0]] 
-n_time_slices = 5 # number of time increments for contour plots 
+n_time_slices = False# number of time increments for contour plots 
 time_slices = range(n_time_slices) #[0, 9] # which indexes in the data_index list (calculated later) to be used, range(n_time_slices) means use all
 
 cwd = os.getcwd() 
@@ -716,20 +727,19 @@ if __name__ == '__main__':
 #"SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1)
 
 #option 44
-#"SRMI-OP-16-Res-512-DUMMY-beta-0p01":("/media/kyriakos/Expansion/000_testingCollisionalVorticityContribution/dummy_512_data_Set", 3)
-
 #"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
 # "SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", -1),
 
 #"SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
 #"SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1), 
 
-"gradMGRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
-"gradMQRHO_SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1), 
+"gradMGRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -4), 
+#"gradMQRHO_SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1), 
 
-"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
-"gradMQRHO_SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1), 
-
+#"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
+#"gradMQRHO_SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1), 
+#"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
+#"gradMQRHO_SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", -1),
 #"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
 #"SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1), 
 
@@ -746,7 +756,7 @@ if __name__ == '__main__':
   if prepare_data:
     for key, (simDir, level) in simOutputDirec.items():
       phmmfp.get_batch_data(key, simDir, level, max_res, window, n_time_slices, 
-        nproc=1, outputType=[outputKeyword], braginskiiVorticity=True) 
+        nproc=1, outputType=[outputKeyword], braginskiiVorticity=False, interfaceHeuristic=True) 
   
 ###################################################################################
 #                                 Plot statistics                                 #
@@ -772,7 +782,8 @@ if __name__ == '__main__':
       print("Search for times")
       if consVarComparison: # Use non standard time frames for outputs overwritting settings above
         FTF_inputs = {}
-        FTF_inputs['times_wanted'] = [0.1, 0.2, 0.4, 0.6, 0.8, 1.0] #  0.1*i for i in range(1,6)]
+        FTF_inputs['times_wanted'] = [0.1, 0.15, 0.2, 0.25, 0.3, 35, 0.4]
+        #  0.1*i for i in range(1,6)] # [0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
         FTF_inputs['frameType'] = 2
         FTF_inputs['dataIndex'] = data_index
         FTF_inputs['n_time_slices'] = n_time_slices
@@ -781,7 +792,11 @@ if __name__ == '__main__':
         FTF_inputs['level'] = level
         FTF_inputs['window'] = window
         print("Search function")
-        data_index, n_time_slices, time_slices = phmmfp.find_time_frames(FTF_inputs)
+        if True: 
+          #data_index = [45, 50, 55, 60, 65, 70, 80, 85, 90, 95]; 
+          data_index = [10, 15, 20, 25, 30, 35, 40, 45, 50]; 
+          n_time_slices = len(data_index); time_slices =range(1) 
+        else: data_index, n_time_slices, time_slices = phmmfp.find_time_frames(FTF_inputs)
         print("\t..done")
         if n_time_slices > 7:
           data_index = data_index[0:7]; n_time_slices = len(data_index); 
@@ -797,12 +812,20 @@ if __name__ == '__main__':
       if consVarComparison:
         print('\nPlotting conserved variables contour plot comparison')
     
-        label_density_plots = '20220903-'+key+'density-EM-Early-Precursor-Saturated-2-velocity'
+        #label_density_plots = '20220923-'+key+'vorticity-Saturated_0p01Max_'
+        #label_axis = [r"$\omega_{i,x}$", r"$\omega_{i,y}$", r"$\omega_{i,z}$"] #
+        #raw_data_attr_names = ['vorticity-ions-x', 'vorticity-ions-y', 'vorticity-ions-z']
+
+        label_density_plots = '20220923-'+key+'_EM_field_'
+        label_axis = [r"$E_x$", r"$E_y$", r"$E_z$", r"$B_x$", r"$B_y$", 
+          r"$B_z$"] 
+        raw_data_attr_names = ['x_D-field', 'y_D-field', 'z_D-field',
+          'x_B-field', 'y_B-field', 'z_B-field']  
+ 
         #label_axis = [r"$\rho_e$", r"$\rho_i$", r"$v_{x,e}$", r"$v_{x, e}$", r"$E_x$", r"$E_y$", r"$B_z$"] #r"$\varrho_i$"]
         #raw_data_attr_names = ['rho-electrons','rho-ions', 'x_vel-electrons', 'y_vel-electrons', 'x_D-field', 'y_D-field', 'z_B-field']  
-        label_axis = [r"$\rho_e$", r"$\rho_i$", r"$v_{x,e}$", r"$v_{x, e}$", r"$E_x$", r"$E_y$", r"$B_z$"] #r"$\varrho_i$"]
-        raw_data_attr_names = ['rho-electrons','rho-ions', 'x_vel-electrons', 'y_vel-electrons', 'x_D-field', 'y_D-field', 'z_B-field']  
-  
+        #label_axis = [r"$\rho_e$", r"$\rho_i$", r"$v_{x,e}$", r"$v_{x, e}$", r"$E_x$", r"$E_y$", r"$B_z$"] #r"$\varrho_i$"]
+        #raw_data_attr_names = ['rho-electrons','rho-ions', 'x_vel-electrons', 'y_vel-electrons', 'x_D-field', 'y_D-field', 'z_B-field']  
  
         plot_raw_data_attribute(key, outputKeyword, raw_data_attr_names, level, label_axis, 
           label_density_plots, simDir, data_index, n_time_slices, time_slices, view, 
@@ -811,16 +834,16 @@ if __name__ == '__main__':
       # ======================= Interface statistics ===============================#
       if plot_interface_stats:
         print('\nPlotting interface statistics')
-        date = "20220919_negativePi_IONS_gradMQRHO"
+        date = "20220925_IONS_gradMQRHO"
         interfaceStatistics("ions", key, date, simDir, level, 2, 2, nproc=4)
 
-        date = "20220919_negativePi_ELECTRONS_gradMQRHO"
+        date = "20220925_ELECTRONS_gradMQRHO"
         interfaceStatistics("electrons", key, date, simDir, level, 2, 2, nproc=4)
 
 
       if plot_ion_electron_interface_comparison:
 
-        date = "20220916_ION_ELECTRON_COMPARISON"
+        date = "20220925_ION_ELECTRON_COMPARISON"
         fluids = ["ions", "electrons"]
         ionElectronInterfaceStatistics(fluids, key, date, simDir, level, 2, 2, nproc=8)
 

@@ -224,6 +224,11 @@ def get_vorticity(ch, input_options):#name):
     """Calculates the vorticity (omega) and change in vorticity due to the 
     omega*(grad dot u) {flow1} and (u dot grad)omega {flow2} terms  
     """
+    if 'dim' not in input_options.keys(): dim = 2 # z direction
+    else: 
+      dim = input_options['dim']
+      print("\t\tNote the 2D slab assumption for x- and y-vorticity - zero z gradient")
+
     name = input_options['name']
     quantity = input_options['quantity']
     x, rho = ch.get("rho-%s"%name)
@@ -231,31 +236,57 @@ def get_vorticity(ch, input_options):#name):
     u = ch.get_flat("x_vel-%s"%name)[1]
     v = ch.get_flat("y_vel-%s"%name)[1]
     y = x[1]; x = x[0]; dx = x[1] - x[0]; dy = y[1] - y[0]
-    
-    try: # check if gradients given in output data
-      du_dy = ch.get_flat("x_vel-%s-dy"%name)[1]
-      dv_dx =  ch.get_flat("y_vel-%s-dx"%name)[1]
-    
+
+    if dim == 0: # vorticity-x
+      try: # check if gradients given in output data
+        dw_dy = ch.get_flat("z_vel-%s-dy"%name)[1]
+        #dv_dz = ch.get_flat("y_vel-%s-dz"%name)[1]
+      except:
+        xxxx
+        dw_dy = np.gradient(w, dy, axis=1)
+        #dv_dz = np.gradient(v, dz, axis=2)
+      omega = dw_dy #- dv_dz
+    elif dim == 1: # vorticity-y
+      try: # check if gradients given in output data
+        dw_dx = ch.get_flat("z_vel-%s-dx"%name)[1]
+        #du_dz = ch.get_flat("x_vel-%s-dz"%name)[1]
+      except:
+        xxxx
+        dw_dx = np.gradient(w, dy, axis=1)
+        #du_dz = np.gradient(u, dz, axis=2)
+      omega = -(dw_dx )  #- du_dz)
+    elif dim == 2: # vorticity-z
+      try: # check if gradients given in output data
+        du_dy = ch.get_flat("x_vel-%s-dy"%name)[1]
+        dv_dx =  ch.get_flat("y_vel-%s-dx"%name)[1]
+      
+        du_dx =  ch.get_flat("x_vel-%s-dx"%name)[1]
+        dv_dy =  ch.get_flat("y_vel-%s-dy"%name)[1]
+      except:
+        xxxx
+        du_dy = np.gradient(u, dy, axis=1)
+        dv_dx = np.gradient(v, dx, axis=0)
+      
+        du_dx = np.gradient(u, dx, axis=0)
+        dv_dy = np.gradient(v, dy, axis=1)
+  
+      omega = dv_dx - du_dy
+    if quantity == 'omega':
+      return x, y, omega
+
+    # if return has not been reached then calculate flow1 and flow2 assuming z dimension
+    if dim != 2: xxxx # don't support non z dimension flow1 and flow 2 
+    try:
       du_dx =  ch.get_flat("x_vel-%s-dx"%name)[1]
       dv_dy =  ch.get_flat("y_vel-%s-dy"%name)[1]
     except:
       xxxx
-      du_dy = np.gradient(u, dy, axis=1)
-      dv_dx = np.gradient(v, dx, axis=0)
-    
       du_dx = np.gradient(u, dx, axis=0)
       dv_dy = np.gradient(v, dy, axis=1)
-
-    omega = dv_dx - du_dy
-    if quantity == 'omega':
-      return x, y, omega
-
     d_omega_dx = np.gradient(omega, dx, axis=0)
     d_omega_dy = np.gradient(omega, dy, axis=1)
-  
     flow1 = -omega*(du_dx + dv_dy)
     flow2 = -u*d_omega_dx - v*d_omega_dy 
-     
     return x, y, omega, flow1, flow2 
 
 def get_charge_number_density(rc, name, returnMany = True):
@@ -333,13 +364,16 @@ def get_single_data(din):
     if braginskiiVorticity: 
       #print("Viscous vorticity contribution")
       #TODO Change the axis since the web page i was on seems to say axis=0     takes gradient acrosos rows???
+      if False:
+        print("\t\tIso overide ON!")
+        isoSwitch = True
+      else: isoSwitch = False
       x, y, dudt_fluxes, srcDst = get_transportProperties(rc, 
-        ["ions", "electrons"], din['level'], isoOveride=False, useNPROC=7)
+        ["ions", "electrons"], din['level'], isoOveride=isoSwitch, useNPROC=7)
 
       rc = ReadBoxLib(din["dataName"], max_level=din["level"], limits=din["window"]) #reopen after operatons ar done for the remaineder
       fluxDict = {}; srcDict = {}; OC = {}# vorticity vontribution 
       for name in ['ions', 'electrons']: #delete useless data
-        print("constOC Value: ", constOC)
         fluxDict[name] = {}
         srcDict[name] = {}
         # divide by density 
@@ -402,15 +436,46 @@ def get_single_data(din):
       get_vorticity_inputs['quantity'] ='all'
 
       x, y, omega, flow1, flow2 = get_vorticity(rc, get_vorticity_inputs)
+      get_vorticity_inputs['quantity'] = 'omega'; get_vorticity_inputs['dim'] = 0; 
+      deleteMe, deleteMe1, omega_x = get_vorticity(rc, get_vorticity_inputs)
+      get_vorticity_inputs['dim'] = 1; 
+      deleteMe, deleteMe1, omega_y = get_vorticity(rc, get_vorticity_inputs)
+      del deleteMe, deleteMe1; gc.collect()
+
       x, y, baro = get_baroclinic_torque(rc, name)
       dx = x[1] - x[0]; dy = y[1] - y[0] # note each level is constant in grid 
 
       if tracerDefined:
         # int tracking 
         x, y, avg_int_coords, global_interface_start, global_interface_end, \
-        interface_tracking = get_interface(rc, name)
-#        d["y_avg_int_start"] = avg_interface_start
-#        d["y_avg_int_end"] = avg_interface_end 
+        interface_tracking = get_interface(rc, name)    
+
+        if din['interfaceHeuristic']: # When brag pushes back interface
+          #dx = rc.data['levels'][din['level']]['dx'][0]
+          xx, rho = rc.get('rho-ions')
+          yy = xx[1]; xx = xx[0]
+          drhodx = np.gradient(rho,xx,axis=0)
+          drhody = np.gradient(rho,yy,axis=1)
+          drho_mag = np.sqrt(drhodx**2 + drhody**2)
+          del drhodx, drhody, rho; gc.collect();
+          #print("\tInterface Heutristic active")
+          for j in range(len(interface_tracking)):
+            if int(len(interface_tracking[j])/2) > 1: print("\t###More than one transition")
+            for k in range(int(len(interface_tracking[j])/2)):
+              iStart = int((interface_tracking[j][2*k]-xx[0])/dx)
+              iEnd = int((interface_tracking[j][2*k+1]-xx[0])/dx)
+              peak_drho = 0
+              drhoAvgWin = copy.copy(drho_mag[iStart:iEnd+1,j])
+              drhoAvgWin = (drho_mag[iStart-1:iEnd,j] + drho_mag[iStart:iEnd+1,j] + drho_mag[iStart+1:iEnd+2,j])/3. # rolling avg of three, centred
+              iSymmetry = np.argmax(drhoAvgWin) + 1 # find max 
+
+              if iEnd-iStart + 1 > 2*iSymmetry+1: print(f"{j}\tinterface got smaller LOL")
+              else: interface_tracking[j][2*k+1][0]=xx[iStart + 2*iSymmetry+1]
+
+        del drho_mag; gc.collect();
+
+        #d["y_avg_int_start"] = avg_interface_start
+        #d["y_avg_int_end"] = avg_interface_end 
 
         avg_all_points = []
         for i in range(len(avg_int_coords)):
@@ -428,6 +493,9 @@ def get_single_data(din):
         d["interface_location"]=interface_tracking #now an array (j,1) with each entry a list of lists that descrive each transition zone either 0.05 to 0.95 or 0.95 to 0.05
         #Hydrodynamic interface stats 
         omega_interface_sum = 0.; omega_interface_sum_half = 0.
+        omega_interface_sum_x = 0.; omega_interface_sum_half_x = 0.
+        omega_interface_sum_y = 0.; omega_interface_sum_half_y = 0.
+
         tb_interface_sum = 0.; tb_interface_sum_half = 0.;
         flow1_interface_sum = 0.; flow1_interface_sum_half = 0.; 
         flow2_interface_sum = 0.; flow2_interface_sum_half = 0.;
@@ -457,6 +525,8 @@ def get_single_data(din):
             for i in range(int((interface_tracking[j][2*k]-x[0])/dx), int((interface_tracking[j][2*k+1]-x[0])/dx)):
               interface_area += dx*dy
               omega_interface_sum += omega[i,j]
+              omega_interface_sum_x += omega_x[i,j]
+              omega_interface_sum_y += omega_y[i,j]
               tb_interface_sum += baro[i,j]
               flow1_interface_sum += flow1[i,j]
               flow2_interface_sum += flow2[i,j]
@@ -472,6 +542,8 @@ def get_single_data(din):
 
               if j <= int(len(interface_tracking)/2):
                 omega_interface_sum_half += omega[i,j]
+                omega_interface_sum_half_x += omega_x[i,j]
+                omega_interface_sum_half_y += omega_y[i,j]
                 tb_interface_sum_half += baro[i,j]
                 flow1_interface_sum_half += flow1[i,j]
                 flow2_interface_sum_half += flow2[i,j]
@@ -486,10 +558,14 @@ def get_single_data(din):
                   OC['R'+ieKey+'_rho'][i,j];
 
           d["circulation_interface_sum"] = omega_interface_sum*dx*dy 
+          d["circulation_interface_sum_x"] = omega_interface_sum_x*dx*dy 
+          d["circulation_interface_sum_y"] = omega_interface_sum_y*dx*dy 
           d["baroclinic_interface_sum"] = tb_interface_sum*dx*dy
           d["tau_sc_interface_sum"] = flow1_interface_sum*dx*dy
           d["tau_conv_interface_sum"] = flow2_interface_sum*dx*dy
           d["circulation_interface_sum_half"] = omega_interface_sum_half*dx*dy 
+          d["circulation_interface_sum_half_x"] = omega_interface_sum_half_x*dx*dy 
+          d["circulation_interface_sum_half_y"] = omega_interface_sum_half_y*dx*dy 
           d["baroclinic_interface_sum_half"] = tb_interface_sum_half*dx*dy
           d["tau_sc_interface_sum_half"] = flow1_interface_sum_half*dx*dy
           d["tau_conv_interface_sum_half"] = flow2_interface_sum_half*dx*dy
@@ -540,7 +616,7 @@ def get_single_data(din):
     save_dict(data, save)
     save.close()
 
-    del x, y, omega, flow1, flow2, baro, avg_int_coords, global_interface_start, global_interface_end, interface_tracking, omega_interface_sum, flow1_interface_sum, flow2_interface_sum, tb_interface_sum, save, data, interface_area
+    del x, y, omega, omega_x, omega_y, flow1, flow2, baro, avg_int_coords, global_interface_start, global_interface_end, interface_tracking, omega_interface_sum, flow1_interface_sum, flow2_interface_sum, tb_interface_sum, save, data, interface_area
     gc.collect()
 
     return []
@@ -637,7 +713,9 @@ def get_save_name(key, folder, level, output_file = 0):
       save_name = key + "_step" + step_id + "_level=%i.h5"%level
       return save_name
 
-def get_batch_data(key, folder, level, max_res, window, n_increments, nproc=1, outputType="plt", braginskiiVorticity=True): 
+def get_batch_data(key, folder, level, max_res, window, n_increments, 
+  nproc=1, outputType="plt", braginskiiVorticity=True, 
+  interfaceHeuristic=True): 
 
     print("get_batch_data --- note the function relieson ion, electron, neutral, keywords in state names for interface statistics")
     """
@@ -654,21 +732,30 @@ def get_batch_data(key, folder, level, max_res, window, n_increments, nproc=1, o
     
     outputFiles = get_files(folder, include=outputType, get_all=False)
 
-    if n_increments ==  1:
-      contour_save_increment = 1
+    if n_increments == False:
+      contour_save = []
     else:
-      contour_save_increment = math.floor(len(outputFiles)/(n_increments-1))
-    print("Save contour information every", contour_save_increment)
-    contour_save = []
-    for i in range(n_increments-1):
-      contour_save.append( int(i*contour_save_increment) )
-    contour_save.append(int(len(outputFiles)-1))
+      if n_increments ==  1:
+        contour_save_increment = 1
+      else:
+       contour_save_increment=math.floor(len(outputFiles)/(n_increments-1))
+
+      for i in range(n_increments-1):
+        contour_save.append( int(i*contour_save_increment) )
+      contour_save.append(int(len(outputFiles)-1))
+      print("Save contour information every", contour_save_increment)
+      contour_save = []
+
     din = []
     counter = 0
     for f in outputFiles:
-      if counter in contour_save: saveContour = True
+      if counter in contour_save and n_increments != False:
+        saveContour = True
       else: saveContour = False
-      din.append({"dataName":f, "level":level, "max_res":max_res, "window":window, "record_contour":saveContour, "key":key, "folder":folder, "dir_name":dir_name, 'braginskiiVorticity':True})
+      din.append({"dataName":f, "level":level, "max_res":max_res, 
+        "window":window, "record_contour":saveContour, "key":key, 
+        "folder":folder, "dir_name":dir_name, 'braginskiiVorticity':True, 
+        "interfaceHeuristic":interfaceHeuristic})
       counter += 1 
     print(f"Begin reading:\t {key}")
     data = []
@@ -1127,7 +1214,7 @@ def get_transportProperties(ch, names, level, isoOveride=False, useNPROC=1):
     srcDst - source term contributions to the cell evoltions (time rate)
   """
 
-  print(f"\tNote isoOveride set to:{isoOveride}")
+  print(f"\t\tNote isoOveride set to:{isoOveride}")
   Q = {}
   #print(f"Time is:\t{ch.time}")
   Density=0; Xvel = 1; Yvel=2; Zvel=3; Prs=4; Temp=5; Alpha=6;
