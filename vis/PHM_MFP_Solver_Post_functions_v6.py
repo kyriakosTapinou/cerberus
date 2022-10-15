@@ -457,21 +457,70 @@ def get_single_data(din):
           drhodx = np.gradient(rho,xx,axis=0)
           drhody = np.gradient(rho,yy,axis=1)
           drho_mag = np.sqrt(drhodx**2 + drhody**2)
+          chargeDensity = get_charge_number_density(rc, "electrons", False)[1] +\
+                          get_charge_number_density(rc, "ions", False)[1]
+           
           del drhodx, drhody, rho; gc.collect();
-          #print("\tInterface Heutristic active")
+          print("\tInterface Heutristic active")
           for j in range(len(interface_tracking)):
             if int(len(interface_tracking[j])/2) > 1: print("\t###More than one transition")
             for k in range(int(len(interface_tracking[j])/2)):
+              #Fist pass at the interface heuristic 
               iStart = int((interface_tracking[j][2*k]-xx[0])/dx)
               iEnd = int((interface_tracking[j][2*k+1]-xx[0])/dx)
+              #print(f"j:\t{j}\nDefault interval:\t{iStart} {iEnd}")
               peak_drho = 0
-              drhoAvgWin = copy.copy(drho_mag[iStart:iEnd+1,j])
-              drhoAvgWin = (drho_mag[iStart-1:iEnd,j] + drho_mag[iStart:iEnd+1,j] + drho_mag[iStart+1:iEnd+2,j])/3. # rolling avg of three, centred
+              drhoAvgWin = (drho_mag[iStart-1:iEnd,j] + drho_mag[iStart:iEnd+1,j] + drho_mag[iStart+1:iEnd+2,j])/3. # rolling avg of three, centred 
+              cdWin = (chargeDensity[iStart-1:iEnd,j] + \
+                chargeDensity[iStart:iEnd+1,j] + chargeDensity[iStart+1:iEnd+2,j])/3.
+
               iSymmetry = np.argmax(drhoAvgWin) + 1 # find max 
+              iSymmetryCD = np.argmax(np.abs(cdWin)) #charge density average 
+              #print(f"dRho criteria interval:\t{iStart} {iStart + 2*iSymmetry+1}")
+              if True: #TODO add switch 
+                iEnd = (iStart) + 2*iSymmetry + 1 
+                iEndCD = (iStart) + 2*iSymmetryCD + 1 
 
-              if iEnd-iStart + 1 > 2*iSymmetry+1: print(f"{j}\tinterface got smaller LOL")
-              else: interface_tracking[j][2*k+1][0]=xx[iStart + 2*iSymmetry+1]
+                # refine based on charge and drho
+                #update the search range
+                drhoAvgWin = (drho_mag[iStart-1:iEnd,j] + \
+                  drho_mag[iStart:iEnd+1,j] + drho_mag[iStart+1:iEnd+2,j])/3.
+                cdWin = (chargeDensity[iStart-1:iEndCD,j] + \
+                  chargeDensity[iStart:iEndCD+1,j] + \
+                  chargeDensity[iStart+1:iEndCD+2,j])/3.
+                iSymmetry = np.argmax(drhoAvgWin) #density average 
+                iSymmetryCD = np.argmax(np.abs(cdWin)) #density average 
+                iN_cd = np.argmin(cdWin); iP_cd = np.argmax(cdWin); #peaks for cd
+                peak_i = iSymmetry; peakCD_i = iSymmetryCD
+                drhoAvg_threshold = drhoAvgWin[peak_i]*0.05
+                cdAvgThreshold = np.abs(cdWin[peakCD_i]*0.05) 
+                #print(drhoAvg_threshold , cdAvgThreshold)
 
+                #update the start and finish 
+                avgList = interfacePeak(drhoAvgWin, drhoAvg_threshold, iStart , \
+                  iEnd, False)
+                if cdAvgThreshold < 1e-10: cdAvgList = []
+                else: cdAvgList = interfacePeakSigned(cdWin, cdAvgThreshold, iStart, \
+                  iEndCD, iN_cd, iP_cd, False)
+
+                #print(avgList,cdAvgList)
+                if len(avgList) < 2 or len(cdAvgList) < 2:
+                  finalStart = iStart; finalEnd = iStart + 2*iSymmetry+1
+                else:
+                  finalStart = min(min(avgList),min(cdAvgList)) 
+                  finalEnd = max(max(avgList),max(cdAvgList))
+
+                #Assign new interface 
+                #if iEnd-iStart+1 > finalEnd-finalStart+1: 
+                #  print(f"{j}\tinterface decreased")
+                interface_tracking[j][2*k][0] = xx[finalStart]
+                interface_tracking[j][2*k+1][0] = xx[finalEnd]
+                #print(f"dRho and CD criteria interval:\t{finalStart} {finalEnd}\n")
+
+              else: # otherwise just use the interface density gradeint only 
+                #Assign new interface 
+                if iEnd-iStart+1 >2*iSymmetry+1: print(f"{j}\tinterface decreased")
+                else: interface_tracking[j][2*k+1][0]=xx[iStart + 2*iSymmetry+1]
         del drho_mag; gc.collect();
 
         #d["y_avg_int_start"] = avg_interface_start
@@ -754,7 +803,7 @@ def get_batch_data(key, folder, level, max_res, window, n_increments,
       else: saveContour = False
       din.append({"dataName":f, "level":level, "max_res":max_res, 
         "window":window, "record_contour":saveContour, "key":key, 
-        "folder":folder, "dir_name":dir_name, 'braginskiiVorticity':True, 
+        "folder":folder, "dir_name":dir_name, 'braginskiiVorticity':braginskiiVorticity, 
         "interfaceHeuristic":interfaceHeuristic})
       counter += 1 
     print(f"Begin reading:\t {key}")
@@ -2710,6 +2759,54 @@ def find_time_frames(inputs):
       n_time_slices = len(data_index)
       time_slices = range(n_time_slices)      
       return data_index, n_time_slices, time_slices 
+
+def interfacePeak(prop, threshold, iStart, iEnd, jIndex):
+  """jIndex == False indicates an average, see usage for tempalte"""
+  propList = []
+  propSwitch = False; 
+  for i in range(iStart, iEnd):
+    if not jIndex:
+      if prop[i-iStart] > threshold and not propSwitch and len(propList) < 2: 
+        propSwitch = True; propList.append(i)
+      if prop[i-iStart] < threshold  and propSwitch and len(propList) < 2:
+        propList.append(i)
+    else:
+      if prop[i,j] > threshold and not propSwitch and len(propList) < 2: 
+        propSwitch = True; propList.append(i)
+      if prop[i,j] < threshold and propSwitch and len(propList) < 2:
+        propList.append(i)
+
+  return propList
+
+def interfacePeakSigned(prop, threshold, iStart, iEnd, iN, iP, jIndex):  
+  """
+  iN - negative peak 
+  iP - positive peak 
+  jIndex == False indicates an average, see usage for tempalte
+  """
+  if threshold < 0: xxxx
+  propList = []
+  propSwitch = False; 
+  for i in range(iStart, iEnd):
+    if not jIndex: pVal = prop[i-iStart] # assign thev alue to test 
+    else: pVal = prop[i,j]
+
+    if iN < iP : # is the negative peak comes before the positive peak 
+      if i < iN + iStart and pVal < 0 and abs(pVal) > threshold and not propSwitch:
+        propSwitch = True; propList.append(i)
+      if pVal < threshold and pVal > 0 and propSwitch and len(propList) < 2 and i > iP + iStart:
+        propList.append(i)
+        break 
+    elif iP < iN:
+      if i < iP +iStart and pVal > 0 and pVal > threshold and not propSwitch:
+        propSwitch = True; propList.append(i)
+      if pVal < 0 and abs(pVal) < threshold and propSwitch and len(propList) < 2 and i > iN + iStart:
+        propList.append(i)
+        break 
+     
+    else: xxx #Somethings wrong
+
+  return propList
 
 
 

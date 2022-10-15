@@ -350,7 +350,7 @@ def interfaceStatistics(fluid, key, date, simDir, level, grid_i, grid_j,
   useNproc = nproc; # how many processes to spawn 
   processedSimDir = phmmfp.get_save_name(key, simDir, level)
 
-  if True: # in the sim folder 
+  if False: # in the sim folder 
     print("\n###Line 343 Assuming processed files are in the simulation files directory, not in the parent directory.")
     if simDir[-1] == "/": processedSimDir = simDir + processedSimDir 
     else: processedSimDir = simDir + "/" + processedSimDir
@@ -521,7 +521,7 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
   processedSimDir = phmmfp.get_save_name(key, simDir, level)
   simFiles = get_files(simDir, include=['plt'], get_all=False)
 
-  if True: # in the sim folder 
+  if False: # in the sim folder 
     print("\n###Line 514 Assuming processed files are in the simulation files directory, not in the parent directory.")
     if simDir[-1] == "/": processedSimDir = simDir + processedSimDir 
     else: processedSimDir = simDir + "/" + processedSimDir
@@ -687,9 +687,9 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
 ###################################################################################
 #                               Parameter settings                                #
 ###################################################################################
-prepare_data = True # look for existing data directory (dependent on handle)
+prepare_data = False # look for existing data directory (dependent on handle)
                     # here), create new file or use the existing file.
-plot = False ; # to plot or not to plot, that is the question...
+plot = True ; # to plot or not to plot, that is the question...
 
 consVarComparison = False; 
 plot_interface_stats = True # plot interface statistics 
@@ -727,14 +727,19 @@ if __name__ == '__main__':
 #"SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1)
 
 #option 44
+# testing IH with rho and cd triggers 
+"gradMQRHO_IH_rho_cd_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
+
 #"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
 # "SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", -1),
 
 #"SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
 #"SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1), 
 
-"gradMGRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -4), 
+#"gradMQRHO_IH_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
 #"gradMQRHO_SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1), 
+
+#"testDeleteMe_gradMQRHO_IH_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/testDeletMe_44_FBA_nonMag_RES_2048", -1),
 
 #"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
 #"gradMQRHO_SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1), 
@@ -756,7 +761,7 @@ if __name__ == '__main__':
   if prepare_data:
     for key, (simDir, level) in simOutputDirec.items():
       phmmfp.get_batch_data(key, simDir, level, max_res, window, n_time_slices, 
-        nproc=1, outputType=[outputKeyword], braginskiiVorticity=False, interfaceHeuristic=True) 
+        nproc=1, outputType=[outputKeyword], braginskiiVorticity=True, interfaceHeuristic=True) 
   
 ###################################################################################
 #                                 Plot statistics                                 #
@@ -834,16 +839,16 @@ if __name__ == '__main__':
       # ======================= Interface statistics ===============================#
       if plot_interface_stats:
         print('\nPlotting interface statistics')
-        date = "20220925_IONS_gradMQRHO"
+        date = "20221015_IONS_gradMQRHO"
         interfaceStatistics("ions", key, date, simDir, level, 2, 2, nproc=4)
 
-        date = "20220925_ELECTRONS_gradMQRHO"
+        date = "20221015_ELECTRONS_gradMQRHO"
         interfaceStatistics("electrons", key, date, simDir, level, 2, 2, nproc=4)
 
 
       if plot_ion_electron_interface_comparison:
 
-        date = "20220925_ION_ELECTRON_COMPARISON"
+        date = "20221015_ION_ELECTRON_COMPARISON"
         fluids = ["ions", "electrons"]
         ionElectronInterfaceStatistics(fluids, key, date, simDir, level, 2, 2, nproc=8)
 
