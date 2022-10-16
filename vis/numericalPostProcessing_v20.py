@@ -728,7 +728,14 @@ if __name__ == '__main__':
 
 #option 44
 # testing IH with rho and cd triggers 
-"gradMQRHO_IH_rho_cd_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
+#"gradMQRHO_IH_rho_cd_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
+"gradMQRHO_IH_dRHO_CD_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
+"gradMQRHO_IH_dRHO_CD_SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/ 44_X_beta_0p001_FB_I_RES_2048", -1), 
+
+"gradMQRHO_IH_rho_cd_trigger0p5_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
+
+#IH using the dnesitty gradient peak to establish an interval ratehr than searching peaks and triggers
+#"gradMQRHO_IH_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1)
 
 #"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
 # "SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", -1),
@@ -739,7 +746,7 @@ if __name__ == '__main__':
 #"gradMQRHO_IH_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
 #"gradMQRHO_SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1), 
 
-#"testDeleteMe_gradMQRHO_IH_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/testDeletMe_44_FBA_nonMag_RES_2048", -1),
+#"testDeleteMe_gradMQRHO_IH_dRho_cd_trigger_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/testDeletMe_44_FBA_nonMag_RES_2048", -3),
 
 #"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
 #"gradMQRHO_SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1), 
@@ -839,16 +846,16 @@ if __name__ == '__main__':
       # ======================= Interface statistics ===============================#
       if plot_interface_stats:
         print('\nPlotting interface statistics')
-        date = "20221015_IONS_gradMQRHO"
+        date = "20221016_IONS_gradMQRHO"
         interfaceStatistics("ions", key, date, simDir, level, 2, 2, nproc=4)
 
-        date = "20221015_ELECTRONS_gradMQRHO"
+        date = "20221016_ELECTRONS_gradMQRHO"
         interfaceStatistics("electrons", key, date, simDir, level, 2, 2, nproc=4)
 
 
       if plot_ion_electron_interface_comparison:
 
-        date = "20221015_ION_ELECTRON_COMPARISON"
+        date = "20221016_ION_ELECTRON_COMPARISON"
         fluids = ["ions", "electrons"]
         ionElectronInterfaceStatistics(fluids, key, date, simDir, level, 2, 2, nproc=8)
 

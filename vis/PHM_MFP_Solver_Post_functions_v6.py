@@ -478,6 +478,7 @@ def get_single_data(din):
               iSymmetryCD = np.argmax(np.abs(cdWin)) #charge density average 
               #print(f"dRho criteria interval:\t{iStart} {iStart + 2*iSymmetry+1}")
               if True: #TODO add switch 
+                triggerVal = 0.5
                 iEnd = (iStart) + 2*iSymmetry + 1 
                 iEndCD = (iStart) + 2*iSymmetryCD + 1 
 
@@ -492,15 +493,17 @@ def get_single_data(din):
                 iSymmetryCD = np.argmax(np.abs(cdWin)) #density average 
                 iN_cd = np.argmin(cdWin); iP_cd = np.argmax(cdWin); #peaks for cd
                 peak_i = iSymmetry; peakCD_i = iSymmetryCD
-                drhoAvg_threshold = drhoAvgWin[peak_i]*0.05
-                cdAvgThreshold = np.abs(cdWin[peakCD_i]*0.05) 
+                drhoAvg_threshold = drhoAvgWin[peak_i]*triggerVal
+                cdAvgThreshold_N = np.abs(cdWin[iN_cd]*triggerVal) 
+                cdAvgThreshold_P = np.abs(cdWin[iP_cd]*triggerVal) 
                 #print(drhoAvg_threshold , cdAvgThreshold)
 
                 #update the start and finish 
                 avgList = interfacePeak(drhoAvgWin, drhoAvg_threshold, iStart , \
                   iEnd, False)
-                if cdAvgThreshold < 1e-10: cdAvgList = []
-                else: cdAvgList = interfacePeakSigned(cdWin, cdAvgThreshold, iStart, \
+                if cdAvgThreshold_N < 1e-10 or cdAvgThreshold_N < 1e-10: cdAvgList = []
+                else: cdAvgList = \
+                  interfacePeakSigned(cdWin, [cdAvgThreshold_N,cdAvgThreshold_P], iStart, \
                   iEndCD, iN_cd, iP_cd, False)
 
                 #print(avgList,cdAvgList)
@@ -2778,13 +2781,16 @@ def interfacePeak(prop, threshold, iStart, iEnd, jIndex):
 
   return propList
 
-def interfacePeakSigned(prop, threshold, iStart, iEnd, iN, iP, jIndex):  
+def interfacePeakSigned(prop, thresholdNP, iStart, iEnd, iN, iP, jIndex):  
   """
   iN - negative peak 
   iP - positive peak 
   jIndex == False indicates an average, see usage for tempalte
   """
-  if threshold < 0: xxxx
+  thresholdN = thresholdNP[0]
+  thresholdP = thresholdNP[1]
+  if thresholdN < 0 or thresholdP < 0: xxxx
+
   propList = []
   propSwitch = False; 
   for i in range(iStart, iEnd):
@@ -2792,15 +2798,15 @@ def interfacePeakSigned(prop, threshold, iStart, iEnd, iN, iP, jIndex):
     else: pVal = prop[i,j]
 
     if iN < iP : # is the negative peak comes before the positive peak 
-      if i < iN + iStart and pVal < 0 and abs(pVal) > threshold and not propSwitch:
+      if i < iN + iStart and pVal < 0 and abs(pVal) > thresholdN and not propSwitch:
         propSwitch = True; propList.append(i)
-      if pVal < threshold and pVal > 0 and propSwitch and len(propList) < 2 and i > iP + iStart:
+      if pVal < thresholdP and pVal> 0 and propSwitch and len(propList) < 2 and i > iP + iStart:
         propList.append(i)
         break 
     elif iP < iN:
-      if i < iP +iStart and pVal > 0 and pVal > threshold and not propSwitch:
+      if i < iP +iStart and pVal > 0 and pVal > thresholdP and not propSwitch:
         propSwitch = True; propList.append(i)
-      if pVal < 0 and abs(pVal) < threshold and propSwitch and len(propList) < 2 and i > iN + iStart:
+      if pVal < 0 and abs(pVal) < thresholdN and propSwitch and len(propList) < 2 and i > iN + iStart:
         propList.append(i)
         break 
      
