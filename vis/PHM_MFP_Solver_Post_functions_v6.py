@@ -344,6 +344,7 @@ def get_pressure(ch, inputs):
 def get_single_data(din):
     save_name = get_save_name(din['key'], din['folder'], din['level'], os.path.split(din["dataName"])[1] )
     braginskiiVorticity = din['braginskiiVorticity']
+    bragVortRhoVar = din['bragVortRhoVar']
 
     #print( save_name )
     if os.path.isfile(din['dir_name']+"/" +save_name):
@@ -368,6 +369,7 @@ def get_single_data(din):
         print("\t\tIso overide ON!")
         isoSwitch = True
       else: isoSwitch = False
+      #TODO reduce the search area and offset indexes
       x, y, dudt_fluxes, srcDst = get_transportProperties(rc, 
         ["ions", "electrons"], din['level'], isoOveride=isoSwitch, useNPROC=7)
 
@@ -385,7 +387,8 @@ def get_single_data(din):
         dxrhoinv = np.gradient(rhoName**-1, x, axis=0)
         dyrhoinv = np.gradient(rhoName**-1, y, axis=1)
 
-        if True: 
+        if bragVortRhoVar: #TODO switch for rho variance
+          #print("\nbrag vort rho var active")
           OC['R'+nameStr+'rho'] = constOC*\
           (dxrhoinv*(srcDst[name][:,:,1]) - dyrhoinv*(srcDst[name][:,:,0]))
   
@@ -393,7 +396,7 @@ def get_single_data(din):
           (dxrhoinv*(dudt_fluxes[name][:,:,1]) -\
            dyrhoinv*(dudt_fluxes[name][:,:,0]))
         else:
-          print("\tCollisional vorticity assuming rho const ")
+          #print("\tCollisional vorticity assuming rho const ")
           OC['R'+nameStr+'rho'] = np.zeros(srcDst[name][:,:,0].shape)  
           OC['PI'+nameStr+'rho'] = np.zeros(dudt_fluxes[name][:,:,1].shape)
 
@@ -449,9 +452,7 @@ def get_single_data(din):
         # int tracking 
         x, y, avg_int_coords, global_interface_start, global_interface_end, \
         interface_tracking = get_interface(rc, name)    
-
-        if din['interfaceHeuristic']: # When brag pushes back interface
-          #dx = rc.data['levels'][din['level']]['dx'][0]
+        if din['interfaceHeuristic']: # When brag pushes back interface use this 
           xx, rho = rc.get('rho-ions')
           yy = xx[1]; xx = xx[0]
           drhodx = np.gradient(rho,xx,axis=0)
@@ -461,28 +462,27 @@ def get_single_data(din):
                           get_charge_number_density(rc, "ions", False)[1]
            
           del drhodx, drhody, rho; gc.collect();
-          print("\tInterface Heutristic active")
+          #print("\tInterface Heutristic active")
           for j in range(len(interface_tracking)):
             if int(len(interface_tracking[j])/2) > 1: print("\t###More than one transition")
             for k in range(int(len(interface_tracking[j])/2)):
               #Fist pass at the interface heuristic 
               iStart = int((interface_tracking[j][2*k]-xx[0])/dx)
               iEnd = int((interface_tracking[j][2*k+1]-xx[0])/dx)
-              #print(f"j:\t{j}\nDefault interval:\t{iStart} {iEnd}")
+              #print(f"\n\t##j:\t{j}\nDefault interval:\t{iStart} {iEnd}")
               peak_drho = 0
               drhoAvgWin = (drho_mag[iStart-1:iEnd,j] + drho_mag[iStart:iEnd+1,j] + drho_mag[iStart+1:iEnd+2,j])/3. # rolling avg of three, centred 
               cdWin = (chargeDensity[iStart-1:iEnd,j] + \
                 chargeDensity[iStart:iEnd+1,j] + chargeDensity[iStart+1:iEnd+2,j])/3.
-
-              iSymmetry = np.argmax(drhoAvgWin) + 1 # find max 
+              iSymmetry = np.argmax(drhoAvgWin)  # find max 
               iSymmetryCD = np.argmax(np.abs(cdWin)) #charge density average 
               #print(f"dRho criteria interval:\t{iStart} {iStart + 2*iSymmetry+1}")
               if True: #TODO add switch 
-                triggerVal = 0.5
-                iEnd = (iStart) + 2*iSymmetry + 1 
-                iEndCD = (iStart) + 2*iSymmetryCD + 1 
-
-                # refine based on charge and drho
+                triggerVal = 0.025
+                iBuffer = 10 # offset to check region outside in case not acpturing all 
+                iEnd = (iStart) + 2*iSymmetry + 1  + iBuffer
+                iEndCD = (iStart) + 2*iSymmetryCD + 1 + iBuffer
+                iStart -= iBuffer
                 #update the search range
                 drhoAvgWin = (drho_mag[iStart-1:iEnd,j] + \
                   drho_mag[iStart:iEnd+1,j] + drho_mag[iStart+1:iEnd+2,j])/3.
@@ -496,17 +496,16 @@ def get_single_data(din):
                 drhoAvg_threshold = drhoAvgWin[peak_i]*triggerVal
                 cdAvgThreshold_N = np.abs(cdWin[iN_cd]*triggerVal) 
                 cdAvgThreshold_P = np.abs(cdWin[iP_cd]*triggerVal) 
-                #print(drhoAvg_threshold , cdAvgThreshold)
-
+                #print(f"rhoAvg: {drhoAvg_threshold} , cdN: {cdAvgThreshold_N}, cdP: {cdAvgThreshold_P}")
                 #update the start and finish 
                 avgList = interfacePeak(drhoAvgWin, drhoAvg_threshold, iStart , \
                   iEnd, False)
-                if cdAvgThreshold_N < 1e-10 or cdAvgThreshold_N < 1e-10: cdAvgList = []
+                if cdAvgThreshold_N < 1e-10 or cdAvgThreshold_P < 1e-10: cdAvgList = []
                 else: cdAvgList = \
                   interfacePeakSigned(cdWin, [cdAvgThreshold_N,cdAvgThreshold_P], iStart, \
                   iEndCD, iN_cd, iP_cd, False)
 
-                #print(avgList,cdAvgList)
+                #print(f"rho:\t{avgList}, cd:\t{cdAvgList}")
                 if len(avgList) < 2 or len(cdAvgList) < 2:
                   finalStart = iStart; finalEnd = iStart + 2*iSymmetry+1
                 else:
@@ -586,11 +585,11 @@ def get_single_data(din):
                 tl_E_interface_sum += tau_E[i,j]
                 tl_B_interface_sum += tau_B[i,j]
                 tl_interface_sum += tau[i,j]
-                #TODO Collisionsal contrbution
-                t_brag_intra_sum += OC['PI'+ieKey][i,j] + \
-                  OC['PI'+ieKey+'_rho'][i,j]
-                t_brag_inter_sum += OC['R'+ieKey][i,j] + \
-                  OC['R'+ieKey+'_rho'][i,j]; 
+                if braginskiiVorticity: #TODO Collisionsal contrbution
+                  t_brag_intra_sum += OC['PI'+ieKey][i,j] + \
+                    OC['PI'+ieKey+'_rho'][i,j]
+                  t_brag_inter_sum += OC['R'+ieKey][i,j] + \
+                    OC['R'+ieKey+'_rho'][i,j]; 
 
               if j <= int(len(interface_tracking)/2):
                 omega_interface_sum_half += omega[i,j]
@@ -603,11 +602,11 @@ def get_single_data(din):
                   tl_E_interface_sum_half += tau_E[i,j]
                   tl_B_interface_sum_half += tau_B[i,j]
                   tl_interface_sum_half += tau[i,j]
-                  #TODO Collisionsal contrbution
-                  t_brag_intra_half += OC['PI'+ ieKey][i,j]+ \
-                  OC['PI'+ieKey+'_rho'][i,j]; 
-                  t_brag_inter_half += OC['R' + ieKey][i,j]+ \
-                  OC['R'+ieKey+'_rho'][i,j];
+                  if braginskiiVorticity: #TODO Collisionsal contrbution
+                    t_brag_intra_half += OC['PI'+ ieKey][i,j]+ \
+                    OC['PI'+ieKey+'_rho'][i,j]; 
+                    t_brag_inter_half += OC['R' + ieKey][i,j]+ \
+                    OC['R'+ieKey+'_rho'][i,j];
 
           d["circulation_interface_sum"] = omega_interface_sum*dx*dy 
           d["circulation_interface_sum_x"] = omega_interface_sum_x*dx*dy 
@@ -766,7 +765,7 @@ def get_save_name(key, folder, level, output_file = 0):
       return save_name
 
 def get_batch_data(key, folder, level, max_res, window, n_increments, 
-  nproc=1, outputType="plt", braginskiiVorticity=True, 
+  nproc=1, outputType="plt", braginskiiVorticity=True, bragVortRhoVar=True, 
   interfaceHeuristic=True): 
 
     print("get_batch_data --- note the function relieson ion, electron, neutral, keywords in state names for interface statistics")
@@ -807,7 +806,7 @@ def get_batch_data(key, folder, level, max_res, window, n_increments,
       din.append({"dataName":f, "level":level, "max_res":max_res, 
         "window":window, "record_contour":saveContour, "key":key, 
         "folder":folder, "dir_name":dir_name, 'braginskiiVorticity':braginskiiVorticity, 
-        "interfaceHeuristic":interfaceHeuristic})
+        'bragVortRhoVar':bragVortRhoVar, "interfaceHeuristic":interfaceHeuristic})
       counter += 1 
     print(f"Begin reading:\t {key}")
     data = []
