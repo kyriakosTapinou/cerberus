@@ -289,7 +289,7 @@ def plot_raw_data_attribute(key, outputType, raw_data_attr, level, label_axis, l
 
 def interfaceStatistics(fluid, key, date, simDir, level, grid_i, grid_j, 
                         #axesLabels, location, limits, props, propLabels, 
-                        nproc=1):
+                        calcIntra, calcInter, nproc=1):
     #interfaceStatistics("ions", key, date, simDir, level, 2, 2, [], [], nproc=6)
   """
   interfaceStatistics('electrons', key, date, simDir, level, grid_i=2, grid_j=2, 
@@ -406,17 +406,21 @@ def interfaceStatistics(fluid, key, date, simDir, level, grid_i, grid_j,
   tl, int_L_B = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_Lorentz_B_interface_sum", cumsum=False, nproc=useNproc) # Lorentz B component
   tA, int_A   = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="interface_area", cumsum=False, nproc=useNproc) # interface area 
 
-  tbrag, int_brag_inter = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_brag_inter_sum", cumsum=False, nproc=useNproc) #inter speceis circulation  
-  tbrag, int_brag_intra = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_brag_intra_sum", cumsum=False, nproc=useNproc) #intra species circulation
+  if calcInter: tbrag, int_brag_inter = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_brag_inter_sum", cumsum=False, nproc=useNproc) #inter speceis circulation  
+
+  if calcIntra: tbrag, int_brag_intra = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_brag_intra_sum", cumsum=False, nproc=useNproc) #intra species circulation
 
   int_DGDT_full = copy.deepcopy(int_tsc)
   if type(int_tsc) == list:
     for i in range(len(int_DGDT_full)):
-      int_DGDT_full[i] = int_tsc[i] + int_b[i] + int_L_E[i] + int_L_B[i] +\
-                         int_brag_inter[i] + int_brag_intra[i]
+      int_DGDT_full[i] = int_tsc[i] + int_b[i] + int_L_E[i] + int_L_B[i]
+      if calcInter: int_DGDT_full[i] += int_brag_inter[i] 
+      if calcIntra: int_DGDT_full[i] += int_brag_intra[i]
   else:
-    int_DGDT_full = int_tsc + int_b + int_L_E + int_L_B +\
-                         int_brag_inter + int_brag_intra
+    int_DGDT_full = int_tsc + int_b + int_L_E + int_L_B 
+    if calcInter: int_DGDT_full += int_brag_inter
+    if calcIntra: int_DGDT_full += int_brag_intra
+
     #int_total_odot = int_tsc + int_tc + int_b + int_L_E + int_L_B
 
   t, int_circ_half = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="circulation_interface_sum_half", cumsum=False, nproc=useNproc)  #vorticity_int_sum
@@ -426,18 +430,20 @@ def interfaceStatistics(fluid, key, date, simDir, level, grid_i, grid_j,
   tl, int_L_E_half = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_Lorentz_E_interface_sum_half", cumsum=False, nproc=useNproc) # Lorentz E component 
   tl, int_L_B_half= phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_Lorentz_B_interface_sum_half", cumsum=False, nproc=useNproc) # Lorentz B component
 
-  tbrag, int_brag_inter_half = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_brag_inter_sum_half", cumsum=False, nproc=useNproc) #inter speceis circulation  
-  tbrag, int_brag_intra_half = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_brag_intra_sum_half", cumsum=False, nproc=useNproc) #intra species circulation
+  if calcInter: tbrag, int_brag_inter_half = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_brag_inter_sum_half", cumsum=False, nproc=useNproc) #inter speceis circulation  
+  if calcIntra: tbrag, int_brag_intra_half = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_brag_intra_sum_half", cumsum=False, nproc=useNproc) #intra species circulation
 
   int_DGDT_half = copy.deepcopy(int_tsc_half)
   if type(int_tsc_half) == list:
     for i in range(len(int_DGDT_half)):
-      int_DGDT_half[i] = int_tsc_half[i] + int_b_half[i] + int_L_E_half[i] \
-        + int_L_B_half[i] + int_brag_intra_half[i] + int_brag_inter_half[i]
+      int_DGDT_half[i] = int_tsc_half[i] + int_b_half[i] + int_L_E_half[i] + int_L_B_half[i] 
+      if calcInter: int_DGDT_half[i] += int_brag_intra_half[i] 
+      if calcIntra: int_DGDT_half[i] += int_brag_inter_half[i]
                         
   else:
-      int_total_odot_half = int_tsc_half + int_tc_half + int_b_half + \
-       int_L_E_half+int_L_B_half + int_brag_intra_half+int_brag_inter_half
+      int_total_odot_half = int_tsc_half + int_tc_half + int_b_half + int_L_E_half + int_L_B_half
+      if calcInter: int_DGDT_half[i] += int_brag_intra_half
+      if calcIntra: int_DGDT_half[i] += int_brag_inter_half
      #int_DGDT_half = int_tsc_half + int_b_half + int_L_E_half + int_L_B_half
 
   teta, eta   = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="y_avg_int_width", cumsum=False, nproc=useNproc)
@@ -573,8 +579,10 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
 
   tp = []; data = {}
   components =["circulation_interface", "tau_sc_interface", #"tau_conv_interface_sum", 
-               "baroclinic_interface", "curl_Lorentz_E_interface", "curl_Lorentz_B_interface", #"interface_area"
-              "curl_brag_inter", "curl_brag_intra"]
+               "baroclinic_interface", "curl_Lorentz_E_interface", "curl_Lorentz_B_interface", #"interface_area"]
+              ]
+  if calcInter: components += ["curl_brag_inter"]
+  if calcIntra: componenets += ["curl_brag_intra"]
 
   sumAp = "_sum"; halfAp = "_sum_half";
 
@@ -687,12 +695,12 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
 ###################################################################################
 #                               Parameter settings                                #
 ###################################################################################
-prepare_data = True # look for existing data directory (dependent on handle)
+prepare_data = True# look for existing data directory (dependent on handle)
                     # here), create new file or use the existing file.
-plot = False ; # to plot or not to plot, that is the question...
+plot = True ; # to plot or not to plot, that is the question...
 
 consVarComparison = False; 
-plot_interface_stats = True # plot interface statistics 
+plot_interface_stats = False # plot interface statistics 
 plot_ion_electron_interface_comparison = True
 
 max_res = 2048 # mas resolution used --- debug 
@@ -713,24 +721,32 @@ if __name__ == '__main__':
   # example of plotting raw data (or the specialist derived properties accounted for). 
   #format is {nickname:(directory abslute, max_level)}  
   simOutputDirec = {
-### 2048
-#"SRMI-OP-16-Res-2048-FB-ANISO-CLEAN":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/SRMI-Option-16-Res-2048-FB-Anisotropic", -1)
-#"SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Op-16-Clean-Inter-Anisotropic", -1), 
-
-#"SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTER-ANISO-Option-16", -1), 
+#=======================Option 16 ZQ corrected final paper results 2048==================
+#Old buggy results
 #"SRMI-OP-16-Res-2048-INTRA-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ANISO-Option-16", -1), 
 #"SRMI-OP-16-Res-2048-IDEAL":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/20220504-Op-16-Clean-Ideal-HLLC", -1), 
 #"SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-FB-ANISO-Option-16", -1)
 
-###Z_Q_Corrected
+###Z_Q_Corrected 
+#=========interface heuristic and brag viscosity 
+#**********(bragVorticity, bragVortRhoVar, interfaceHeuristic, calcIntra, calcInter, isoSwitch)
 #"gradMQRHO_SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1)
 #"SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1)
 
-#option 44
+#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1, (True, True, True, True, True, False))
+#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ISO-Option_16", -3, (True, True, True, True, True, True)) 
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_INTER_ANISO-Option_16", -1, (True, True, True, False, True, False)), 
+
+#====================option 44=======================================#
 # testing IH with rho and cd triggers 
 #"gradMQRHO_IH_rho_cd_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
 #"gradMQRHO_IH_dRHO_CD_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
 #"gradMQRHO_IH_dRHO_CD_SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", -1), 
+
+### Trigger, buffer for start, drho and cd thresholds - best so far lol 20221022
+#"gradMQRHO_IH_dRHO_CD_trigger0p025_Buffer_rhoConst_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1),
+#"gradMQRHO_IH_dRHO_CD_trigger0p025_Buffer_rhoVar_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1),
+#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
 
 #"gradMQRHO_IH_dRHO_CD_trigger0p25_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1)
 #"gradMQRHO_IH_dRHO_CD_trigger0p25_SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", -1)
@@ -749,7 +765,7 @@ if __name__ == '__main__':
 #"gradMQRHO_IH_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
 #"gradMQRHO_SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1), 
 
-"testDeleteMe_gradMQRHO_IH_dRho_cd_trigger0p025_buffer_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/testDeletMe_44_FBA_nonMag_RES_2048", -3),
+#"testDeleteMe_gradMQRHO_IH_dRho_cd_trigger0p025_buffer_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/testDeletMe_44_FBA_nonMag_RES_2048", -3),
 
 #"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
 #"gradMQRHO_SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1), 
@@ -769,10 +785,13 @@ if __name__ == '__main__':
   # plt or chk files? default to plt. Braginskii viscosity? default yes
   outputKeyword = 'plt';
   if prepare_data:
-    for key, (simDir, level) in simOutputDirec.items():
+    for key, (simDir, level, \
+    (bv, bvRhoVar, intHeuristic, calcIntra, calcInter,isoOveride)) \
+    in simOutputDirec.items():
       phmmfp.get_batch_data(key, simDir, level, max_res, window, n_time_slices, 
-        nproc=1, outputType=[outputKeyword], braginskiiVorticity=True, 
-        bragVortRhoVar=False, interfaceHeuristic=True) 
+        nproc=1, outputType=[outputKeyword], braginskiiVorticity=bv, bragVortRhoVar=bvRhoVar, 
+        interfaceHeuristic=intHeuristic, calcIntra=calcIntra, calcInter=calcInter, 
+        isoSwitch=isoOveride) 
   
 ###################################################################################
 #                                 Plot statistics                                 #
@@ -780,7 +799,8 @@ if __name__ == '__main__':
   if plot:
   
     print("Begin plotting")
-    for key, (simDir, level) in simOutputDirec.items():
+    for key, (simDir, level, (bv, bvRhoVar, intHeuristic, calcIntra, calcInter,isoOVeride)) \
+    in simOutputDirec.items():
       # ========================= organise the time steps and increaments=========#
       dir_name = phmmfp.get_save_name(key, simDir, level)
       outputFiles = get_files(simDir, include=[outputKeyword], get_all=False)
@@ -850,16 +870,16 @@ if __name__ == '__main__':
       # ======================= Interface statistics ===============================#
       if plot_interface_stats:
         print('\nPlotting interface statistics')
-        date = "20221018_IONS_gradMQRHO"
+        date = "20221020_IONS_gradMQRHO"
         interfaceStatistics("ions", key, date, simDir, level, 2, 2, nproc=4)
 
-        date = "20221018_ELECTRONS_gradMQRHO"
+        date = "20221020_ELECTRONS_gradMQRHO"
         interfaceStatistics("electrons", key, date, simDir, level, 2, 2, nproc=4)
 
 
       if plot_ion_electron_interface_comparison:
 
-        date = "20221018_ION_ELECTRON_COMPARISON"
+        date = "20221021_ION_ELECTRON_COMPARISON"
         fluids = ["ions", "electrons"]
         ionElectronInterfaceStatistics(fluids, key, date, simDir, level, 2, 2, nproc=8)
 
