@@ -235,6 +235,8 @@ def get_vorticity(ch, input_options):#name):
 
     u = ch.get_flat("x_vel-%s"%name)[1]
     v = ch.get_flat("y_vel-%s"%name)[1]
+    w = ch.get_flat("z_vel-%s"%name)[1]
+
     y = x[1]; x = x[0]; dx = x[1] - x[0]; dy = y[1] - y[0]
 
     if dim == 0: # vorticity-x
@@ -242,7 +244,6 @@ def get_vorticity(ch, input_options):#name):
         dw_dy = ch.get_flat("z_vel-%s-dy"%name)[1]
         #dv_dz = ch.get_flat("y_vel-%s-dz"%name)[1]
       except:
-        xxxx
         dw_dy = np.gradient(w, dy, axis=1)
         #dv_dz = np.gradient(v, dz, axis=2)
       omega = dw_dy #- dv_dz
@@ -251,8 +252,7 @@ def get_vorticity(ch, input_options):#name):
         dw_dx = ch.get_flat("z_vel-%s-dx"%name)[1]
         #du_dz = ch.get_flat("x_vel-%s-dz"%name)[1]
       except:
-        xxxx
-        dw_dx = np.gradient(w, dy, axis=1)
+        dw_dx = np.gradient(w, dx, axis=0)
         #du_dz = np.gradient(u, dz, axis=2)
       omega = -(dw_dx )  #- du_dz)
     elif dim == 2: # vorticity-z
@@ -263,7 +263,6 @@ def get_vorticity(ch, input_options):#name):
         du_dx =  ch.get_flat("x_vel-%s-dx"%name)[1]
         dv_dy =  ch.get_flat("y_vel-%s-dy"%name)[1]
       except:
-        xxxx
         du_dy = np.gradient(u, dy, axis=1)
         dv_dx = np.gradient(v, dx, axis=0)
       
@@ -280,7 +279,6 @@ def get_vorticity(ch, input_options):#name):
       du_dx =  ch.get_flat("x_vel-%s-dx"%name)[1]
       dv_dy =  ch.get_flat("y_vel-%s-dy"%name)[1]
     except:
-      xxxx
       du_dx = np.gradient(u, dx, axis=0)
       dv_dy = np.gradient(v, dy, axis=1)
     d_omega_dx = np.gradient(omega, dx, axis=0)
@@ -435,7 +433,7 @@ def get_single_data(din):
         tracerDefined = True
       except:
         print(f"\ttracer not available for {name}")
-
+      
       get_vorticity_inputs = {}
       get_vorticity_inputs['name'] = name
       get_vorticity_inputs['quantity'] ='all'
@@ -450,18 +448,23 @@ def get_single_data(din):
       x, y, baro = get_baroclinic_torque(rc, name)
       dx = x[1] - x[0]; dy = y[1] - y[0] # note each level is constant in grid 
 
-      if tracerDefined:
+      #print("\n\n#==========Note hardcoded ignore electrons in interface anaylsis ln 450 PHM ")
+      if tracerDefined:# and name != 'electrons':
         # int tracking 
         x, y, avg_int_coords, global_interface_start, global_interface_end, \
         interface_tracking = get_interface(rc, name)    
         if din['interfaceHeuristic']: # When brag pushes back interface use this 
-          xx, rho = rc.get('rho-ions')
+          xx, rho = rc.get("rho-%s"%name)
           yy = xx[1]; xx = xx[0]
           drhodx = np.gradient(rho,xx,axis=0)
           drhody = np.gradient(rho,yy,axis=1)
           drho_mag = np.sqrt(drhodx**2 + drhody**2)
-          chargeDensity = get_charge_number_density(rc, "electrons", False)[1] +\
-                          get_charge_number_density(rc, "ions", False)[1]
+          if 'ion' in name or 'electron' in name:
+            chargeDensity = get_charge_number_density(rc, "electrons", False)[1] +\
+                            get_charge_number_density(rc, "ions", False)[1]
+          else:
+            print('Neutral fluid - mock cd search with ')
+            chargeDensity = drho_mag.copy()
            
           del drhodx, drhody, rho; gc.collect();
           #print("\tInterface Heutristic active")
@@ -479,6 +482,7 @@ def get_single_data(din):
               iSymmetry = np.argmax(drhoAvgWin)  # find max 
               iSymmetryCD = np.argmax(np.abs(cdWin)) #charge density average 
               #print(f"dRho criteria interval:\t{iStart} {iStart + 2*iSymmetry+1}")
+              #print("\n\n#================Interface heurist drho and cd search off for HRMI")
               if True: #TODO add switch 
                 triggerVal = 0.025
                 iBuffer = 10 # offset to check region outside in case not acpturing all 
@@ -860,7 +864,6 @@ def get_1D_time_series_data(file_list, species="ion", quantity="baroclinic_sum",
 
     for i in range(len(file_list)):
       din.append({'file':file_list[i], 'species':species, 'quantity':quantity, 'cumsum':cumsum})    
-
     if nproc == 1:# if single processor
         data = []
         for d in din: 
@@ -871,7 +874,7 @@ def get_1D_time_series_data(file_list, species="ion", quantity="baroclinic_sum",
         #data = p.imap(get_single_data, din, )
         p.close()
         p.join()
-
+  
     if len(data) < 2: 
       print("insufficient data for time series")
       xxxx

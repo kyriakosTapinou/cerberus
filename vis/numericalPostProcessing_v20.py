@@ -358,6 +358,7 @@ def interfaceStatistics(fluid, key, date, simDir, level, grid_i, grid_j,
   else: print("\n###Line 347 Assuming processed files are in the parent directory.")
   simFiles = get_files(simDir, include=['plt'], get_all=False)
   processed_files = get_files(processedSimDir, include=['.h5'], get_all=False)
+  print(processedSimDir)
 
   rc = ReadBoxLib(simFiles[0], 0, view); 
   debye_print = rc.data['Debye']; c_print = rc.data['lightspeed']; 
@@ -397,7 +398,7 @@ def interfaceStatistics(fluid, key, date, simDir, level, grid_i, grid_j,
     ax4.set_ylim([-1.2,0.6])
     #ax5.set_ylim([0.,0.06])
 
-  tp = []
+  tp = [] 
   t, int_circ = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="circulation_interface_sum", cumsum=False, nproc=useNproc)  #circulation_int_sum
   tl, int_tsc  = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="tau_sc_interface_sum", cumsum=False, nproc=useNproc) # flow term 1
   #tl, int_tc  = get_1D_time_series_data(processed_files, species=fluid, quantity="tau_conv_interface_sum", cumsum=False, nproc=useNproc) # flow term 2
@@ -437,13 +438,13 @@ def interfaceStatistics(fluid, key, date, simDir, level, grid_i, grid_j,
   if type(int_tsc_half) == list:
     for i in range(len(int_DGDT_half)):
       int_DGDT_half[i] = int_tsc_half[i] + int_b_half[i] + int_L_E_half[i] + int_L_B_half[i] 
-      if calcInter: int_DGDT_half[i] += int_brag_intra_half[i] 
-      if calcIntra: int_DGDT_half[i] += int_brag_inter_half[i]
+      if calcIntra: int_DGDT_half[i] += int_brag_intra_half[i] 
+      if calcInter: int_DGDT_half[i] += int_brag_inter_half[i]
                         
   else:
       int_total_odot_half = int_tsc_half + int_tc_half + int_b_half + int_L_E_half + int_L_B_half
-      if calcInter: int_DGDT_half[i] += int_brag_intra_half
-      if calcIntra: int_DGDT_half[i] += int_brag_inter_half
+      if calcIntra: int_DGDT_half[i] += int_brag_intra_half
+      if calcInter: int_DGDT_half[i] += int_brag_inter_half
      #int_DGDT_half = int_tsc_half + int_b_half + int_L_E_half + int_L_B_half
 
   teta, eta   = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="y_avg_int_width", cumsum=False, nproc=useNproc)
@@ -479,9 +480,9 @@ def interfaceStatistics(fluid, key, date, simDir, level, grid_i, grid_j,
     {"color":'r', "ls":"-.", "lw":lw, "label":r"$\dot\Gamma_{L,E}$"}, ax2])
   tp.append([tl, int_L_B_half, 
     {"color":'m', "ls":":", "lw":lw, "label":r"$\dot\Gamma_{L,B}$"}, ax2])
-  tp.append([tbrag, int_brag_inter_half, 
+  if calcInter: tp.append([tbrag, int_brag_inter_half, 
     {"color":'b', "ls":"-", "lw":lw, "label":r"$\dot\Gamma_{Drag}$"}, ax2])
-  tp.append([tbrag, int_brag_intra_half, 
+  if calcIntra: tp.append([tbrag, int_brag_intra_half, 
     {"color":'b', "ls":"--", "lw":lw, "label":r"$\dot\Gamma_{Visc}$"}, ax2])
 
   tp.append([tl, int_DGDT_half,{"color":color, "ls":"-", "lw":lw, 
@@ -582,7 +583,7 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
                "baroclinic_interface", "curl_Lorentz_E_interface", "curl_Lorentz_B_interface", #"interface_area"]
               ]
   if calcInter: components += ["curl_brag_inter"]
-  if calcIntra: componenets += ["curl_brag_intra"]
+  if calcIntra: components += ["curl_brag_intra"]
 
   sumAp = "_sum"; halfAp = "_sum_half";
 
@@ -598,13 +599,15 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
       if type(data[comp, sumAp, fluid]) == list:
         for i in range(len(data[comp, sumAp, fluid])): # just loop through all the time entries 
           data["int_DGDT", ap, fluid][i] = data["tau_sc_interface", ap, fluid][i] + data["baroclinic_interface", ap, fluid][i] \
-            + data["curl_Lorentz_E_interface", ap, fluid][i] + data["curl_Lorentz_B_interface", ap, fluid][i] \
-            + data["curl_brag_inter", ap, fluid][i] + data["curl_brag_intra", ap, fluid][i] 
+            + data["curl_Lorentz_E_interface", ap, fluid][i] + data["curl_Lorentz_B_interface", ap, fluid][i]
+          if calcInter: data["int_DGDT", ap, fluid][i] += data["curl_brag_inter", ap, fluid][i] 
+          if calcIntra: data["int_DGDT", ap, fluid][i] += data["curl_brag_intra", ap, fluid][i] 
                                               #int_tsc[i] + int_b[i] + int_L_E[i] + int_L_B[i]
       else:
           data["int_DGDT", ap, fluid] = data["tau_sc_interface", ap, fluid] + data["baroclinic_interface", ap, fluid] \
-            + data["curl_Lorentz_E_interface", ap, fluid] + data["curl_Lorentz_B_interface", ap, fluid] \
-            + data["curl_brag_inter", ap, fluid] + data["curl_brag_intra", ap, fluid] 
+            + data["curl_Lorentz_E_interface", ap, fluid] + data["curl_Lorentz_B_interface", ap, fluid] 
+          if calcInter: data["int_DGDT", ap, fluid] += data["curl_brag_inter", ap, fluid]
+          if calcIntra: data["int_DGDT", ap, fluid] += data["curl_brag_intra", ap, fluid] 
         #int_DGDT_full = int_tsc + int_b + int_L_E + int_L_B
       #int_total_odot = int_tsc + int_tc + int_b + int_L_E + int_L_B
     t, data["eta", fluid] =  phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="y_avg_int_width", cumsum=False, nproc=useNproc)
@@ -650,8 +653,8 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
   tp.append([t, data["baroclinic_interface", halfAp, "ions"], {"color":'c', "ls":ionLine, "lw":lw, "marker":ionMarker, "ms":ms, "label":r"$\dot\Gamma_{baro.}$" }, ax1])
   tp.append([t, data["curl_Lorentz_E_interface", halfAp, "ions"], {"color":'tab:orange', "ls":ionLine, "lw":lw, "marker":ionMarker, "ms":ms, "label":r"$\dot\Gamma_{L,E}$"}, ax1])
   tp.append([t, data["curl_Lorentz_B_interface", halfAp, "ions"], {"color":'m', "ls":ionLine, "lw":lw, "marker":ionMarker, "ms":ms,  "label":r"$\dot\Gamma_{L,B}$"}, ax1])
-  tp.append([t, data["curl_brag_intra", halfAp, "ions"], {"color":'b', "ls":ionLine, "lw":lw, "marker":ionMarker, "ms":ms,  "label":r"$\dot\Gamma_{Visc}$"}, ax1])
-  tp.append([t, data["curl_brag_inter", halfAp, "ions"], {"color":'b', "ls":"-", "lw":lw, "marker":ionMarker, "ms":ms,  "label":r"$\dot\Gamma_{Drag}$"}, ax1])    
+  if calcIntra: tp.append([t, data["curl_brag_intra", halfAp, "ions"], {"color":'b', "ls":ionLine, "lw":lw, "marker":ionMarker, "ms":ms,  "label":r"$\dot\Gamma_{Visc}$"}, ax1])
+  if calcInter: tp.append([t, data["curl_brag_inter", halfAp, "ions"], {"color":'b', "ls":"-", "lw":lw, "marker":ionMarker, "ms":ms,  "label":r"$\dot\Gamma_{Drag}$"}, ax1])    
   # electron sources
   ionMarker = "None"; ionLine = "--"
   eleMarker = "None"; eleLine = "--"
@@ -660,8 +663,8 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
   tp.append([t, data["baroclinic_interface", halfAp, "electrons"], {"color":'c', "ls":eleLine, "lw":lw, "marker":eleMarker, "ms":ms, "label":r"$\dot\Gamma_{baro.}$" }, ax2])
   tp.append([t, data["curl_Lorentz_E_interface", halfAp, "electrons"], {"color":'tab:orange', "ls":eleLine, "lw":lw, "marker":eleMarker, "ms":ms, "label":r"$\dot\Gamma_{L,E}$"}, ax2])
   tp.append([t, data["curl_Lorentz_B_interface", halfAp, "electrons"], {"color":'m', "ls":eleLine, "lw":lw, "marker":eleMarker, "ms":ms,  "label":r"$\dot\Gamma_{L,B}$"}, ax2])
-  tp.append([t, data["curl_brag_intra", halfAp, "electrons"], {"color":'b', "ls":eleLine, "lw":lw, "marker":eleMarker, "ms":ms,  "label":r"$\dot\Gamma_{Visc}$"}, ax2])
-  tp.append([t, data["curl_brag_inter", halfAp, "electrons"], {"color":'b', "ls":"-", "lw":lw, "marker":eleMarker, "ms":ms,  "label":r"$\dot\Gamma_{Drag}$"}, ax2])
+  if calcIntra: tp.append([t, data["curl_brag_intra", halfAp, "electrons"], {"color":'b', "ls":eleLine, "lw":lw, "marker":eleMarker, "ms":ms,  "label":r"$\dot\Gamma_{Visc}$"}, ax2])
+  if calcInter: tp.append([t, data["curl_brag_inter", halfAp, "electrons"], {"color":'b', "ls":"-", "lw":lw, "marker":eleMarker, "ms":ms,  "label":r"$\dot\Gamma_{Drag}$"}, ax2])
  
   ### growth and amplitude 
   ionMarker = "None";
@@ -695,18 +698,19 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
 ###################################################################################
 #                               Parameter settings                                #
 ###################################################################################
-prepare_data = True# look for existing data directory (dependent on handle)
+prepare_data = True # look for existing data directory (dependent on handle)
                     # here), create new file or use the existing file.
-plot = True ; # to plot or not to plot, that is the question...
+plot = False ; # to plot or not to plot, that is the question...
 
 consVarComparison = False; 
-plot_interface_stats = False # plot interface statistics 
-plot_ion_electron_interface_comparison = True
+plot_interface_stats = True # plot interface statistics 
+plot_ion_electron_interface_comparison = False
 
 max_res = 2048 # mas resolution used --- debug 
 print("View changed from standard")
 #view =  [[-0.4, 0.0], [1.4, 1.0]] # what windo of data to view 
-view =  [[-0.2, 0.0], [1.15, 1.0]] # what windo of data to view 
+#view =  [[-0.2, 0.0], [1.15, 1.0]] # w
+view =  [[-0.2, 0.0], [1.4, 1.0]] # w
 window = view ; # no point having more data than needed window =[[-2.0, 0.0], [2.0, 1.0]] 
 n_time_slices = False# number of time increments for contour plots 
 time_slices = range(n_time_slices) #[0, 9] # which indexes in the data_index list (calculated later) to be used, range(n_time_slices) means use all
@@ -724,7 +728,7 @@ if __name__ == '__main__':
 #=======================Option 16 ZQ corrected final paper results 2048==================
 #Old buggy results
 #"SRMI-OP-16-Res-2048-INTRA-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ANISO-Option-16", -1), 
-#"SRMI-OP-16-Res-2048-IDEAL":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/20220504-Op-16-Clean-Ideal-HLLC", -1), 
+#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_SRMI-OP-16-Res-2048-IDEAL":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/20220504-Op-16-Clean-Ideal-HLLC", -1, (False, False, True, False, False, False)), 
 #"SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-FB-ANISO-Option-16", -1)
 
 ###Z_Q_Corrected 
@@ -733,9 +737,19 @@ if __name__ == '__main__':
 #"gradMQRHO_SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1)
 #"SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1)
 
-#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1, (True, True, True, True, True, False))
+#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1, (True, True, True, True, True, False)),
 #"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ISO-Option_16", -3, (True, True, True, True, True, True)) 
-"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_INTER_ANISO-Option_16", -1, (True, True, True, False, True, False)), 
+#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_INTER_ANISO-Option_16", -1, (True, True, True, False, True, False)), 
+
+#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ISO-Option_16", -1, (True, True, True, True, True, True)), 
+#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_INTER_ISO-Option_16", -1, (True, True, True, False, True, True)), 
+
+#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTRA-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ISO-Option-16", -1, (True, True, True, True, False, True)), 
+#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTRA-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ANISO-Option-16 ", -1, (True, True, True, True, False, False)) ,
+#"ionOnly_gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTRA-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ISO-Option-16", -1, (True, True, True, True, False, True)), 
+#"ionOnly_gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTRA-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ANISO-Option-16 ", -1, (True, True, True, True, False, False)) ,
+
+
 
 #====================option 44=======================================#
 # testing IH with rho and cd triggers 
@@ -745,8 +759,8 @@ if __name__ == '__main__':
 
 ### Trigger, buffer for start, drho and cd thresholds - best so far lol 20221022
 #"gradMQRHO_IH_dRHO_CD_trigger0p025_Buffer_rhoConst_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1),
-#"gradMQRHO_IH_dRHO_CD_trigger0p025_Buffer_rhoVar_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1),
-#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
+#"gradMQRHO_IH_dRHO_CD_trigger0p025_Buffer_rhoVar_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1, (True, True, True, True, True, False)),
+#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1, (True, True, True, True, True, False)), 
 
 #"gradMQRHO_IH_dRHO_CD_trigger0p25_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1)
 #"gradMQRHO_IH_dRHO_CD_trigger0p25_SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", -1)
@@ -774,6 +788,9 @@ if __name__ == '__main__':
 #"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
 #"SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1), 
 
+'gradMQRHO_IH_rho_cd_trigger0p025_Buffer_PHM_HRMI_p0.5_ny2048':('/home/kyriakos/Documents/000_HYDRO_RMI_2048_Reference_Cases/HYDRO_P_0p5_RES_2048_RMI', -1, (False, False, True, False, False, False)), 
+'gradMQRHO_IH_rho_cd_trigger0p025_Buffer_PHM_HRMI_p1_ny2048':('/home/kyriakos/Documents/000_HYDRO_RMI_2048_Reference_Cases/HYDRO_P_1_RES_2048_RMI', -1, (False, False, True, False, False, False))
+
                  }
   """
  
@@ -784,12 +801,14 @@ if __name__ == '__main__':
 ###################################################################################
   # plt or chk files? default to plt. Braginskii viscosity? default yes
   outputKeyword = 'plt';
+  #print("\n\n#=====================Note searching for hdf5 for hydro") 
+  #outputKeyword = '.hdf5';
   if prepare_data:
     for key, (simDir, level, \
     (bv, bvRhoVar, intHeuristic, calcIntra, calcInter,isoOveride)) \
     in simOutputDirec.items():
       phmmfp.get_batch_data(key, simDir, level, max_res, window, n_time_slices, 
-        nproc=1, outputType=[outputKeyword], braginskiiVorticity=bv, bragVortRhoVar=bvRhoVar, 
+        nproc=4, outputType=[outputKeyword], braginskiiVorticity=bv, bragVortRhoVar=bvRhoVar, 
         interfaceHeuristic=intHeuristic, calcIntra=calcIntra, calcInter=calcInter, 
         isoSwitch=isoOveride) 
   
@@ -870,11 +889,12 @@ if __name__ == '__main__':
       # ======================= Interface statistics ===============================#
       if plot_interface_stats:
         print('\nPlotting interface statistics')
-        date = "20221020_IONS_gradMQRHO"
-        interfaceStatistics("ions", key, date, simDir, level, 2, 2, nproc=4)
+        date = "20221021_IONS_gradMQRHO"
+        interfaceStatistics("ions", key, date, simDir, level, 2, 2, 
+                        calcIntra, calcInter, nproc=4)
 
-        date = "20221020_ELECTRONS_gradMQRHO"
-        interfaceStatistics("electrons", key, date, simDir, level, 2, 2, nproc=4)
+        date = "20221021_ELECTRONS_gradMQRHO"
+        #interfaceStatistics("electrons", key, date, simDir, level, 2, 2, nproc=4)
 
 
       if plot_ion_electron_interface_comparison:

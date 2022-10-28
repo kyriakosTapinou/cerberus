@@ -347,9 +347,9 @@ def compareInterfaceStatistics(fluid, key, date, reducedPlot, areaOnly, circulat
     plot_labels = [ r"$\Gamma_z$",r"$\.\Gamma_{z, total}$", r"$\eta$", r"$\.\eta$"]
 
     figure_nR = 2; figure_nC = 2;
-    #plot_limits = [[-0.01, 0.20], [-0.5, 3.0], [0.1, 0.45], [0., 0.65]] 
+    plot_limits = [[-0.005, 0.2], [-1., 6.1], [0.1, 0.425], [0., 0.65]] 
     #plot_limits = [[-0.001, 0.02], [-0.1, 2.5], [0.125, 0.35], [0., 0.35]] # ions op44
-    plot_limits = [[-0.001, 0.02], [-20., 18.], [0.125, 0.35], [0., 0.35]] # ions op44
+    #plot_limits = [[-0.001, 0.02], [-20., 18.], [0.125, 0.35], [0., 0.35]] # ions op44
   elif areaOnly:
     oneD_properties = ["interface_area"]
     plot_properties = ["interface_area"]
@@ -419,10 +419,11 @@ def compareInterfaceStatistics(fluid, key, date, reducedPlot, areaOnly, circulat
   for i in oneD_properties:
     for (key, (dataDir, level)) in cases.items():
       if 'HYDRO' in key or 'HRMI' in key:
-        case_species = 'neutral'
+        if len(rc.names) == 1: case_species = rc.names[0]
+        else: case_species = 'neutral'
       else:
         case_species = fluid #'ions'
-      if case_species == 'neutral' and 'Lorentz' in i:
+      if 'neutral' in case_species and 'Lorentz' in i:
         pass
       else:
         t_data[i, key], interface_data[i,key] = phmmfp.get_1D_time_series_data(processedFiles[key], 
@@ -494,7 +495,7 @@ def compareInterfaceStatistics(fluid, key, date, reducedPlot, areaOnly, circulat
     ax.plot([0,1], [0,0], 'k--', lw=0.4, alpha=0.3) #set the dotted line on zero
   gs.tight_layout(fig, h_pad=0.05, w_pad=0.01)
   
-  name = date + "_Interface_Statistics_" + label_append
+  name = date + label_append
  #"dS_0p1_T_S-Li_I_S-He_Interface_Statistics_" + label_append
   name = name.replace(".","p")
   name += ".tiff"
@@ -694,11 +695,20 @@ if __name__ == '__main__':
 #"SRMI-OP-16-Res-2048-INTRA-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ANISO-Option-16/", -1), 
 #"SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_INTER_ANISO-Option_16", -1), 
 #"SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1), 
+#Interface Heuristics i
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_SRMI-OP-16-Res-2048-IDEAL":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/20220504-Op-16-Clean-Ideal-HLLC", -1), 
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1),
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_INTER_ANISO-Option_16", -1), 
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ISO-Option_16", -1), 
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_INTER_ISO-Option_16", -1), 
+"ionOnly_gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTRA-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ANISO-Option-16 ", -1) ,
+"ionOnly_gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTRA-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ISO-Option-16 ", -1) ,
+
 
 #### option 44 bitches  --- PAPER THREE
-"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
-"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
-"gradMGRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1),
+#"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
+#"gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
+#"gradMGRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1),
 #"gradMQRHO_SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1),
 #"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
 #"SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", -1), 
@@ -706,6 +716,10 @@ if __name__ == '__main__':
 #"SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1), 
 #"SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
 #"SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1), 
+
+'gradMQRHO_IH_rho_cd_trigger0p025_Buffer_PHM_HRMI_p0.5_ny2048':('/home/kyriakos/Documents/000_HYDRO_RMI_2048_Reference_Cases/HYDRO_P_0p5_RES_2048_RMI', -1), 
+'gradMQRHO_IH_rho_cd_trigger0p025_Buffer_PHM_HRMI_p1_ny2048':('/home/kyriakos/Documents/000_HYDRO_RMI_2048_Reference_Cases/HYDRO_P_1_RES_2048_RMI', -1)
+
 #'PHM_HRMI_p0.5_ny2048':('/home/kyriakos/Documents/000_Species_RMI_Scenario_Results/000_R18_Scenario_Results/PHM_HRMI_p0.5_ny2048', -1), 
 #'PHM_HRMI_p1_ny2048':('/home/kyriakos/Documents/000_Species_RMI_Scenario_Results/000_R18_Scenario_Results/PHM_HRMI_p1_ny2048', -1)
 }
@@ -744,6 +758,8 @@ if __name__ == '__main__':
 "SRMI-OP-16-Res-2048-FB-ANISO":"x", 
 'PHM_HRMI_p0.5_ny2048':'None',
 'PHM_HRMI_p1_ny2048':'None',
+'gradMQRHO_IH_rho_cd_trigger0p025_Buffer_PHM_HRMI_p0.5_ny2048':"None", 
+'gradMQRHO_IH_rho_cd_trigger0p025_Buffer_PHM_HRMI_p1_ny2048':"None", 
 
 "SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":"o", 
 "SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":"None", 
@@ -754,6 +770,14 @@ if __name__ == '__main__':
 "gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":"o",
 "gradMGRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":"o",
 "gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":"o",
+
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_SRMI-OP-16-Res-2048-IDEAL":"None", 
+"ionOnly_gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTRA-ISO":"None",
+"ionOnly_gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTRA-ANISO":"x",
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ISO":"None",
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ANISO":"x",
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ISO":"None", 
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ANISO":"x", 
 }
 
     case_prefix = {
@@ -767,6 +791,8 @@ if __name__ == '__main__':
 "SRMI-OP-16-Res-2048-FB-ANISO":"FB-A", 
 'PHM_HRMI_p0.5_ny2048':'P=0.5',
 'PHM_HRMI_p1_ny2048':'P=1',
+'gradMQRHO_IH_rho_cd_trigger0p025_Buffer_PHM_HRMI_p0.5_ny2048':"P=0.5", 
+'gradMQRHO_IH_rho_cd_trigger0p025_Buffer_PHM_HRMI_p1_ny2048':"P=1", 
 
 "SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":"FBA " + r"$\beta=1\times 10^{-3}$", 
 "SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":"FBI " + r"$\beta=1\times 10^{-3}$", 
@@ -777,6 +803,14 @@ if __name__ == '__main__':
 "gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":"FBA " + r"$\beta=0.01$", 
 "gradMGRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":"FBA " + r"$\beta=\infty$", 
 "gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":"FBA " + r"$\beta=0.001$", 
+
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_SRMI-OP-16-Res-2048-IDEAL":"IDL",
+"ionOnly_gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTRA-ISO":"INTRA-I",
+"ionOnly_gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTRA-ANISO":"INTRA-A",
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ISO":"INTER-I",
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ANISO":"INTER-A",
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ISO":"FB-I", 
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ANISO":"FB-A", 
 }
 
     case_colors = {
@@ -790,6 +824,8 @@ if __name__ == '__main__':
 "SRMI-OP-16-Res-2048-FB-ANISO":"r",
 'PHM_HRMI_p0.5_ny2048':'m',
 'PHM_HRMI_p1_ny2048':'y',
+'gradMQRHO_IH_rho_cd_trigger0p025_Buffer_PHM_HRMI_p0.5_ny2048':"m", 
+'gradMQRHO_IH_rho_cd_trigger0p025_Buffer_PHM_HRMI_p1_ny2048':"y", 
 
 "SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":'r', 
 "SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":'r', 
@@ -800,6 +836,14 @@ if __name__ == '__main__':
 "gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":"b", 
 "gradMGRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":"k", 
 "gradMQRHO_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":"m", 
+
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_SRMI-OP-16-Res-2048-IDEAL":"k", 
+"ionOnly_gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTRA-ISO":"b",
+"ionOnly_gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTRA-ANISO":"b",
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ISO":"g",
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ANISO":"g",
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ISO":"r", 
+"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ANISO":"r", 
 }
 
 
@@ -843,7 +887,8 @@ if __name__ == '__main__':
           
           else:# standard boxlib files
             print("Ensure the files are in the simDir or adjacent directory and check line 820")
-            if True: # in the sim folder 
+            if False: # in the sim folder 
+              print("processfed files are in sim folder")
               if simDir[-1] == "/": dirName = simDir + dirName # where is the processed files in relation to the sim output
               else: dirName = simDir + "/" + dirName
   
@@ -966,12 +1011,13 @@ if __name__ == '__main__':
       # ======================= Interface statistics ===============================#
     if plot_interface_stats:
       print('\nPlotting comparison of interface statistics')
-      date = "20220922"
-      label_append = "Interface_Statistics_IONS_comparison_44-Magnetised_RES_2048"
+      date = "20221023"
+      label_append = "_Interface_Statistics_IONS_comparison_HRMI_IH_16_RES_2048"
+      #label_append = "Interface_Statistics_IONS_comparison_44-Magnetised_RES_2048"
       # "IONS_comparison_44-Braginskii_RES_2048_noHydro"
-      reducedPlot = False  # True # only plotting the overall circ, circ gen, growth rate, and 
+      reducedPlot = True  # True # only plotting the overall circ, circ gen, growth rate, and 
       areaOnly = False
-      circulationComponentsOnly = True 
+      circulationComponentsOnly = False 
 
       #label_append = "ION_interface_area_comparison_44-Magnetised_RES_2048"
       wspacing = 0.3; hspacing = 0.1; 
@@ -982,9 +1028,9 @@ if __name__ == '__main__':
       #label_append = "ELECTRON_interface_area_comparison_44-Magnetised_RES_2048"
       label_append = "Interface_Statistics_ELECTRONS_comparison_44-Magnetised_RES_2048"
       #label_append = "ION_interface_area_comparison_44-Braginskii_RES_2048_noHydro"
-      compareInterfaceStatistics("electrons", key, date, 
-        reducedPlot, areaOnly, circulationComponentsOnly,
-        cases, processedFiles, wspacing, hspacing, label_append, useNprocs=useNprocs)
+      #compareInterfaceStatistics("electrons", key, date, 
+      #  reducedPlot, areaOnly, circulationComponentsOnly,
+      #  cases, processedFiles, wspacing, hspacing, label_append, useNprocs=useNprocs)
 
       # ======================= Interface statistics ===============================#
     if plot_interface_thickness:
