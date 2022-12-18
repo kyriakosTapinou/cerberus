@@ -96,7 +96,7 @@ def get_interface(ch, name):
       if grab3[i] == False and start_switch == 1.:
         int_end = i
         start_switch = 0.  
-        interp_val_1 = interp_val(alpha[i,j], tracer_low, tracer_high)
+        interp_val_2 = interp_val(alpha[i,j], tracer_low, tracer_high) #TODO check this change
         x1 = np.interp([interp_val_1], alpha[int_start-1:int_start+1,j], x[int_start-1:int_start+1])
         x2 = np.interp([interp_val_2], alpha[int_end-1:int_end+1,j], x[int_end-1:int_end+1])
 
@@ -223,15 +223,22 @@ def get_Lorentz_torque(ch, name):
 def get_vorticity(ch, input_options):#name):
     """Calculates the vorticity (omega) and change in vorticity due to the 
     omega*(grad dot u) {flow1} and (u dot grad)omega {flow2} terms  
+    added flow3 for (omega cdot nabla) u
     """
     if 'dim' not in input_options.keys(): dim = 2 # z direction
     else: 
       dim = input_options['dim']
-      print("\t\tNote the 2D slab assumption for x- and y-vorticity - zero z gradient")
+      #TODO
+      #print("\t\tNote the 2D slab assumption for x- and y-vorticity - zero z gradient")
 
     name = input_options['name']
     quantity = input_options['quantity']
-    x, rho = ch.get("rho-%s"%name)
+    try:
+      x, rho = ch.get("rho-%s"%name)
+    except:
+      print(f"Component not available {'rho-%s'%name}")
+      print(str(np.ravel(ch.data["names"])))
+      pdb.set_trace()
 
     u = ch.get_flat("x_vel-%s"%name)[1]
     v = ch.get_flat("y_vel-%s"%name)[1]
@@ -275,6 +282,7 @@ def get_vorticity(ch, input_options):#name):
 
     # if return has not been reached then calculate flow1 and flow2 assuming z dimension
     if dim != 2: xxxx # don't support non z dimension flow1 and flow 2 
+    # velocity derivatives for vorticity 
     try:
       du_dx =  ch.get_flat("x_vel-%s-dx"%name)[1]
       dv_dy =  ch.get_flat("y_vel-%s-dy"%name)[1]
@@ -284,8 +292,27 @@ def get_vorticity(ch, input_options):#name):
     d_omega_dx = np.gradient(omega, dx, axis=0)
     d_omega_dy = np.gradient(omega, dy, axis=1)
     flow1 = -omega*(du_dx + dv_dy)
-    flow2 = -u*d_omega_dx - v*d_omega_dy 
-    return x, y, omega, flow1, flow2 
+    flow2 = -u*d_omega_dx - v*d_omega_dy # not used usually because this is just transport 
+
+    # velocity derivatives for the x and y components of vorticity
+
+    try: # check if gradients given in output data
+      dw_dy = ch.get_flat("z_vel-%s-dy"%name)[1]
+      #dv_dz = ch.get_flat("y_vel-%s-dz"%name)[1]
+      dw_dx = ch.get_flat("z_vel-%s-dx"%name)[1]
+      #du_dz = ch.get_flat("x_vel-%s-dz"%name)[1]
+    except:
+      dw_dy = np.gradient(w, dy, axis=1)
+      #dv_dz = np.gradient(v, dz, axis=2)
+      dw_dx = np.gradient(w, dx, axis=0)
+      #du_dz = np.gradient(u, dz, axis=2)
+
+
+    omega_x = dw_dy #- dv_dz
+    omega_y = -(dw_dx )  #- du_dz)
+
+    flow3 = omega_x*dw_dx + omega_y*dw_dy
+    return x, y, omega, flow1, flow2, flow3
 
 def get_charge_number_density(rc, name, returnMany = True):
     """
@@ -369,7 +396,7 @@ def get_single_data(din):
       #TODO reduce the search area and offset indexes
       x, y, dudt_fluxes, srcDst = get_transportProperties(rc, 
         ["ions", "electrons"], din['level'], calcIntra, calcInter, 
-        isoOveride=isoSwitch, useNPROC=7)
+        isoOveride=isoSwitch, useNPROC=1)
 
       rc = ReadBoxLib(din["dataName"], max_level=din["level"], limits=din["window"]) #reopen after operatons ar done for the remaineder
       fluxDict = {}; srcDict = {}; OC = {}# vorticity vontribution 
@@ -438,7 +465,7 @@ def get_single_data(din):
       get_vorticity_inputs['name'] = name
       get_vorticity_inputs['quantity'] ='all'
 
-      x, y, omega, flow1, flow2 = get_vorticity(rc, get_vorticity_inputs)
+      x, y, omega, flow1, flow2, flow3 = get_vorticity(rc, get_vorticity_inputs)
       get_vorticity_inputs['quantity'] = 'omega'; get_vorticity_inputs['dim'] = 0; 
       deleteMe, deleteMe1, omega_x = get_vorticity(rc, get_vorticity_inputs)
       get_vorticity_inputs['dim'] = 1; 
@@ -556,6 +583,7 @@ def get_single_data(din):
         tb_interface_sum = 0.; tb_interface_sum_half = 0.;
         flow1_interface_sum = 0.; flow1_interface_sum_half = 0.; 
         flow2_interface_sum = 0.; flow2_interface_sum_half = 0.;
+        flow3_interface_sum = 0.; flow3_interface_sum_half = 0.;
 
         interface_area = 0.
      
@@ -587,6 +615,7 @@ def get_single_data(din):
               tb_interface_sum += baro[i,j]
               flow1_interface_sum += flow1[i,j]
               flow2_interface_sum += flow2[i,j]
+              flow3_interface_sum += flow3[i,j]
               if ("ion" in name) or ("electron" in name):
                 tl_E_interface_sum += tau_E[i,j]
                 tl_B_interface_sum += tau_B[i,j]
@@ -604,6 +633,7 @@ def get_single_data(din):
                 tb_interface_sum_half += baro[i,j]
                 flow1_interface_sum_half += flow1[i,j]
                 flow2_interface_sum_half += flow2[i,j]
+                flow3_interface_sum_half += flow3[i,j]
                 if ("ion" in name) or ("electron" in name):
                   tl_E_interface_sum_half += tau_E[i,j]
                   tl_B_interface_sum_half += tau_B[i,j]
@@ -620,12 +650,14 @@ def get_single_data(din):
           d["baroclinic_interface_sum"] = tb_interface_sum*dx*dy
           d["tau_sc_interface_sum"] = flow1_interface_sum*dx*dy
           d["tau_conv_interface_sum"] = flow2_interface_sum*dx*dy
+          d["tau_tilt_interface_sum"] = flow3_interface_sum*dx*dy
           d["circulation_interface_sum_half"] = omega_interface_sum_half*dx*dy 
           d["circulation_interface_sum_half_x"] = omega_interface_sum_half_x*dx*dy 
           d["circulation_interface_sum_half_y"] = omega_interface_sum_half_y*dx*dy 
           d["baroclinic_interface_sum_half"] = tb_interface_sum_half*dx*dy
           d["tau_sc_interface_sum_half"] = flow1_interface_sum_half*dx*dy
           d["tau_conv_interface_sum_half"] = flow2_interface_sum_half*dx*dy
+          d["tau_tilt_interface_sum_half"] = flow3_interface_sum_half*dx*dy
           d["interface_area"] = interface_area 
           if ("ion" in name) or ("electron" in name):
             d["curl_Lorentz_E_interface_sum_half"] = tl_E_interface_sum_half*dx*dy

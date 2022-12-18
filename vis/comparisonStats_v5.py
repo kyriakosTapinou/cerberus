@@ -202,7 +202,9 @@ def plot_ScenariosPrimitive(dataFileList, outputType, raw_data_attr, levelList, 
         attr[attr_name][i] = phmmfp.get_Lorentz(rc, options)[2]
       elif 'vorticity' in attr_name_access:
         name = attr_name_access.split('vorticity-')[1]
-        options = {'name':name, 'quantity':'omega'}
+        dim = float(name.split('-')[1]); name = name.split('-')[0]
+        print(f"dim: {dim} name: {name}")
+        options = {'name':name, 'quantity':'omega', 'dim':dim}
         attr[attr_name][i] = phmmfp.get_vorticity(rc, options)[-1]
       elif attr_name[:6] == 'tracer':
         attr[attr_name][i] = rc.get_flat("alpha-%s"%sattr_name[7:])[1];
@@ -347,8 +349,8 @@ def compareInterfaceStatistics(fluid, key, date, reducedPlot, areaOnly, circulat
     plot_labels = [ r"$\Gamma_z$",r"$\.\Gamma_{z, total}$", r"$\eta$", r"$\.\eta$"]
 
     figure_nR = 2; figure_nC = 2;
-    plot_limits = [[-0.005, 0.2], [-1., 6.1], [0.1, 0.425], [0., 0.65]] 
-    #plot_limits = [[-0.001, 0.02], [-0.1, 2.5], [0.125, 0.35], [0., 0.35]] # ions op44
+    #plot_limits = [[-0.005, 0.2], [-1., 6.1], [0.1, 0.425], [0., 0.65]] 
+    plot_limits = [[-0.005, 0.04], [-0.1, 5.75], [0.125, 0.35], [0., 0.35]] # ions op44
     #plot_limits = [[-0.001, 0.02], [-20., 18.], [0.125, 0.35], [0., 0.35]] # ions op44
   elif areaOnly:
     oneD_properties = ["interface_area"]
@@ -356,6 +358,7 @@ def compareInterfaceStatistics(fluid, key, date, reducedPlot, areaOnly, circulat
     plot_labels = [ r"$A_{int}$"]
     plot_limits = [ [0., 0.08] ]
     plot_limits = [[0.004, 0.01] ] #[ [0., 0.08] ]
+    plot_limits = [[0.012, 0.026] ] #[ [0., 0.08] ]
     figure_nR = 1; figure_nC = 1;
   elif circulationComponentsOnly:
     oneD_properties = ["tau_sc_interface_sum_half", "baroclinic_interface_sum_half", "curl_Lorentz_E_interface_sum_half", "curl_Lorentz_B_interface_sum_half", "curl_brag_inter_sum_half", "curl_brag_intra_sum_half"]
@@ -696,13 +699,15 @@ if __name__ == '__main__':
 #"SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_INTER_ANISO-Option_16", -1), 
 #"SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1), 
 #Interface Heuristics i
-"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_SRMI-OP-16-Res-2048-IDEAL":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/20220504-Op-16-Clean-Ideal-HLLC", -1), 
-"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1),
-"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_INTER_ANISO-Option_16", -1), 
-"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ISO-Option_16", -1), 
-"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_INTER_ISO-Option_16", -1), 
-"ionOnly_gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTRA-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ANISO-Option-16 ", -1) ,
-"ionOnly_gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTRA-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ISO-Option-16 ", -1) ,
+
+#### I beliee these were the final, drho, cd troggers with threshold 
+#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_SRMI-OP-16-Res-2048-IDEAL":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/20220504-Op-16-Clean-Ideal-HLLC", -1), 
+#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1),
+#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_INTER_ANISO-Option_16", -1), 
+#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ISO-Option_16", -1), 
+#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_INTER_ISO-Option_16", -1), 
+#"ionOnly_gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTRA-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ANISO-Option-16 ", -1) ,
+#"ionOnly_gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTRA-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z-Correction-2048-INTRA-ISO-Option-16 ", -1) ,
 
 
 #### option 44 bitches  --- PAPER THREE
@@ -717,8 +722,16 @@ if __name__ == '__main__':
 #"SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
 #"SRMI-OP-44-Res-2048-FB-ISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1), 
 
-'gradMQRHO_IH_rho_cd_trigger0p025_Buffer_PHM_HRMI_p0.5_ny2048':('/home/kyriakos/Documents/000_HYDRO_RMI_2048_Reference_Cases/HYDRO_P_0p5_RES_2048_RMI', -1), 
-'gradMQRHO_IH_rho_cd_trigger0p025_Buffer_PHM_HRMI_p1_ny2048':('/home/kyriakos/Documents/000_HYDRO_RMI_2048_Reference_Cases/HYDRO_P_1_RES_2048_RMI', -1)
+####FINAL VERSION YO
+"20201029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ANISO_beta_0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1),
+"20201029_IH_dRho_CD_RMI_OP_44_Res_2048_FB_ISO_beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", -1),
+"20201029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ANISO_beta_infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1, ), 
+"20201029_IH_dRho_CD_RMI_OP_44_Res_2048_FB_ISO_beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1), 
+"20221029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ANISO_beta_0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
+"20221029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ISO_beta_0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1), 
+
+#'gradMQRHO_IH_rho_cd_trigger0p025_Buffer_PHM_HRMI_p0.5_ny2048':('/home/kyriakos/Documents/000_HYDRO_RMI_2048_Reference_Cases/HYDRO_P_0p5_RES_2048_RMI', -1), 
+#'gradMQRHO_IH_rho_cd_trigger0p025_Buffer_PHM_HRMI_p1_ny2048':('/home/kyriakos/Documents/000_HYDRO_RMI_2048_Reference_Cases/HYDRO_P_1_RES_2048_RMI', -1)
 
 #'PHM_HRMI_p0.5_ny2048':('/home/kyriakos/Documents/000_Species_RMI_Scenario_Results/000_R18_Scenario_Results/PHM_HRMI_p0.5_ny2048', -1), 
 #'PHM_HRMI_p1_ny2048':('/home/kyriakos/Documents/000_Species_RMI_Scenario_Results/000_R18_Scenario_Results/PHM_HRMI_p1_ny2048', -1)
@@ -778,6 +791,13 @@ if __name__ == '__main__':
 "gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ANISO":"x",
 "gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ISO":"None", 
 "gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ANISO":"x", 
+
+"20201029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ANISO_beta_0p001":"o", 
+"20201029_IH_dRho_CD_RMI_OP_44_Res_2048_FB_ISO_beta-0p001":"None",
+"20201029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ANISO_beta_infin":"o", 
+"20201029_IH_dRho_CD_RMI_OP_44_Res_2048_FB_ISO_beta-infin":"None",
+"20221029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ANISO_beta_0p01":"o", 
+"20221029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ISO_beta_0p01":"None",
 }
 
     case_prefix = {
@@ -811,6 +831,13 @@ if __name__ == '__main__':
 "gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ANISO":"INTER-A",
 "gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ISO":"FB-I", 
 "gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ANISO":"FB-A", 
+
+"20201029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ANISO_beta_0p001":"FBA "+r"$\beta=1\times 10^{-3}$",
+"20201029_IH_dRho_CD_RMI_OP_44_Res_2048_FB_ISO_beta-0p001":"FBI " + r"$\beta=1\times 10^{-3}$",
+"20201029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ANISO_beta_infin":"FBA "+r"$\beta=\infty$", 
+"20201029_IH_dRho_CD_RMI_OP_44_Res_2048_FB_ISO_beta-infin":"FBI " + r"$\beta=\infty$",
+"20221029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ANISO_beta_0p01":"FBA "+r"$\beta=1\times 10^{-2}$", 
+"20221029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ISO_beta_0p01":"FBI " + r"$\beta=1\times 10^{-2}$",
 }
 
     case_colors = {
@@ -844,6 +871,13 @@ if __name__ == '__main__':
 "gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ANISO":"g",
 "gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ISO":"r", 
 "gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ANISO":"r", 
+
+"20201029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ANISO_beta_0p001":"r",
+"20201029_IH_dRho_CD_RMI_OP_44_Res_2048_FB_ISO_beta-0p001":"r", 
+"20201029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ANISO_beta_infin":"k", 
+"20201029_IH_dRho_CD_RMI_OP_44_Res_2048_FB_ISO_beta-infin":"k", 
+"20221029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ANISO_beta_0p01":"b", 
+"20221029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ISO_beta_0p01":"b", 
 }
 
 
@@ -912,21 +946,25 @@ if __name__ == '__main__':
       #Fluid properties 
       #label_prop = [r"$\rho_i$", r"$\rho_{q}$", r"$\omega_{i}$"] #
       #raw_data_attr_names = ['rho-ions', 'rho-charge', 'vorticity-ions']
-      label_prop = [r"$\rho_i$", r"$\rho_e$", r"$T_{i}$", r"$T_{e}$"] #
-      raw_data_attr_names = ['rho-ions', 'rho-electrons','temperature-ions', 'temperature-electrons']
+      #label_prop = [r"$\rho_i$", r"$\rho_e$", r"$T_{i}$", r"$T_{e}$"] #
+      #raw_data_attr_names = ['rho-ions', 'rho-electrons','temperature-ions', 'temperature-electrons']
 
       # r"$\omega_{i}$", r"$\rho_{q}$", r"$T_e$", r"$T_i$", r"$\varrho_i$", r"$\omega_{i}$"
       #r"$\rho_{E,e}$", r"$\rho_{E,i}$", r"$\rho_{E, EM}$"]  r"$\rho_i$", r"$L_{x,i}$", 
 
       #Mix properties 
-      #label_prop = [r"$\rho_i$", r"$\omega_{i}$", r"$L_{y,i}$", r"$\rho_e$", r"$\omega_{e}$", r"$L_{y,e}$"] #
+      #label_prop = [r"$\rho_i$", r"$\omega_{i,x}$", r"$L_{y,i}$", r"$\rho_e$", r"$\omega_{e}$", r"$L_{y,e}$"] #
       #raw_data_attr_names = ['rho-ions', 'vorticity-ions', 'Lorentz-y-ions', 'rho-electrons', 'vorticity-electrons', 'Lorentz-y-electrons']
+
+      label_prop = [r"$\rho_i$", r"$\omega_{i,x}$", r"$\omega_{i,y}$",r"$\omega_{i,z}$"]
+      raw_data_attr_names = ['rho-ions', 'vorticity-ions-0', 'vorticity-ions-1', 'vorticity-ions-2']
+
       #['rho_E-electrons', 'rho_E-ions', "rho_E-EM", 'vorticity-ion', 
       # 'rho-charge', 'temperature-electron', 'temperature-ion', 'tracer-ion']
       #'temperature-ions' 'vorticity-ions'
       levelList = []
-      for timeInput in [1.]: #[0.2, 0.5, 0.7, 1.0]: #0.2, 0.3, 0.4, 0.5, 1.0]: 
-        label_output = "20220918-Braginskii_Isotropic_44_Xbeta_t-%.1f-rho-T_"%(timeInput)
+      for timeInput in [0.2, 0.5, 0.7, 1.0]: #0.2, 0.3, 0.4, 0.5, 1.0]: [1.]: #
+        label_output = "20221103-Braginskii_OP44_X_rho_vort_t%s"%(timeInput)
         #label_output = "20220918-Braginskii_Isotropic_44_Xbeta"+key+"t-%.1f-rho-omega-Lrtz_"%(timeInput)
         #label_output = "20220831_Braginskii-ANISO_Z_Q_Corrected_t-%.1f_rho-temp_"%(timeInput)
         input_files = []; level_list = []; ylabel_list = []; view_list = []
@@ -942,19 +980,21 @@ if __name__ == '__main__':
         else: 
           optionIndexes = {16:0, 18:10, 19:20, 21:30, 44:40}                                          
           options = [44] #options = [16, 18, 19, 20, 21, 44]
-          scenarioIndexes = {"FB-ISO-beta-infin":0, "FB-ANISO-beta-infin":1, "FB-ANISO-beta-0p01":2, "FB-ISO-beta-0p01":3, "FB-ISO-beta-0p001":4, "FB-ANISO-beta-0p001":5} 
+          #scenarioIndexes = {"FB-ISO-beta-infin":0, "FB-ANISO-beta-infin":1, "FB-ANISO-beta-0p01":2, "FB-ISO-beta-0p01":3, "FB-ISO-beta-0p001":4, "FB-ANISO-beta-0p001":5} 
+          scenarioIndexes = {"FB_ISO_beta-infin":0, "FB_ANISO_beta_infin":1, "FB_ANISO_beta_0p01":2, "FB_ISO_beta_0p01":3, "FB_ISO_beta-0p001":4, "FB_ANISO_beta_0p001":5} 
  
                               #{'IDEAL':0, 'INTRA-ISO':1, 'INTRA-ANISO':2, 'INTER-ISO':3, 
                               #'INTER-ANISO':4, 'FB-ISO':5, 'FB-ANISO':6}
                               #'INTER-DIRTY':5, 'FB-DIRTY':6, 'INTRA-ISO-MAG-Z':7, 
                               #'INTRA-ANISO-MAG-Z':8}
-          scenarios = ["FB-ISO-beta-infin", "FB-ANISO-beta-infin", "FB-ANISO-beta-0p01", "FB-ISO-beta-0p01", "FB-ISO-beta-0p001", "FB-ANISO-beta-0p001"] 
+          #scenarios = ["FB-ISO-beta-infin", "FB-ANISO-beta-infin", "FB-ANISO-beta-0p01", "FB-ISO-beta-0p01", "FB-ISO-beta-0p001", "FB-ANISO-beta-0p001"] 
+          scenarios = ["FB_ISO_beta-infin", "FB_ANISO_beta_infin", "FB_ANISO_beta_0p01", "FB_ISO_beta_0p01", "FB_ISO_beta-0p001", "FB_ANISO_beta_0p001"] 
           #scenarios = ['IDEAL', 'INTRA-ISO', 'INTRA-ANISO', 'INTER-ISO', 'INTER-ANISO', 'FB-ISO', 'FB-ANISO']
                       #'INTER-DIRTY', 'FB-DIRTY', 'INTRA-ISO-MAG-Z', 'INTRA-ANISO-MAG-Z']
           for key in cases:
             optionIndex = -1; scenarioIndex = -1
             for option in options:
-              if ( "-" + str(option) in key): 
+              if ( "-" + str(option) in key) or ( "_" + str(option) in key):  #dfference in underscore and hyphen makes a diff 
                 optionIndex = optionIndexes[option]
                 break 
             for scenario in scenarios:
@@ -982,8 +1022,8 @@ if __name__ == '__main__':
           FTF_inputs['fileNames'] = outputFiles[key]
           FTF_inputs['level'] = 0 # set to zero to minimise memory usage - we only need time data 
           FTF_inputs['window'] = view
-          if  True: ### 
-            print("\n\nhardocoded time search overide for last frame")
+          if  False: ### 
+            print("\n\nhardcoded time search overide for last frame")
             input_files.append( outputFiles[key][-1])
           else:
             print("\tSearching for time")
@@ -1011,12 +1051,13 @@ if __name__ == '__main__':
       # ======================= Interface statistics ===============================#
     if plot_interface_stats:
       print('\nPlotting comparison of interface statistics')
-      date = "20221023"
-      label_append = "_Interface_Statistics_IONS_comparison_HRMI_IH_16_RES_2048"
+      date = "20221216"
+      #label_append = "_Interface_Statistics_IONS_comparison_HRMI_IH_16_RES_2048"
       #label_append = "Interface_Statistics_IONS_comparison_44-Magnetised_RES_2048"
+      label_append = "Interface_area_IONS_comparison_44-Magnetised_RES_2048"
       # "IONS_comparison_44-Braginskii_RES_2048_noHydro"
-      reducedPlot = True  # True # only plotting the overall circ, circ gen, growth rate, and 
-      areaOnly = False
+      reducedPlot = False  # True # only plotting the overall circ, circ gen, growth rate, and 
+      areaOnly = True
       circulationComponentsOnly = False 
 
       #label_append = "ION_interface_area_comparison_44-Magnetised_RES_2048"
@@ -1026,7 +1067,7 @@ if __name__ == '__main__':
         label_append, useNprocs=useNprocs)
       # second plot 
       #label_append = "ELECTRON_interface_area_comparison_44-Magnetised_RES_2048"
-      label_append = "Interface_Statistics_ELECTRONS_comparison_44-Magnetised_RES_2048"
+      #label_append = "Interface_Statistics_ELECTRONS_comparison_44-Magnetised_RES_2048"
       #label_append = "ION_interface_area_comparison_44-Braginskii_RES_2048_noHydro"
       #compareInterfaceStatistics("electrons", key, date, 
       #  reducedPlot, areaOnly, circulationComponentsOnly,

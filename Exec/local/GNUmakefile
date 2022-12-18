@@ -2,7 +2,7 @@ AMREX_HOME := ../../amrex
 TOP := ../../
 COMP := GNU
 
-DIM = 1
+DIM = 3
 
 TINY_PROFILE = True 
 PROFILE = FALSE
@@ -19,7 +19,7 @@ HDF5_HOME   = /usr/lib/x86_64-linux-gnu/hdf5/openmpi
 USE_HDF5 = FALSE
 
 USE_EB = FALSE 
-AMREX_PARTICLES = FALSE
+AMREX_PARTICLES = TRUE
 
 PYTHON_PLOT = FALSE
 PYTHON_INCLUDE=/usr/include/python3.6

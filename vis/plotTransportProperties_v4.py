@@ -54,7 +54,6 @@ def graphData(dataFile, level, window, view, nameOutput, timeTitle, saturationFa
   print("...calculated")
   print(f"\nTook {time.time()-t1} to extract transport effects\n")
   ch = ReadBoxLib(dataFile, level, window)
-  pdb.set_trace()
   constOC = (2/ch.data['beta']/ch.data['skin_depth']**2)
   ######=================
   if plotVorticityCollisional:
@@ -91,6 +90,8 @@ def graphData(dataFile, level, window, view, nameOutput, timeTitle, saturationFa
       gs2 = gridspec.GridSpec(2, 2, wspace=0.05, hspace=0.05)
       ax2 = fig2.add_subplot(gs2[0,0])
       #maxVal = max(abs(
+      y, x = np.meshgrid(y, x) 
+
       ax2.pcolormesh(x, y, OC['PI_e'], cmap='bwr')
 
       ax2 = fig2.add_subplot(gs2[0,1])
@@ -154,7 +155,8 @@ def graphData(dataFile, level, window, view, nameOutput, timeTitle, saturationFa
     #(3, "ions", r"$Inter_i Aniso$", srcDstA)
     #(2, "electrons", r"$Inter_e Iso$", srcDst),
     #(3, "electrons", r"$Inter_e Aniso$", srcDstA)
-    (3, "ions", r"$\dot\omega_z$", OC, labelVorticity),
+    (3, "electrons", r"$Inter_e$", srcDst),
+    #(3, "ions", r"$\dot\omega_z$", OC, labelVorticity),
     ]
     #maxVal[name]=0; minVal[name] = 0
 
@@ -252,7 +254,11 @@ if __name__ == "__main__":
   #["/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-INTRA-Isotropic/SRMI-Option-16-Res-512-INTRA-Isotropic", "INTRA-ISO"], 
   #["/media/kyriakos/Expansion/999_RES_512_RUNS/magnus_HLLC_SRMI-Option-16-Res-512-INTRA-Anisotropic/SRMI-Option-16-Res-512-INTRA-Anisotropic","INTRA-ANISO"], 
   #["/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/20220504-Op-16-Clean-Ideal-HLLC", "Ideal_HLLC"], 
-  ["/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", "FB-ANISO"]
+  #["/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", "FB-ANISO"]
+
+  # op44 iso and aniso non magnetised
+  ["/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", "FB-ANISO"], 
+  ["/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", "FB-ISO"],
   ]
 
   for dataDir in dataDirs:
@@ -262,7 +268,7 @@ if __name__ == "__main__":
     dataFiles = get_files(dataDir, include=["plt"], exclude=["png"], get_all=False)
   
     FTF_inputs = {}
-    FTF_inputs['times_wanted'] = [1] #[0.20, 0.5, 1.0]#0.1*i for i in range(1,2)]
+    FTF_inputs['times_wanted'] = [0.11] #[0.20, 0.5, 1.0]#0.1*i for i in range(1,2)]
     FTF_inputs['frameType'] = 2
     FTF_inputs['fileNames'] = dataFiles 
     FTF_inputs['level'] = 0
@@ -277,9 +283,14 @@ if __name__ == "__main__":
       xl = -0.3452644016713751 
       xh = 0.1309040413124145 
       yl = 0. ; yh = 1.0
-    else:
+    elif False:
       xl = 0.2 #-0.4
       xh = 1.2 # 1.4
+      yl = 0.0
+      yh = 1.0
+    else: # op 44 at t=0.11
+      xl = -0.2 #-0.4
+      xh = 0.2 # 1.4
       yl = 0.0
       yh = 1.0
 
@@ -304,7 +315,7 @@ if __name__ == "__main__":
     saturationFactor = 1
     for (i, di) in enumerate(data_index):
       dataFile = dataFiles[di]
-      nameOutput = "testDelete_20220913_TransportInfluence_anisotropic_" + name + "_t_" + str(FTF_inputs['times_wanted'][i]).replace(".","p")
+      nameOutput = "20221216_TransportInfluence_anisotropic_" + name + "_t_" + str(FTF_inputs['times_wanted'][i]).replace(".","p")
       timeTitle = str(FTF_inputs['times_wanted'][i])
       graphData(dataFile, level, FTF_inputs['window'], view, nameOutput, timeTitle, 
-                saturationFactor, plotVorticityCollisional=True)
+                saturationFactor, plotVorticityCollisional=False)

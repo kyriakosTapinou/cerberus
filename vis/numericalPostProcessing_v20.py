@@ -527,6 +527,7 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
   useNproc = nproc; # how many processes to spawn 
   processedSimDir = phmmfp.get_save_name(key, simDir, level)
   simFiles = get_files(simDir, include=['plt'], get_all=False)
+  print(f"\nProcess sim dir: {processedSimDir}\nSim dir: {simDir}\n") 
 
   if False: # in the sim folder 
     print("\n###Line 514 Assuming processed files are in the simulation files directory, not in the parent directory.")
@@ -695,6 +696,149 @@ def ionElectronInterfaceStatistics(fluids, key, date, simDir, level, grid_i, gri
   return 
 
 
+def vorticityRotation(fluid, key, date, simDir, level, calcIntra, calcInter, nproc=1):
+  useNproc = nproc; # how many processes to spawn 
+  processedSimDir = phmmfp.get_save_name(key, simDir, level)
+
+  if False: # in the sim folder 
+    print("\n###Line 343 Assuming processed files are in the simulation files directory, not in the parent directory.")
+    if simDir[-1] == "/": processedSimDir = simDir + processedSimDir 
+    else: processedSimDir = simDir + "/" + processedSimDir
+    print(f"\t{dir_name}")
+  else: print("\n###Line 347 Assuming processed files are in the parent directory.")
+  simFiles = get_files(simDir, include=['plt'], get_all=False)
+  processed_files = get_files(processedSimDir, include=['.h5'], get_all=False)
+
+  rc = ReadBoxLib(simFiles[0], 0, view); 
+  debye_print = rc.data['Debye']; c_print = rc.data['lightspeed']; 
+  rc.close()
+
+  # attribute contours
+  wspacing = 0.05;  hspacing = 0.05; grid_i = 1;  grid_j = 1
+  fig_x, fig_y = phmmfp.get_figure_size(6.7, grid_i, grid_j, 1., wspacing, hspacing, 1)
+  fig = plt.figure(figsize=(fig_x,fig_y))
+  # layout the grid for the figure 
+  gs = gridspec.GridSpec(grid_i, grid_j)#,
+                         #width_ratios=[1],
+                         #height_ratios=[1,1,1,1,1,1],)
+  # set up axes for subplots of circulation, vorticity terms(flow1, flow2, baro, tb, and tl)
+  axes = []; 
+
+  ax0 = fig.add_subplot(gs[0,0]); axes.append(ax0); ax0.set_ylabel(r"$\Gamma$, $\lambda_D$=%g, c=%g $p=\frac{1}{2}$"%(debye_print,c_print));
+  #ax1 = fig.add_subplot(gs[1,0]); axes.append(ax1); ax1.set_ylabel(r"$\dot \Gamma_{z,full}$"); 
+  #ax2 = fig.add_subplot(gs[1,0]); axes.append(ax2); ax2.set_ylabel(r"$\dot\Gamma_{z, half}$"); 
+  #ax1.legend(loc="upper left")
+  #ax3 = fig.add_subplot(gs[0,1]); axes.append(ax3); ax3.set_ylabel(r"$\eta$"); 
+  #ax4 = fig.add_subplot(gs[1,1]); axes.append(ax4); ax4.set_ylabel(r"$\dot\eta$"); 
+  #ax5 = fig.add_subplot(gs[2,1]); axes.append(ax5); ax5.set_ylabel(r"$A_{int}$"); 
+
+  if False: # set limits 
+    ax0.set_ylim([-0.01, 0.25]) 
+    #ax2.set_ylim([-0.5, 1.7]) 
+    #ax3.set_ylim([0.,0.5])
+    #ax4.set_ylim([-1.2,0.6])
+    #ax5.set_ylim([0.,0.06])
+
+  tp = [] 
+  t, int_circ_x = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="circulation_interface_sum_x", cumsum=False, nproc=useNproc)  #circulation_int_sum
+  t, int_circ_y = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="circulation_interface_sum_y", cumsum=False, nproc=useNproc)  #circulation_int_sum
+  t, int_circ_z = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="circulation_interface_sum", cumsum=False, nproc=useNproc)  #circulation_int_sum
+
+  #t, int_circ = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="circulation_interface_sum", cumsum=False, nproc=useNproc)  #circulation_int_sum
+  #tl, int_tsc  = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="tau_sc_interface_sum", cumsum=False, nproc=useNproc) # flow term 1
+  #tl, int_tc  = get_1D_time_series_data(processed_files, species=fluid, quantity="tau_conv_interface_sum", cumsum=False, nproc=useNproc) # flow term 2
+  #tb, int_b   = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="baroclinic_interface_sum", cumsum=False, nproc=useNproc)   # baroclinic term 
+  #tl, int_L_E = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_Lorentz_E_interface_sum", cumsum=False, nproc=useNproc) # Lorentz E component 
+  #tl, int_L_B = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_Lorentz_B_interface_sum", cumsum=False, nproc=useNproc) # Lorentz B component
+  #tA, int_A   = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="interface_area", cumsum=False, nproc=useNproc) # interface area 
+  #if calcInter: tbrag, int_brag_inter = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_brag_inter_sum", cumsum=False, nproc=useNproc) #inter speceis circulation  
+  #if calcIntra: tbrag, int_brag_intra = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_brag_intra_sum", cumsum=False, nproc=useNproc) #intra species circulation
+
+  t, int_circ_half_x = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="circulation_interface_sum_half_x", cumsum=False, nproc=useNproc)  #vorticity_int_sum
+  t, int_circ_half_y = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="circulation_interface_sum_half_y", cumsum=False, nproc=useNproc)  #vorticity_int_sum
+  t, int_circ_half_z = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="circulation_interface_sum_half", cumsum=False, nproc=useNproc)  #vorticity_int_sum
+  #tl, int_tsc_half  = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="tau_sc_interface_sum_half", cumsum=False, nproc=useNproc) # flow term 1
+  #tl, int_tc_half  = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="tau_conv_interface_sum_half", cumsum=False, nproc=useNproc) # flow term 2
+  #tb, int_b_half   = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="baroclinic_interface_sum_half", cumsum=False, nproc=useNproc)   # baroclinic term 
+  #tl, int_L_E_half = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_Lorentz_E_interface_sum_half", cumsum=False, nproc=useNproc) # Lorentz E component 
+  #tl, int_L_B_half= phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_Lorentz_B_interface_sum_half", cumsum=False, nproc=useNproc) # Lorentz B component
+  #if calcInter: tbrag, int_brag_inter_half = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_brag_inter_sum_half", cumsum=False, nproc=useNproc) #inter speceis circulation  
+  #if calcIntra: tbrag, int_brag_intra_half = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="curl_brag_intra_sum_half", cumsum=False, nproc=useNproc) #intra species circulation
+
+  """
+  teta, eta   = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="y_avg_int_width", cumsum=False, nproc=useNproc)
+  teta, geta   = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="global_int_width", cumsum=False, nproc=useNproc)
+  tetad, etad = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="growth_rate", cumsum=False, nproc=useNproc)
+  tetad, getad = phmmfp.get_1D_time_series_data(processed_files, species=fluid, quantity="global_growth_rate",cumsum=False, nproc=useNproc)
+  """
+  axes[-1].set_xlabel(r"$t$")
+  for ax in axes[0:-1]:
+      ax.set_xticklabels([])
+  for ax in axes:
+      ax.set_xlim(0, t[-1])
+      ax.plot([0,1], [0,0], 'k--', lw=0.4, alpha=0.3) #set the dotted line on zero
+ 
+  color = "k"; lw = 0.75 ; ms = 2
+  tp.append([t, int_circ_x, {"color":color, "ls":"-", "lw":lw, "label":"Full x"}, ax0])
+  tp.append([t, int_circ_half_x, {"color":color, "ls":"--", "lw":lw, "label":"1/2 x"}, ax0])
+  color = "b";
+  tp.append([t, int_circ_y, {"color":color, "ls":"-", "lw":lw, "label":"Full y"}, ax0])
+  tp.append([t, int_circ_half_y, {"color":color, "ls":"--", "lw":lw, "label":"1/2 y"}, ax0])
+  color = "r";
+  tp.append([t, int_circ_z, {"color":color, "ls":"-", "lw":lw, "label":"Full z"}, ax0])
+  tp.append([t, int_circ_half_z, {"color":color, "ls":"--", "lw":lw, "label":"1/2 z"}, ax0])
+
+
+  ###=====================================full interface properties 
+  #tp.append([tl, int_tsc, {"color":'g', "ls":"-", "lw":lw, "label":r"$\dot\Gamma_{comp.}$"}, ax1])
+  #tp.append([tl, int_tc, {"color":'b', "ls":"--", "lw":lw, "label":r"$\dot\Gamma_{conv.}$"}, ax1])
+  #tp.append([tb, int_b, {"color":'c', "ls":"-","marker":"x", "ms":1., "lw":lw,"label":r"$\dot\Gamma_{baro.}$" }, ax1])
+  #tp.append([tl, int_L_E, {"color":'r', "ls":"-.", "lw":lw, "label":r"$\dot\Gamma_{L,E}$"}, ax1])
+  #tp.append([tl, int_L_B, {"color":'m', "ls":":", "lw":lw, "label":r"$\dot\Gamma_{L,B}$"}, ax1])
+  #tp.append([tl, int_DGDT_full, {"color":color, "ls":"-", "lw":lw, "marker":"o", "ms":1., "label":r"$\Sigma\dot\Gamma_{z,full}$"}, ax1])
+  ###=====================================Half interface properties 
+  """
+  tp.append([tl, int_tsc_half, 
+    {"color":'g', "ls":"-", "lw":lw, "label":r"$\dot\Gamma_{comp.}$"}, ax2])
+  #tp.append([tl, int_tc_half, 
+  #  {"color":'b', "ls":"--", "lw":lw, "label":r"$\dot\Gamma_{conv.}$"}, ax2])
+  tp.append([tb, int_b_half, 
+    {"color":'c', "ls":"-","marker":"x", "ms":ms, "lw":lw,"label":r"$\dot\Gamma_{baro.}$" }, ax2])
+  tp.append([tl, int_L_E_half, 
+    {"color":'r', "ls":"-.", "lw":lw, "label":r"$\dot\Gamma_{L,E}$"}, ax2])
+  tp.append([tl, int_L_B_half, 
+    {"color":'m', "ls":":", "lw":lw, "label":r"$\dot\Gamma_{L,B}$"}, ax2])
+  if calcInter: tp.append([tbrag, int_brag_inter_half, 
+    {"color":'b', "ls":"-", "lw":lw, "label":r"$\dot\Gamma_{Drag}$"}, ax2])
+  if calcIntra: tp.append([tbrag, int_brag_intra_half, 
+    {"color":'b', "ls":"--", "lw":lw, "label":r"$\dot\Gamma_{Visc}$"}, ax2])
+
+  tp.append([tl, int_DGDT_half,{"color":color, "ls":"-", "lw":lw, 
+    "marker":"o", "ms":ms, "label":r"$\Sigma\dot\Gamma_{z,half}$"}, ax2])
+  tp.append([teta, eta, {"color":color, "ls":"-", "lw":lw,"label":"Avg"}, ax3])
+  tp.append([teta, geta, {"color":'g', "ls":"--", "lw":lw,"label":"Global"}, ax3])
+  tp.append([tetad, etad, {"color":color, "ls":"-", "lw":lw,"label":"Avg"}, ax4]) 
+  tp.append([tetad, getad, {"color":'g', "ls":"--", "lw":lw,"label":"Global"}, ax4]) 
+
+  #tp.append([tA, int_A, {"color":'g', "ls":"-", "lw":lw,"label":"Full interface Area"}, ax5]) 
+  """
+
+  for p in tp:
+      #print(p[2])
+      ax = p[-1]
+      ax.plot(p[0], p[1], **p[2])
+      ax.legend(frameon=False, ncol=2, prop={"size":8}, loc=1)
+  gs.tight_layout(fig, h_pad=0.05, w_pad=0.01)
+  
+  name = date+"_XYZ_CIRCULATION_" + key + "lvl%i"%(level)
+  name = name.replace(".","p")
+  name += ".png"
+  fig.savefig(name, format='png', dpi=600, bbox_inches='tight')
+  print("saved ",name)
+  plt.close(fig)
+  return 
+
+
 ###################################################################################
 #                               Parameter settings                                #
 ###################################################################################
@@ -703,8 +847,9 @@ prepare_data = True # look for existing data directory (dependent on handle)
 plot = False ; # to plot or not to plot, that is the question...
 
 consVarComparison = False; 
-plot_interface_stats = True # plot interface statistics 
-plot_ion_electron_interface_comparison = False
+plot_interface_stats = False # plot interface statistics 
+plot_circulation_components = False # plot interface statistics 
+plot_ion_electron_interface_comparison = True
 
 max_res = 2048 # mas resolution used --- debug 
 print("View changed from standard")
@@ -737,6 +882,7 @@ if __name__ == '__main__':
 #"gradMQRHO_SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1)
 #"SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1)
 
+#"ele_gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1, (True, True, True, True, True, False)),
 #"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ANISO-Option_16", -1, (True, True, True, True, True, False)),
 #"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-FB-ISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_FB_ISO-Option_16", -3, (True, True, True, True, True, True)) 
 #"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-16-Res-2048-INTER-ANISO":("/media/kyriakos/Expansion/222_TINAROO_BACKUP/HLLC_Simulations_Production_Quality/Z_Correction_QiCorrection_2048_INTER_ANISO-Option_16", -1, (True, True, True, False, True, False)), 
@@ -752,18 +898,22 @@ if __name__ == '__main__':
 
 
 #====================option 44=======================================#
-# testing IH with rho and cd triggers 
-#"gradMQRHO_IH_rho_cd_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
-#"gradMQRHO_IH_dRHO_CD_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1), 
-#"gradMQRHO_IH_dRHO_CD_SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", -1), 
-
-### Trigger, buffer for start, drho and cd thresholds - best so far lol 20221022
 #"gradMQRHO_IH_dRHO_CD_trigger0p025_Buffer_rhoConst_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1),
-#"gradMQRHO_IH_dRHO_CD_trigger0p025_Buffer_rhoVar_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1, (True, True, True, True, True, False)),
-#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1, (True, True, True, True, True, False)), 
 
-#"gradMQRHO_IH_dRHO_CD_trigger0p25_SRMI-OP-44-Res-2048-FB-ANISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1)
-#"gradMQRHO_IH_dRHO_CD_trigger0p25_SRMI-OP-44-Res-2048-FB-ISO-beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", -1)
+####FINAL VERSION YO
+#"20201029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ANISO_beta_0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", -1, (True, True, True, True, True, False)),
+#"20201029_IH_dRho_CD_RMI_OP_44_Res_2048_FB_ISO_beta-0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_I_RES_2048", -1, (True, True, True, True, True, True)),
+#"20201029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ANISO_beta_infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1, (True, True, True, True, True, False)), 
+#"20201029_IH_dRho_CD_RMI_OP_44_Res_2048_FB_ISO_beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBI_nonMag_RES_2048", -1, (True, True, True, True, True, True)), 
+
+#"20221029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ANISO_beta_0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1, (True, True, True, True, True, False)), 
+#"20221029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ISO_beta_0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1, (True, True, True, True, True, True)), 
+
+#Tweaking fucked aniso infin values 
+#"deleteMe_20201029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ANISO_beta_infin_triggerVal0p05":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", 3, (True, True, True, True, True, False)), 
+"deleteMe_20201029_IH_dRho_CD_SRMI_OP_44_Res_2048_FB_ANISO_beta_0p001":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p001_FB_A_RES_2048", 4, (True, True, True, True, True, False)),
+
+#"gradMQRHO_IH_rho_cd_trigger0p025_Buffer_rhoVar_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1, (True, True, True, True, True, False)), 
 
 #"gradMQRHO_IH_rho_cd_trigger0p5_SRMI-OP-44-Res-2048-FB-ANISO-beta-infin":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_FBA_nonMag_RES_2048", -1), 
 
@@ -788,8 +938,8 @@ if __name__ == '__main__':
 #"SRMI-OP-44-Res-2048-FB-ANISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_A_RES_2048", -1), 
 #"SRMI-OP-44-Res-2048-FB-ISO-beta-0p01":("/media/kyriakos/Expansion/111_Op44_Magnetised_BRAGINSKII_RMI_Paper_three/44_X_beta_0p01_FB_I_RES_2048", -1), 
 
-'gradMQRHO_IH_rho_cd_trigger0p025_Buffer_PHM_HRMI_p0.5_ny2048':('/home/kyriakos/Documents/000_HYDRO_RMI_2048_Reference_Cases/HYDRO_P_0p5_RES_2048_RMI', -1, (False, False, True, False, False, False)), 
-'gradMQRHO_IH_rho_cd_trigger0p025_Buffer_PHM_HRMI_p1_ny2048':('/home/kyriakos/Documents/000_HYDRO_RMI_2048_Reference_Cases/HYDRO_P_1_RES_2048_RMI', -1, (False, False, True, False, False, False))
+#'gradMQRHO_IH_rho_cd_trigger0p025_Buffer_PHM_HRMI_p0.5_ny2048':('/home/kyriakos/Documents/000_HYDRO_RMI_2048_Reference_Cases/HYDRO_P_0p5_RES_2048_RMI', -1, (False, False, True, False, False, False)), 
+#'gradMQRHO_IH_rho_cd_trigger0p025_Buffer_PHM_HRMI_p1_ny2048':('/home/kyriakos/Documents/000_HYDRO_RMI_2048_Reference_Cases/HYDRO_P_1_RES_2048_RMI', -1, (False, False, True, False, False, False))
 
                  }
   """
@@ -808,7 +958,7 @@ if __name__ == '__main__':
     (bv, bvRhoVar, intHeuristic, calcIntra, calcInter,isoOveride)) \
     in simOutputDirec.items():
       phmmfp.get_batch_data(key, simDir, level, max_res, window, n_time_slices, 
-        nproc=4, outputType=[outputKeyword], braginskiiVorticity=bv, bragVortRhoVar=bvRhoVar, 
+        nproc=1, outputType=[outputKeyword], braginskiiVorticity=bv, bragVortRhoVar=bvRhoVar, 
         interfaceHeuristic=intHeuristic, calcIntra=calcIntra, calcInter=calcInter, 
         isoSwitch=isoOveride) 
   
@@ -889,17 +1039,25 @@ if __name__ == '__main__':
       # ======================= Interface statistics ===============================#
       if plot_interface_stats:
         print('\nPlotting interface statistics')
-        date = "20221021_IONS_gradMQRHO"
+        date = "20221029_IONS"
         interfaceStatistics("ions", key, date, simDir, level, 2, 2, 
                         calcIntra, calcInter, nproc=4)
 
-        date = "20221021_ELECTRONS_gradMQRHO"
+        date = "20221029_ELECTRONS"
         #interfaceStatistics("electrons", key, date, simDir, level, 2, 2, nproc=4)
 
 
       if plot_ion_electron_interface_comparison:
 
-        date = "20221021_ION_ELECTRON_COMPARISON"
+        date = "20221216_ION_ELECTRON_COMPARISON"
         fluids = ["ions", "electrons"]
-        ionElectronInterfaceStatistics(fluids, key, date, simDir, level, 2, 2, nproc=8)
+        ionElectronInterfaceStatistics(fluids, key, date, simDir, level, 2, 2, nproc=1)
+
+      if plot_circulation_components:
+        print('\nPlotting xyz circulation')
+        date = "20221029_IONS"
+        vorticityRotation("ions", key, date, simDir, level, calcIntra, calcInter, nproc=4)
+
+        date = "20221029_ELECTRONS"
+        #interfaceStatistics("electrons", key, date, simDir, level, 2, 2, nproc=4)
 
