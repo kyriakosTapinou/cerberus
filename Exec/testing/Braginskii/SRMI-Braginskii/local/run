@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+reset
+
+(cd /home/kyriakos/Documents/Code/000_cerberus_dev/githubRelease-cerberus/cerberus/Exec/local/ && make -j8 DIM=2 USE_EB=FALSE AMREX_PARTICLES=TRUE PYTHON_PLOT=FALSE)
+
+#EXE=/home/kyriakos/Documents/Code/000_cerberus_dev/githubRelease-cerberus/cerberus/Exec/local/MFP.2d.gnu.MPI.PARTICLES.ex
+
+EXE=/home/kyriakos/Documents/Code/000_cerberus_dev/githubRelease-cerberus/cerberus/Exec/local/MFP.2d.gnu.MPI.PARTICLES.ex
+
+INPUTS=inputs-NDC-SRMI-20220803.inputs #inputs-NDC-SRMI-20220704.inputs
+
+#incase there is some old info laying around
+rm -r oldSim
+mkdir oldSim
+mv run_log.txt oldSim
+mv *plt* oldSim 
+mv *chk* oldSim
+
+#make a particles file along the interface 
+python make_particles_file.py
+#run with 8 processes
+mpirun -n 8 ${EXE} ${INPUTS} 2>&1 | tee run_log.txt
+
+#mpirun -n 8 ${EXE} ${INPUTS} 2>&1 | tee run_log_freq_change_lvl2.txt
+# for viewing all files in visit 
+#python ../../../visitFileSorter.py
+
+#python3 plot.py
+#python3 movie.py
+#vim run_log.txt
